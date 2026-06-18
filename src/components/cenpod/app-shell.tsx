@@ -225,18 +225,18 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         <aside
           className={cn(
             'hidden md:flex flex-col bg-sidebar text-sidebar-foreground border-r border-sidebar-border transition-all duration-200',
-            collapsed ? 'w-16' : 'w-60'
+            collapsed ? 'w-20' : 'w-64'
           )}
         >
           <div
-            className="h-14 flex items-center gap-2 px-4 border-b border-sidebar-border"
+            className="flex items-center justify-center gap-2 px-4 py-4 border-b border-sidebar-border"
             style={{ backgroundColor: '#0a3143' }}
           >
             {!collapsed && (
-              <img src="/logo-white.png" alt="CENPOD" className="h-7 w-auto" />
+              <img src="/logo-white.png" alt="CENPOD" className="h-16 w-auto" />
             )}
             {collapsed && (
-              <img src="/logo-white.png" alt="CENPOD" className="h-7 w-auto mx-auto" />
+              <img src="/logo-white.png" alt="CENPOD" className="h-10 w-auto" />
             )}
           </div>
           <div className="flex-1 overflow-y-auto">
@@ -257,17 +257,17 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
         {/* Sidebar móvil */}
         <Sheet open={mobileOpen} onOpenChange={setMobileOpen}>
-          <SheetContent side="left" className="w-64 p-0 bg-sidebar text-sidebar-foreground">
+          <SheetContent side="left" className="w-72 p-0 bg-sidebar text-sidebar-foreground">
             <div
-              className="h-14 flex items-center gap-2 px-4 border-b border-sidebar-border"
+              className="flex items-center justify-between gap-2 px-4 py-4 border-b border-sidebar-border"
               style={{ backgroundColor: '#0a3143' }}
             >
-              <img src="/logo-white.png" alt="CENPOD" className="h-7 w-auto" />
+              <img src="/logo-white.png" alt="CENPOD" className="h-14 w-auto" />
               <Button
                 variant="ghost"
                 size="icon"
                 onClick={() => setMobileOpen(false)}
-                className="ml-auto text-white"
+                className="text-white"
               >
                 <X className="h-4 w-4" />
               </Button>
