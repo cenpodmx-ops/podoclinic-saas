@@ -128,6 +128,8 @@ export async function getOrganization(orgId: string) {
  *  - Si el paciente tiene un RFC real con régimen específico, FacturAPI validará
  *    contra el SAT y '616' será rechazado — en ese caso el paciente debe capturar
  *    su régimen correcto en su ficha y se usará ese.
+ *
+ *  address.zip es REQUERIDO por FacturAPI v2 — si no se proporciona, se usa '00000'.
  */
 export async function createCustomer(
   apiKey: string,
@@ -145,7 +147,8 @@ export async function createCustomer(
     tax_id: data.tax_id,
     // Siempre '616' a menos que el paciente tenga un régimen explícito Y válido
     tax_system: '616',
-    address: data.zip ? { zip: data.zip } : undefined,
+    // address requerido por FacturAPI v2 — siempre incluir zip
+    address: { zip: data.zip || '00000' },
     email: data.email,
   })
 }

@@ -211,10 +211,13 @@ export async function POST(req: NextRequest) {
     try {
       // 1. Crear cliente (paciente) en FacturAPI
       // tax_system siempre es '616' (Sin obligaciones fiscales) — ver createCustomer en facturapi.ts
+      // address requerido por FacturAPI v2 — extraer CP del address de la clínica o usar default
+      const clinicZip = (clinic.address || '').match(/\b\d{5}\b/)?.[0] || '83000'
       const customer = await createCustomer(apiKey, {
         legal_name: razonSocial,
         tax_id: rfc,
         email: emailFactura,
+        zip: clinicZip,
       })
 
       // 2. Construir items para FacturAPI
