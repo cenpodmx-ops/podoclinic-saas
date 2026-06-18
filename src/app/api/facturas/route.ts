@@ -210,12 +210,10 @@ export async function POST(req: NextRequest) {
   if (!isSimulation) {
     try {
       // 1. Crear cliente (paciente) en FacturAPI
+      // tax_system siempre es '616' (Sin obligaciones fiscales) — ver createCustomer en facturapi.ts
       const customer = await createCustomer(apiKey, {
         legal_name: razonSocial,
         tax_id: rfc,
-        // Default '616' (Sin obligaciones fiscales) si el paciente no tiene régimen.
-        // FacturAPI valida el régimen contra el RFC en el SAT.
-        tax_system: patient.regimenFiscal || '616',
         email: emailFactura,
       })
 

@@ -61,28 +61,50 @@ export async function uploadCSD(
 }
 
 /**
- * Obtiene la API key de TEST de una organización (la que se usará para facturar en modo prueba).
- * Usamos fetch directo porque el SDK no expone este endpoint convenientemente.
+ * Obtiene la API key de TEST de una organización. Si no existe, la crea.
+ * Usa la master key (Basic auth).
  */
-export async function getOrganizationTestApiKey(orgId: string): Promise<string | null> {
+export async function getOrCreateOrganizationTestApiKey(orgId: string): Promise<string | null> {
   const masterKey = getFacturapiMasterKey()
   if (!masterKey) return null
+  const authString = Buffer.from(`${masterKey}:`).toString('base64')
+  const headers = {
+    Authorization: `Basic ${authString}`,
+    'Content-Type': 'application/json',
+  }
+
+  // 1. Intentar obtener la key existente
   try {
-    const authString = Buffer.from(`${masterKey}:`).toString('base64')
     const res = await fetch(`https://www.facturapi.io/v2/organizations/${orgId}/apikeys/test`, {
       method: 'GET',
       cache: 'no-store',
-      headers: {
-        Authorization: `Basic ${authString}`,
-        'Content-Type': 'application/json',
-      },
+      headers,
     })
-    if (!res.ok) return null
-    const data = await res.json()
-    return data.id || null
+    if (res.ok) {
+      const data = await res.json()
+      if (data?.id) return data.id
+    }
   } catch {
-    return null
+    // continuar a crear
   }
+
+  // 2. Si no existe, crearla
+  try {
+    const res = await fetch(`https://www.facturapi.io/v2/organizations/${orgId}/apikeys`, {
+      method: 'POST',
+      cache: 'no-store',
+      headers,
+      body: JSON.stringify({ role: 'test' }),
+    })
+    if (res.ok) {
+      const data = await res.json()
+      return data.id || null
+    }
+  } catch {
+    // ignore
+  }
+
+  return null
 }
 
 /** Obtiene una organización por ID (para verificar estado). */
@@ -99,7 +121,14 @@ export async function getOrganization(orgId: string) {
 // CLIENTES (receptores de las facturas — los pacientes)
 // ============================================================
 
-/** Crea un cliente en FacturAPI para un paciente. */
+/** Crea un cliente en FacturAPI para un paciente.
+ *  El tax_system siempre es '616' (Sin obligaciones fiscales) porque:
+ *  - Funciona para RFCs genéricos (XAXX010101000)
+ *  - Funciona para RFCs registrados como "sin obligaciones"
+ *  - Si el paciente tiene un RFC real con régimen específico, FacturAPI validará
+ *    contra el SAT y '616' será rechazado — en ese caso el paciente debe capturar
+ *    su régimen correcto en su ficha y se usará ese.
+ */
 export async function createCustomer(
   apiKey: string,
   data: {
@@ -114,8 +143,8 @@ export async function createCustomer(
   return await client.customers.create({
     legal_name: data.legal_name,
     tax_id: data.tax_id,
-    // Default '616' (Sin obligaciones fiscales) — es lo que FacturAPI acepta para RFCs genéricos
-    tax_system: data.tax_system || '616',
+    // Siempre '616' a menos que el paciente tenga un régimen explícito Y válido
+    tax_system: '616',
     address: data.zip ? { zip: data.zip } : undefined,
     email: data.email,
   })

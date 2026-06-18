@@ -6,7 +6,7 @@ import {
   createOrganization,
   updateOrganizationLegal,
   uploadCSD,
-  getOrganizationTestApiKey,
+  getOrCreateOrganizationTestApiKey,
   getOrganization,
 } from '@/lib/facturapi'
 
@@ -145,22 +145,34 @@ export async function POST(req: NextRequest) {
       zip: cp,
     })
 
-    // D. Recuperar la API key de test de la organización
-    let apiKey = ''
+    // D. Obtener o CREAR la API key de test de la organización (automático, sin tocar FacturAPI)
+    let apiKey = clinic.facturapiToken || ''
     try {
-      apiKey = (await getOrganizationTestApiKey(orgId)) || ''
-    } catch {
-      // La key puede no existir todavía — el admin puede crearla manualmente
+      const newKey = await getOrCreateOrganizationTestApiKey(orgId)
+      if (newKey) apiKey = newKey
+    } catch (e: any) {
+      console.warn('[FACTURAPI] no se pudo crear API key automáticamente:', e?.message)
     }
 
-    // E. Guardar en la clínica
+    // E. Obtener los datos legales actualizados de la organización (para sincronizar el RFC real)
+    let orgRfc: string | null = null
+    try {
+      const orgData = await getOrganization(orgId) as any
+      if (orgData?.legal?.tax_id) {
+        orgRfc = orgData.legal.tax_id
+      }
+    } catch {}
+
+    // F. Guardar en la clínica (incluyendo el RFC real de la organización)
     await db.clinic.update({
       where: { id: clinicId },
       data: {
         facturapiOrgId: orgId,
-        facturapiToken: apiKey || clinic.facturapiToken, // no sobrescribir si no obtuvimos nueva
+        facturapiToken: apiKey || clinic.facturapiToken,
         razonSocial,
         regimenFiscal,
+        // Sincronizar el RFC desde la organización de FacturAPI (viene del CSD)
+        ...(orgRfc ? { rfc: orgRfc } : {}),
       },
     })
 
@@ -170,7 +182,7 @@ export async function POST(req: NextRequest) {
       hasApiKey: !!apiKey,
       message: apiKey
         ? 'Configuración guardada. Ya puedes facturar.'
-        : 'Organización creada. Ve a FacturAPI para generar una API key manualmente.',
+        : 'Configuración guardada, pero no se pudo crear la API key automáticamente. Intenta de nuevo.',
     })
   } catch (e: any) {
     console.error('[FACTURAPI] error configurando:', e)
