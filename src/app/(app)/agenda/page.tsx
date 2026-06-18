@@ -177,16 +177,59 @@ export default function AgendaPage() {
 
   return (
     <div className="p-3 md:p-6 space-y-4 max-w-[1600px] mx-auto">
-      {/* Print-only header */}
-      <div className="hidden print:block mb-4">
-        <h1 className="text-xl font-bold">Agenda CENPOD — {dateLabel}</h1>
-        <p className="text-sm">Clínica: {data?.clinic?.name || user?.clinicName}</p>
+      {/* ===== VISTA DE IMPRESIÓN ===== */}
+      <div className="hidden print:block">
+        <div className="print-agenda">
+          <h1>AGENDA DIARIA</h1>
+          <div className="sub">
+            {dateLabel} — {data?.clinic?.name || user?.clinicName || 'CENPOD'}
+          </div>
+          <table>
+            <thead>
+              <tr>
+                <th className="hora">Hora</th>
+                <th className="podologo-col">Podólogo</th>
+                <th>Paciente</th>
+                <th className="motivo-col">Motivo</th>
+                <th className="status-col">Estatus</th>
+                <th className="notas-col">Notas</th>
+              </tr>
+            </thead>
+            <tbody>
+              {(appts || []).map((a) => {
+                const time = (() => {
+                  const s = String(a.startTime)
+                  const m = s.match(/T(\d{2}:\d{2})/)
+                  return m ? m[1] : s
+                })()
+                return (
+                  <tr key={a.id}>
+                    <td className="hora">{time}</td>
+                    <td>{a.podologist?.name || '—'}</td>
+                    <td>{a.patient.firstName} {a.patient.lastName}</td>
+                    <td>{a.reason || a.serviceName || '—'}</td>
+                    <td className={`status-${a.status}`}>{STATUS_LABELS[a.status] || a.status}</td>
+                    <td>{a.notes || ''}</td>
+                  </tr>
+                )
+              })}
+              {(!appts || appts.length === 0) && (
+                <tr>
+                  <td colSpan={6} style={{ textAlign: 'center', padding: '30px', color: '#999' }}>
+                    No hay citas agendadas para este día.
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+          <div className="footer">
+            Impreso el {new Date().toLocaleString('es-MX')} • Sistema CENPOD • {data?.clinic?.name || user?.clinicName || 'CENPOD'}
+          </div>
+        </div>
       </div>
 
-      {/* Top bar */}
-      <div className="hidden print:block" />
-
-      <div className="flex flex-col gap-3 print:hidden">
+      {/* ===== VISTA NORMAL (pantalla) ===== */}
+      <div className="print:hidden">
         {/* Row 1: Date + view + actions */}
         <div className="flex flex-wrap items-center gap-2">
           <div className="flex items-center gap-1">
@@ -294,7 +337,7 @@ export default function AgendaPage() {
       />
 
       {/* Legend */}
-      <div className="flex flex-wrap gap-3 text-[10px] text-muted-foreground print:hidden">
+      <div className="flex flex-wrap gap-3 text-[10px] text-muted-foreground">
         {['pendiente', 'confirmada', 'en-consulta', 'finalizada', 'cancelada', 'no-asistio', 'bloqueada'].map((s) => (
           <div key={s} className="flex items-center gap-1.5">
             <span className={`inline-block w-3 h-3 rounded appt-${s}`} />
@@ -303,8 +346,8 @@ export default function AgendaPage() {
         ))}
       </div>
 
-      {/* Side panel */}
-      <AppointmentPanel
+      <div className="print:hidden">
+        <AppointmentPanel
         open={panelOpen}
         onOpenChange={setPanelOpen}
         appointment={panelAppt}
@@ -364,6 +407,7 @@ export default function AgendaPage() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+      </div>
     </div>
   )
 }
