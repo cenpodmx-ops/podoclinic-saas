@@ -14,7 +14,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Skeleton } from '@/components/ui/skeleton'
-import { Save, Plus, Pencil, Building2, Users, MessageSquare, FileText, KeyRound, UserCog } from 'lucide-react'
+import { Save, Plus, Pencil, Building2, Users, MessageSquare, FileText, KeyRound, UserCog, Eye, EyeOff } from 'lucide-react'
 import { toast } from 'sonner'
 import { fmtMoney } from '@/lib/format'
 
@@ -454,57 +454,48 @@ function PlantillasTab() {
 }
 
 function FacturacionTab() {
-  const { data: cfgData } = useConfig()
   const qc = useQueryClient()
+  const [apiKey, setApiKey] = useState('')
+  const [showKey, setShowKey] = useState(false)
 
-  // Estado de FacturAPI (GET /api/config/facturapi/sync)
-  const { data: faStatus, isLoading: faLoading } = useQuery({
+  const { data: faStatus, isLoading } = useQuery({
     queryKey: ['facturapi-status'],
-    queryFn: () => fetch('/api/config/facturapi/sync').then((r) => r.json()),
+    queryFn: () => fetch('/api/config/facturapi').then((r) => r.json()),
   })
 
-  // Form de datos fiscales
-  const [form, setForm] = useState<any>(null)
-  const clinic = cfgData?.clinic
-  if (!faLoading && clinic && !form) {
-    setForm({
-      rfc: clinic.rfc || faStatus?.clinic?.rfc || '',
-      razonSocial: clinic.razonSocial || faStatus?.clinic?.razonSocial || '',
-      regimenFiscal: clinic.regimenFiscal || faStatus?.clinic?.regimenFiscal || '601',
-      street: clinic.address || '',
-      exterior: '',
-      interior: '',
-      neighborhood: '',
-      municipality: '',
-      state: 'Sonora',
-      zip: '',
-    })
-  }
-
-  const syncMutation = useMutation({
-    mutationFn: (body: any) =>
-      fetch('/api/config/facturapi/sync', {
+  const saveMutation = useMutation({
+    mutationFn: (key: string) =>
+      fetch('/api/config/facturapi', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(body),
+        body: JSON.stringify({ apiKey: key }),
       }).then(async (r) => {
         const j = await r.json()
-        if (!r.ok) throw new Error(j?.error || 'Error al sincronizar')
+        if (!r.ok) throw new Error(j?.error || 'Error al guardar')
         return j
       }),
     onSuccess: () => {
-      toast.success('Organización sincronizada con FacturAPI. La facturación está activa.')
+      toast.success('API key guardada y validada. La facturación está activa.')
+      setApiKey('')
       qc.invalidateQueries({ queryKey: ['facturapi-status'] })
       qc.invalidateQueries({ queryKey: ['config'] })
     },
     onError: (e: any) => toast.error(e.message || 'Error'),
   })
 
-  if (faLoading || !form) return <Skeleton className="h-64" />
+  const deleteMutation = useMutation({
+    mutationFn: () =>
+      fetch('/api/config/facturapi', { method: 'DELETE' }).then((r) => r.json()),
+    onSuccess: () => {
+      toast.success('API key eliminada. Vuelves a modo simulación.')
+      qc.invalidateQueries({ queryKey: ['facturapi-status'] })
+    },
+  })
 
-  const apiKeyOk = faStatus?.apiKeyConfigured
-  const orgId = faStatus?.organizationId
-  const org = faStatus?.organization
+  if (isLoading) return <Skeleton className="h-64" />
+
+  const configured = faStatus?.configured
+  const clinic = faStatus?.clinic
 
   return (
     <Card className="shadow-sm">
@@ -512,182 +503,106 @@ function FacturacionTab() {
         <CardTitle className="text-base flex items-center gap-2">
           <KeyRound className="h-4 w-4" /> Facturación con FacturAPI (CFDI 4.0)
         </CardTitle>
+        <p className="text-xs text-muted-foreground mt-1">
+          Cada sucursal configura su propia cuenta de FacturAPI. Las facturas se emiten a nombre de la organización dueña de la API key.
+        </p>
       </CardHeader>
       <CardContent className="space-y-5">
-        {/* Estado de la API key global */}
-        <div className="rounded-lg border p-4 bg-muted/30">
-          <div className="flex items-center justify-between gap-2 flex-wrap">
-            <div>
-              <p className="font-medium text-sm">API Key global (Grupo CENPOD)</p>
-              <p className="text-xs text-muted-foreground">
-                La API key de FacturAPI es compartida por todas las sucursales.
-              </p>
-            </div>
-            {apiKeyOk ? (
-              <Badge className="bg-emerald-100 text-emerald-700">API Key configurada ✓</Badge>
-            ) : (
-              <Badge variant="destructive">API Key NO configurada</Badge>
-            )}
-          </div>
-          {!apiKeyOk && (
-            <p className="text-xs text-red-600 mt-2">
-              Contacta al administrador para configurar la variable <code>FACTURAPI_KEY</code>.
-            </p>
-          )}
-        </div>
-
-        {/* Estado de la organización de esta sucursal */}
+        {/* Estado actual */}
         <div className="rounded-lg border p-4">
           <div className="flex items-center justify-between gap-2 flex-wrap mb-2">
-            <p className="font-medium text-sm">Organización de esta sucursal</p>
-            {orgId ? (
-              <Badge className="bg-emerald-100 text-emerald-700">Conectada ✓</Badge>
+            <p className="font-medium text-sm">Estado de esta sucursal</p>
+            {configured ? (
+              <Badge className="bg-emerald-100 text-emerald-700">API Key configurada ✓</Badge>
             ) : (
-              <Badge variant="secondary">Sin crear — modo simulación</Badge>
+              <Badge variant="secondary">Sin configurar — modo simulación</Badge>
             )}
           </div>
-          {org && (
-            <div className="text-xs text-muted-foreground space-y-0.5">
-              <p><strong>ID FacturAPI:</strong> <code>{org.id}</code></p>
-              <p><strong>Nombre:</strong> {org.name || org.legal_name}</p>
-              <p><strong>Razón social:</strong> {org.legal_name}</p>
-              <p><strong>RFC:</strong> {org.tax_id || '(no configurado en FacturAPI)'}</p>
-              <p><strong>Régimen:</strong> {org.tax_system}</p>
-              <p><strong>Lista para producir:</strong> {org.is_production_ready ? 'Sí ✓' : 'No (faltan pasos)'}</p>
-              {org.pending_steps && org.pending_steps.length > 0 && (
-                <p className="text-amber-700 mt-1">
-                  <strong>Pendiente:</strong> {org.pending_steps.map((s: any) => s.description).join(', ')}
-                </p>
-              )}
+          {configured && clinic && (
+            <div className="text-xs text-muted-foreground mt-2 pt-2 border-t border-dashed">
+              <p><strong>Datos fiscales de la clínica (tab Clínica):</strong></p>
+              <p>RFC: {clinic.rfc || '—'} · Razón social: {clinic.razonSocial || '—'} · Régimen: {clinic.regimenFiscal || '—'}</p>
+              <p className="mt-1 text-muted-foreground/70">Los datos del emisor en las facturas se toman de tu organización en FacturAPI.</p>
             </div>
           )}
-          {!orgId && (
+          {!configured && (
             <p className="text-xs text-amber-700 mt-2">
-              Completa tus datos fiscales abajo y sincroniza para crear tu organización en FacturAPI.
+              Pega abajo tu API key secreta de FacturAPI (la encuentras en tu panel → Configuración → API Keys).
+              Mientras no la configures, las facturas se generan en modo simulación (no timbran ante el SAT).
             </p>
           )}
         </div>
 
-        {/* Form de datos fiscales del emisor (esta sucursal) */}
+        {/* Form para subir/actualizar la API key */}
         <div className="space-y-3">
-          <h3 className="text-sm font-medium">Datos fiscales del emisor (esta sucursal)</h3>
-          <div className="grid md:grid-cols-2 gap-3">
-            <div className="space-y-1">
-              <Label className="text-xs">RFC *</Label>
+          <h3 className="text-sm font-medium">
+            {configured ? 'Actualizar API key' : 'Configurar API key de FacturAPI'}
+          </h3>
+          <div className="space-y-1">
+            <Label className="text-xs">API key secreta (sk_test_... o sk_live_...)</Label>
+            <div className="relative">
               <Input
-                value={form.rfc}
-                onChange={(e) => setForm({ ...form, rfc: e.target.value.toUpperCase() })}
-                placeholder="Ej. CEN010101AB1"
-                className="uppercase"
+                type={showKey ? 'text' : 'password'}
+                value={apiKey}
+                onChange={(e) => setApiKey(e.target.value)}
+                placeholder="sk_test_abc123..."
+                className="pr-10 font-mono"
               />
+              <button
+                type="button"
+                onClick={() => setShowKey((s) => !s)}
+                className="absolute right-2 top-1/2 -translate-y-1/2 p-1 text-muted-foreground hover:text-foreground"
+                tabIndex={-1}
+              >
+                {showKey ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+              </button>
             </div>
-            <div className="space-y-1">
-              <Label className="text-xs">Razón social *</Label>
-              <Input
-                value={form.razonSocial}
-                onChange={(e) => setForm({ ...form, razonSocial: e.target.value })}
-                placeholder="Ej. Grupo CENPOD Clínica 1 S.A. de C.V."
-              />
-            </div>
+            <p className="text-xs text-muted-foreground">
+              La key se valida contra FacturAPI antes de guardarse. Se almacena encriptada en la base de datos.
+            </p>
           </div>
-          <div className="grid md:grid-cols-2 gap-3">
-            <div className="space-y-1">
-              <Label className="text-xs">Régimen fiscal *</Label>
-              <Select value={form.regimenFiscal} onValueChange={(v) => setForm({ ...form, regimenFiscal: v })}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="601">601 · General de Ley Personas Morales</SelectItem>
-                  <SelectItem value="626">626 · Régimen Simplificado de Confianza</SelectItem>
-                  <SelectItem value="612">612 · Personas Físicas con Actividades Empresariales</SelectItem>
-                  <SelectItem value="603">603 · Personas Morales con Fines no Lucrativos</SelectItem>
-                  <SelectItem value="608">608 · Demás ingresos</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-1">
-              <Label className="text-xs">Código postal *</Label>
-              <Input
-                value={form.zip}
-                onChange={(e) => setForm({ ...form, zip: e.target.value })}
-                placeholder="Ej. 83000"
-                maxLength={5}
-              />
-            </div>
-          </div>
-          <div className="grid md:grid-cols-3 gap-3">
-            <div className="space-y-1">
-              <Label className="text-xs">Calle</Label>
-              <Input
-                value={form.street}
-                onChange={(e) => setForm({ ...form, street: e.target.value })}
-                placeholder="Av. Obregón"
-              />
-            </div>
-            <div className="space-y-1">
-              <Label className="text-xs">No. exterior</Label>
-              <Input
-                value={form.exterior}
-                onChange={(e) => setForm({ ...form, exterior: e.target.value })}
-                placeholder="123"
-              />
-            </div>
-            <div className="space-y-1">
-              <Label className="text-xs">No. interior</Label>
-              <Input
-                value={form.interior}
-                onChange={(e) => setForm({ ...form, interior: e.target.value })}
-                placeholder="—"
-              />
-            </div>
-          </div>
-          <div className="grid md:grid-cols-3 gap-3">
-            <div className="space-y-1">
-              <Label className="text-xs">Colonia</Label>
-              <Input
-                value={form.neighborhood}
-                onChange={(e) => setForm({ ...form, neighborhood: e.target.value })}
-                placeholder="Centro"
-              />
-            </div>
-            <div className="space-y-1">
-              <Label className="text-xs">Municipio/Ciudad</Label>
-              <Input
-                value={form.municipality}
-                onChange={(e) => setForm({ ...form, municipality: e.target.value })}
-                placeholder="Hermosillo"
-              />
-            </div>
-            <div className="space-y-1">
-              <Label className="text-xs">Estado</Label>
-              <Input
-                value={form.state}
-                onChange={(e) => setForm({ ...form, state: e.target.value })}
-                placeholder="Sonora"
-              />
-            </div>
+
+          <div className="flex justify-end gap-2">
+            {configured && (
+              <Button
+                variant="outline"
+                onClick={() => {
+                  if (confirm('¿Eliminar la API key? Volverás a modo simulación.')) {
+                    deleteMutation.mutate()
+                  }
+                }}
+                disabled={deleteMutation.isPending}
+                className="text-red-600 hover:text-red-700"
+              >
+                Eliminar API key
+              </Button>
+            )}
+            <Button
+              onClick={() => saveMutation.mutate(apiKey)}
+              disabled={saveMutation.isPending || !apiKey.trim()}
+              style={{ backgroundColor: '#0a3143' }}
+            >
+              <Save className="h-4 w-4 mr-1" />
+              {saveMutation.isPending
+                ? 'Validando...'
+                : configured
+                  ? 'Actualizar'
+                  : 'Guardar y validar'}
+            </Button>
           </div>
         </div>
 
-        <div className="flex justify-end gap-2">
-          <Button
-            onClick={() => syncMutation.mutate(form)}
-            disabled={syncMutation.isPending || !apiKeyOk}
-            style={{ backgroundColor: '#0a3143' }}
-          >
-            <Save className="h-4 w-4 mr-1" />
-            {syncMutation.isPending
-              ? 'Sincronizando...'
-              : orgId
-                ? 'Actualizar en FacturAPI'
-                : 'Crear organización en FacturAPI'}
-          </Button>
+        {/* Instrucciones */}
+        <div className="rounded-lg border border-blue-200 bg-blue-50 p-4 text-xs text-blue-900 space-y-2">
+          <p className="font-medium">¿Cómo obtengo mi API key?</p>
+          <ol className="list-decimal list-inside space-y-1">
+            <li>Crea una cuenta en <a href="https://facturapi.io" target="_blank" rel="noreferrer" className="underline">facturapi.io</a> (es gratis para probar).</li>
+            <li>En tu panel, ve a <strong>Configuración → Organización</strong> y captura tus datos fiscales (RFC, razón social, régimen, dirección).</li>
+            <li>Ve a <strong>Configuración → API Keys</strong> y copia tu <strong>Secret Key</strong> (empieza con <code>sk_test_</code> para pruebas o <code>sk_live_</code> para producción).</li>
+            <li>Pégala aquí y dale "Guardar y validar".</li>
+            <li>Para que las facturas timbren ante el SAT: sube tu <strong>Certificado de Sello Digital (CSD)</strong> en tu panel de FacturAPI.</li>
+          </ol>
         </div>
-
-        {!apiKeyOk && (
-          <p className="text-xs text-red-600 text-right">
-            No se puede sincronizar hasta que el administrador configure la API key global.
-          </p>
-        )}
       </CardContent>
     </Card>
   )

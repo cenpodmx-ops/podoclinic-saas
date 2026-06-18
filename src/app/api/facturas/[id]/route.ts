@@ -91,10 +91,9 @@ export async function PATCH(req: NextRequest, ctx: { params: Promise<{ id: strin
     return ok({ id, status: 'CANCELADA' })
   }
 
-  // Factura timbrada — cancelar en FacturAPI usando API key global
-  const token = process.env.FACTURAPI_KEY?.trim() || inv.clinic?.facturapiToken?.trim()
+  // Factura timbrada — cancelar en FacturAPI usando la API key de la sucursal
+  const token = inv.clinic?.facturapiToken?.trim()
   if (!token) {
-    // No debería pasar, pero por si acaso
     await db.invoice.update({ where: { id }, data: { status: 'CANCELADA' } })
     return ok({ id, status: 'CANCELADA' })
   }

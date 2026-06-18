@@ -254,18 +254,13 @@ export type FacturapiInvoiceResponse = {
   created_at: string
 }
 
-/** Llama a FacturAPI para timbrar la factura.
- *  Si se pasa `organizationId`, la factura se emite a nombre de esa organización (sucursal).
- */
+/** Llama a FacturAPI para timbrar la factura usando la API key de la sucursal.
+ *  La factura se emite a nombre de la organización dueña de la API key. */
 export async function createFacturapiInvoice(
   token: string,
   body: FacturapiInvoiceBody,
-  organizationId?: string,
 ): Promise<FacturapiInvoiceResponse> {
-  const url = organizationId
-    ? `${FACTURAPI_BASE}/invoices?organization=${encodeURIComponent(organizationId)}`
-    : `${FACTURAPI_BASE}/invoices`
-  const res = await fetch(url, {
+  const res = await fetch(`${FACTURAPI_BASE}/invoices`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
