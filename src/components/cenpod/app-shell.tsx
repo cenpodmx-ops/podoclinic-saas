@@ -221,12 +221,12 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         {/* Sidebar escritorio */}
         <aside
           className={cn(
-            'hidden md:flex flex-col bg-sidebar text-sidebar-foreground border-r border-sidebar-border transition-all duration-200',
+            'hidden md:flex flex-col bg-sidebar text-sidebar-foreground border-r border-sidebar-border transition-all duration-200 sticky top-0 h-screen',
             collapsed ? 'w-20' : 'w-64'
           )}
         >
           <div
-            className="flex flex-col items-center justify-center gap-0 px-4 py-5 border-b border-sidebar-border text-white"
+            className="flex flex-col items-center justify-center gap-0 px-4 py-5 border-b border-sidebar-border text-white shrink-0"
             style={{ backgroundColor: '#0a3143' }}
           >
             {!collapsed ? (
@@ -240,7 +240,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               <span className="text-lg font-extrabold tracking-wider leading-none">CP</span>
             )}
           </div>
-          <div className="flex-1 overflow-y-auto">
+          <div className="flex-1 overflow-y-auto cenpod-sidebar-scroll">
             <SidebarContent collapsed={collapsed} />
           </div>
           <div className="border-t border-sidebar-border p-2">
