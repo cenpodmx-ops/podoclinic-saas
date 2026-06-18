@@ -61,6 +61,9 @@ export type PodologistOption = {
   specialty?: string | null
   commissionPct?: number
   clinicId?: string
+  openingTime?: string | null
+  closingTime?: string | null
+  slotMinutes?: number | null
 }
 
 export type ServiceOption = {

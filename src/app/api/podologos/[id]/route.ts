@@ -16,11 +16,12 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   const allowed = [
     'name', 'specialty', 'cedula', 'certNumber', 'photoUrl', 'phone', 'email',
     'commissionPct', 'monthlyGoalConsults', 'monthlyGoalRevenue', 'active',
+    'openingTime', 'closingTime', 'slotMinutes',
   ]
   const data: any = {}
   for (const k of allowed) {
     if (body[k] !== undefined) {
-      if (['commissionPct', 'monthlyGoalConsults', 'monthlyGoalRevenue'].includes(k)) {
+      if (['commissionPct', 'monthlyGoalConsults', 'monthlyGoalRevenue', 'slotMinutes'].includes(k)) {
         data[k] = body[k] === null ? null : Number(body[k])
       } else {
         data[k] = body[k]

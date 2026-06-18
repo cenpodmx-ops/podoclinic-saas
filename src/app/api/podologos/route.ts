@@ -26,6 +26,7 @@ export async function GET(req: NextRequest) {
         id: true, name: true, specialty: true, cedula: true, certNumber: true,
         phone: true, email: true, commissionPct: true,
         monthlyGoalConsults: true, monthlyGoalRevenue: true,
+        openingTime: true, closingTime: true, slotMinutes: true,
         clinicId: true, active: true,
       },
     })
@@ -47,6 +48,7 @@ export async function GET(req: NextRequest) {
       id: true, name: true, specialty: true, cedula: true, certNumber: true,
       photoUrl: true, phone: true, email: true, commissionPct: true,
       monthlyGoalConsults: true, monthlyGoalRevenue: true,
+      openingTime: true, closingTime: true, slotMinutes: true,
       clinicId: true, active: true,
     },
     orderBy: { name: 'asc' },
@@ -65,6 +67,7 @@ export async function POST(req: NextRequest) {
   const {
     name, specialty, cedula, certNumber, photoUrl, phone, email,
     commissionPct, monthlyGoalConsults, monthlyGoalRevenue, clinicId,
+    openingTime, closingTime, slotMinutes,
   } = body
   if (!name) return bad('Nombre requerido')
 
@@ -80,6 +83,9 @@ export async function POST(req: NextRequest) {
       commissionPct: Number(commissionPct) || 0,
       monthlyGoalConsults: monthlyGoalConsults ? Number(monthlyGoalConsults) : null,
       monthlyGoalRevenue: monthlyGoalRevenue ? Number(monthlyGoalRevenue) : null,
+      openingTime: openingTime || null,
+      closingTime: closingTime || null,
+      slotMinutes: slotMinutes ? Number(slotMinutes) : null,
       clinicId: user!.role === 'SUPER' && clinicId ? clinicId : user!.clinicId,
     },
   })

@@ -148,6 +148,7 @@ function ClinicaTab() {
                 <SelectItem value="15">15 min</SelectItem>
                 <SelectItem value="20">20 min</SelectItem>
                 <SelectItem value="30">30 min</SelectItem>
+                <SelectItem value="45">45 min</SelectItem>
                 <SelectItem value="60">60 min</SelectItem>
               </SelectContent>
             </Select>
@@ -253,6 +254,7 @@ function EquipoTab() {
                   <TableHead>Especialidad</TableHead>
                   <TableHead>Cédula</TableHead>
                   <TableHead>Teléfono</TableHead>
+                  <TableHead>Horario</TableHead>
                   <TableHead>Comisión</TableHead>
                   <TableHead>Meta mensual</TableHead>
                   <TableHead>Estado</TableHead>
@@ -266,6 +268,11 @@ function EquipoTab() {
                     <TableCell className="text-sm">{p.specialty || '—'}</TableCell>
                     <TableCell className="text-sm">{p.cedula || '—'}</TableCell>
                     <TableCell className="text-sm">{p.phone || '—'}</TableCell>
+                    <TableCell className="text-xs text-muted-foreground">
+                      {p.openingTime && p.closingTime
+                        ? `${p.openingTime}–${p.closingTime}${p.slotMinutes ? ` · ${p.slotMinutes}min` : ''}`
+                        : <span className="text-muted-foreground/60">Default clínica</span>}
+                    </TableCell>
                     <TableCell><Badge variant="outline">{p.commissionPct}%</Badge></TableCell>
                     <TableCell className="text-sm">
                       {p.monthlyGoalConsults ? `${p.monthlyGoalConsults} citas` : '—'}
@@ -354,6 +361,36 @@ function PodologoDialog({ open, onOpenChange, editing, onSave, saving }: any) {
               <Input name="monthlyGoalRevenue" type="number" min={0} step="0.01" defaultValue={editing?.monthlyGoalRevenue ?? ''} />
             </div>
           </div>
+
+          {/* Horario individual del podólogo */}
+          <div className="rounded-lg border p-3 space-y-2 bg-muted/20">
+            <p className="text-xs font-medium text-muted-foreground">Horario individual (opcional — si lo dejas vacío, usa el de la clínica)</p>
+            <div className="grid grid-cols-3 gap-3">
+              <div className="space-y-1">
+                <Label className="text-xs">Inicio</Label>
+                <Input name="openingTime" type="time" defaultValue={editing?.openingTime || ''} />
+              </div>
+              <div className="space-y-1">
+                <Label className="text-xs">Fin</Label>
+                <Input name="closingTime" type="time" defaultValue={editing?.closingTime || ''} />
+              </div>
+              <div className="space-y-1">
+                <Label className="text-xs">Duración cita</Label>
+                <Select name="slotMinutes" defaultValue={String(editing?.slotMinutes || '')}>
+                  <SelectTrigger><SelectValue placeholder="Default" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="">Default clínica</SelectItem>
+                    <SelectItem value="15">15 min</SelectItem>
+                    <SelectItem value="20">20 min</SelectItem>
+                    <SelectItem value="30">30 min</SelectItem>
+                    <SelectItem value="45">45 min</SelectItem>
+                    <SelectItem value="60">60 min</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+          </div>
+
           {editing && (
             <label className="flex items-center gap-2 text-sm">
               <Switch name="active" defaultChecked={editing.active} />

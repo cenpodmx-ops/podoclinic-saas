@@ -93,6 +93,10 @@ model Podologist {
   commissionPct Float    @default(0)
   monthlyGoalConsults Int?
   monthlyGoalRevenue  Float?
+  // Horario individual del podólogo (si no se setea, usa el de la clínica)
+  openingTime   String?  // "08:00"
+  closingTime   String?  // "20:00"
+  slotMinutes   Int?     // 15, 20, 30, 45, 60
   active        Boolean  @default(true)
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt

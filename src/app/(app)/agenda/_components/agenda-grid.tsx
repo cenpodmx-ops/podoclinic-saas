@@ -154,9 +154,16 @@ export function AgendaGrid({
   onSlotClick, onAppointmentClick, onBlockClick,
 }: Props) {
   const clinic = data?.clinic
-  const opening = clinic?.openingTime || '08:00'
-  const closing = clinic?.closingTime || '20:00'
-  const slotMin = clinic?.slotMinutes || 30
+
+  // Si hay un solo podólogo seleccionado, usar SU horario (si lo tiene configurado).
+  // Si no, usar el de la clínica.
+  const selectedPodologo = selectedPodologistId && selectedPodologistId !== 'all'
+    ? podologos.find((p) => p.id === selectedPodologistId)
+    : null
+
+  const opening = selectedPodologo?.openingTime || clinic?.openingTime || '08:00'
+  const closing = selectedPodologo?.closingTime || clinic?.closingTime || '20:00'
+  const slotMin = selectedPodologo?.slotMinutes || clinic?.slotMinutes || 30
 
   const slots = useMemo(() => buildSlots(opening, closing, slotMin), [opening, closing, slotMin])
   const gridStart = slots.length > 0 ? slots[0].minutes : 480
