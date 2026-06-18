@@ -53,7 +53,7 @@ export async function POST(req: NextRequest) {
   let logoUrl: string
 
   // Intentar Supabase Storage primero (para Vercel/producción)
-  const supabaseUrl = await uploadToSupabase(clinicId, storedName, buffer, mimeType)
+  const { url: supabaseUrl, error: supaError } = await uploadToSupabase(clinicId, storedName, buffer, mimeType)
   if (supabaseUrl) {
     logoUrl = `${supabaseUrl}?t=${cacheBust}`
   } else {
@@ -69,7 +69,8 @@ export async function POST(req: NextRequest) {
     } catch (e: any) {
       console.error('[LOGO UPLOAD] filesystem fallback failed:', e?.message)
       return bad(
-        'No se pudo subir el logo. Si estás en producción, configura Supabase Storage (crea un bucket público llamado "clinics").',
+        `No se pudo subir el logo. Error de Supabase: ${supaError || 'desconocido'}. ` +
+        'Verifica que tengas configurada SUPABASE_SERVICE_ROLE_KEY en Vercel (no la anon key).',
         500,
       )
     }

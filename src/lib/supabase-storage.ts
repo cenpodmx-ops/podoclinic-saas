@@ -24,15 +24,21 @@ export function getSupabaseAdmin() {
  * Para que funcione, crear el bucket 'clinics' en Supabase:
  * 1. Supabase Dashboard → Storage → New bucket
  * 2. Name: clinics, Public: true (o false si prefieres URLs firmadas)
+ * 3. Configurar SUPABASE_SERVICE_ROLE_KEY en variables de entorno (no la anon key)
  */
 export async function uploadToSupabase(
   clinicId: string,
   filename: string,
   buffer: Buffer,
   mimeType: string,
-): Promise<string | null> {
+): Promise<{ url: string | null; error: string | null }> {
   const supabase = getSupabaseAdmin()
-  if (!supabase) return null
+  if (!supabase) {
+    return {
+      url: null,
+      error: 'SUPABASE_URL o SUPABASE_SERVICE_ROLE_KEY no configuradas',
+    }
+  }
 
   const path = `${clinicId}/${filename}`
   const { error } = await supabase.storage
@@ -44,10 +50,10 @@ export async function uploadToSupabase(
 
   if (error) {
     console.error('[SUPABASE STORAGE] upload error:', error.message)
-    return null
+    return { url: null, error: error.message }
   }
 
   // Obtener URL pública
   const { data } = supabase.storage.from('clinics').getPublicUrl(path)
-  return data.publicUrl
+  return { url: data.publicUrl, error: null }
 }
