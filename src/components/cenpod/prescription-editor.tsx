@@ -49,6 +49,7 @@ const DEFAULT_DESIGN: PrescriptionDesign = {
   logoOpacity: 100,
   watermarkEnabled: false,
   watermarkOpacity: 10,
+  watermarkSize: 60,
   watermarkPosition: 'center',
   showPatientInfo: true,
   showDoctorInfo: true,
@@ -317,6 +318,14 @@ export function PrescriptionEditor() {
               </div>
               {design.watermarkEnabled && (
                 <>
+                  <SliderControl
+                    label="Tamaño watermark"
+                    value={design.watermarkSize ?? 60}
+                    min={20}
+                    max={100}
+                    unit="%"
+                    onChange={(v) => update({ watermarkSize: v })}
+                  />
                   <SliderControl
                     label="Opacidad watermark"
                     value={design.watermarkOpacity ?? 10}
@@ -779,13 +788,14 @@ function buildTestPrintHtml(design: PrescriptionDesign, data: PrescriptionPrevie
     position: relative;
     overflow: hidden;
   }
-  .rx-watermark { position: absolute; pointer-events: none; z-index: 0; }
-  .rx-watermark img { max-width: 70%; max-height: 70%; object-fit: contain; }
-  .rx-wm-center { top: 50%; left: 50%; transform: translate(-50%, -50%); }
-  .rx-wm-top-right { top: ${margins}mm; right: ${margins}mm; max-width: 200px; }
-  .rx-wm-top-right img { max-width: 200px; max-height: 200px; }
-  .rx-wm-bottom-right { bottom: ${margins}mm; right: ${margins}mm; max-width: 200px; }
-  .rx-wm-bottom-right img { max-width: 200px; max-height: 200px; }
+  .rx-watermark { position: absolute; pointer-events: none; z-index: 0; display: flex; align-items: center; justify-content: center; }
+  .rx-watermark img { object-fit: contain; }
+  .rx-wm-center { top: 0; left: 0; right: 0; bottom: 0; width: 100%; height: 100%; }
+  .rx-wm-center img { max-width: ${d.watermarkSize ?? 60}%; max-height: ${d.watermarkSize ?? 60}%; }
+  .rx-wm-top-right { top: ${margins}mm; right: ${margins}mm; }
+  .rx-wm-top-right img { max-width: ${(d.watermarkSize ?? 60) * 2}px; max-height: ${(d.watermarkSize ?? 60) * 2}px; }
+  .rx-wm-bottom-right { bottom: ${margins}mm; right: ${margins}mm; }
+  .rx-wm-bottom-right img { max-width: ${(d.watermarkSize ?? 60) * 2}px; max-height: ${(d.watermarkSize ?? 60) * 2}px; }
   .rx-sheet > * { position: relative; z-index: 1; }
   .rx-header { border-bottom: 2.5px solid ${primary}; padding-bottom: 10px; margin-bottom: 14px; }
   .rx-header-inner { display: flex; align-items: center; gap: 18px; }
@@ -830,11 +840,11 @@ function buildTestPrintHtml(design: PrescriptionDesign, data: PrescriptionPrevie
   <div class="rx-sheet">
     ${watermarkHtml}
     ${showHeader ? `<div class="rx-header"><div class="rx-header-inner rx-pos-${d.logoPosition || 'left'}">${logoHtml}<div class="rx-clinic-info"><div class="rx-clinic-name">${esc(clinic?.name || 'Clínica CENPOD')}</div>${clinic?.address ? `<div class="rx-clinic-line">${esc(clinic.address)}</div>` : ''}<div class="rx-clinic-line">${clinic?.phone ? `Tel. ${esc(clinic.phone)}` : ''}</div></div></div></div>` : ''}
-    <div class="rx-title-row"><div class="rx-title">Sugiero</div><div class="rx-folio">Folio: PRUEBA-0001</div></div>
+    <div class="rx-title-row"><div class="rx-folio">Folio: PRUEBA-0001</div></div>
     ${metaCells.length > 0 ? `<div class="rx-meta-grid">${metaCells.join('')}</div>` : ''}
     ${showDiagnosis && data.diagnosis ? `<div class="rx-section"><div class="rx-section-title">Diagnóstico</div><div class="rx-section-body">${esc(data.diagnosis)}</div></div>` : ''}
     ${showRx ? `<div class="rx-rx-symbol">℞</div>` : ''}
-    ${showMedications ? `<div class="rx-section"><div class="rx-section-title">Medicamentos o productos</div><table class="rx-meds-table"><thead><tr style="background:${accent}1A;"><th class="rx-num">#</th><th>Medicamento / Producto</th><th>Dosis</th><th>Vía</th><th>Duración</th></tr></thead><tbody>${medsRows}</tbody></table></div>` : ''}
+    ${showMedications ? `<div class="rx-section"><div class="rx-section-title">Sugiero</div><table class="rx-meds-table"><thead><tr style="background:${accent}1A;"><th class="rx-num">#</th><th>Medicamento / Producto</th><th>Dosis</th><th>Vía</th><th>Duración</th></tr></thead><tbody>${medsRows}</tbody></table></div>` : ''}
     ${showIndications && data.indications ? `<div class="rx-section"><div class="rx-section-title">Indicaciones generales</div><div class="rx-section-body rx-indications">${esc(data.indications)}</div></div>` : ''}
     ${showSignature ? `<div class="rx-signature"><div class="rx-sig-line"></div><div class="rx-sig-name">${esc(podName)}</div><div class="rx-sig-meta">${podSpec} · Cédula: ${podCed}${podCert ? ` · Cert: ${podCert}` : ''}</div><div class="rx-sig-label">${esc(sigLabel)}</div></div>` : ''}
     ${showFooter ? `<div class="rx-footer"><div>${esc(clinic?.name || 'Clínica CENPOD')} · Receta de prueba</div><div>${new Date().toLocaleDateString('es-MX', { day: '2-digit', month: 'long', year: 'numeric' })}</div></div>` : ''}

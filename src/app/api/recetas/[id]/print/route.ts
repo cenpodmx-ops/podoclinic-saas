@@ -257,6 +257,9 @@ export async function GET(_req: NextRequest, ctx: { params: Promise<{ id: string
   const watermarkEnabled = design.watermarkEnabled === true
   const watermarkOpacity = (design.watermarkOpacity ?? DEFAULT_DESIGN.watermarkOpacity!) / 100
   const watermarkPosition = design.watermarkPosition || 'center'
+  const watermarkSize = (design as any).watermarkSize ?? 60
+  const wmSizePct = watermarkSize // porcentaje del ancho de la página
+  const wmSizePx = watermarkSize * 2 // píxeles para esquinas
 
   const todayStr = format(new Date(), "dd 'de' MMMM 'de' yyyy", { locale: undefined })
   const rxDateStr = format(new Date(rx.date), "dd/MM/yyyy")
@@ -301,7 +304,7 @@ export async function GET(_req: NextRequest, ctx: { params: Promise<{ id: string
 
   const medsHtml = showMedications ? `
     <div class="rx-section">
-      <div class="rx-section-title" style="color:${primary};border-bottom-color:${withAlpha(primary, 0.18)};">Medicamentos o productos</div>
+      <div class="rx-section-title" style="color:${primary};border-bottom-color:${withAlpha(primary, 0.18)};">Sugiero</div>
       <table class="rx-meds-table">
         <thead>
           <tr style="background:${withAlpha(accent, 0.10)};">
@@ -403,25 +406,26 @@ export async function GET(_req: NextRequest, ctx: { params: Promise<{ id: string
     position: absolute;
     pointer-events: none;
     z-index: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
   }
   .rx-watermark img {
-    max-width: 70%;
-    max-height: 70%;
     object-fit: contain;
   }
   .rx-wm-center {
-    top: 50%; left: 50%; transform: translate(-50%, -50%);
+    top: 0; left: 0; right: 0; bottom: 0;
+    width: 100%; height: 100%;
   }
+  .rx-wm-center img { max-width: ${wmSizePct}%; max-height: ${wmSizePct}%; }
   .rx-wm-top-right {
     top: ${marginsMm}; right: ${marginsMm};
-    max-width: 200px;
   }
-  .rx-wm-top-right img { max-width: 200px; max-height: 200px; }
+  .rx-wm-top-right img { max-width: ${wmSizePx}px; max-height: ${wmSizePx}px; }
   .rx-wm-bottom-right {
     bottom: ${marginsMm}; right: ${marginsMm};
-    max-width: 200px;
   }
-  .rx-wm-bottom-right img { max-width: 200px; max-height: 200px; }
+  .rx-wm-bottom-right img { max-width: ${wmSizePx}px; max-height: ${wmSizePx}px; }
   .rx-sheet > * { position: relative; z-index: 1; }
   .rx-header {
     border-bottom: 2.5px solid ${primary};
@@ -637,7 +641,6 @@ export async function GET(_req: NextRequest, ctx: { params: Promise<{ id: string
     ${showHeader ? `<div class="rx-header">${headerInner}</div>` : ''}
 
     <div class="rx-title-row">
-      <div class="rx-title">Sugiero</div>
       <div class="rx-folio">Folio: ${esc(rx.id.slice(-8).toUpperCase())}</div>
     </div>
 

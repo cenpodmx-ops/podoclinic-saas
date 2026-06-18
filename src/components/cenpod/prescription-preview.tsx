@@ -31,6 +31,7 @@ export type PrescriptionDesign = {
   logoOpacity?: number
   watermarkEnabled?: boolean
   watermarkOpacity?: number
+  watermarkSize?: number
   watermarkPosition?: 'center' | 'top-right' | 'bottom-right'
   showPatientInfo?: boolean
   showDoctorInfo?: boolean
