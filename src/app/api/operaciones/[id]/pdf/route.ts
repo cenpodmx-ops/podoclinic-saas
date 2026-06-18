@@ -143,6 +143,56 @@ export async function GET(_req: NextRequest, ctx: { params: Promise<{ id: string
   </div>
 
   ${
+    (summary as any)?.totalConsulta !== undefined || (summary as any)?.totalProductos !== undefined
+      ? `
+  <div class="section">
+    <h3>Desglose por concepto</h3>
+    <table>
+      <thead>
+        <tr><th>Concepto</th><th class="r">Monto</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>Total de consultas</td><td class="r">${fmtMoney((summary as any)?.totalConsulta ?? 0)}</td></tr>
+        <tr><td>Total medicamentos/productos</td><td class="r">${fmtMoney((summary as any)?.totalProductos ?? 0)}</td></tr>
+      </tbody>
+      <tfoot>
+        <tr><th>Total del día</th><td class="r">${fmtMoney(summary?.ingresos?.total ?? 0)}</td></tr>
+      </tfoot>
+    </table>
+  </div>
+  `
+      : ''
+  }
+
+  ${
+    Array.isArray((summary as any)?.byPodologo) && (summary as any).byPodologo.length > 0
+      ? `
+  <div class="section">
+    <h3>Ingreso bruto por podólogo (sin descontar comisión)</h3>
+    <table>
+      <thead>
+        <tr><th>Podólogo</th><th class="r">Consultas</th><th class="r">Ingreso bruto</th></tr>
+      </thead>
+      <tbody>
+        ${(summary as any).byPodologo
+          .map(
+            (p: any) =>
+              `<tr><td>${escapeHtml(p.name)}</td><td class="r">${p.consultas}</td><td class="r">${fmtMoney(p.total)}</td></tr>`,
+          )
+          .join('')}
+      </tbody>
+      <tfoot>
+        <tr><th>Total</th><th class="r">${(summary as any).byPodologo.reduce((s: number, p: any) => s + p.consultas, 0)}</th><th class="r">${fmtMoney(
+          (summary as any).byPodologo.reduce((s: number, p: any) => s + p.total, 0),
+        )}</th></tr>
+      </tfoot>
+    </table>
+  </div>
+  `
+      : ''
+  }
+
+  ${
     op.type === 'CIERRE'
       ? `
   <div class="totals">

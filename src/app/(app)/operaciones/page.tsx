@@ -565,6 +565,7 @@ function LiveSummary({ op, onCerrar }: { op: OperacionesResponse; onCerrar: () =
 function CierreReportCard({ cierre, summary }: { cierre: DailyOperation; summary: Summary }) {
   const diff = cierre.difference ?? 0
   const diffColor = diff === 0 ? 'text-slate-700' : diff > 0 ? 'text-emerald-700' : 'text-red-700'
+  const [waOpen, setWaOpen] = useState(false)
 
   // Construir mensaje WhatsApp con todos los desgloses
   const podMsg = (summary.byPodologo || [])
@@ -600,7 +601,14 @@ ${podMsg || '  Sin consultas pagadas'}
 
 ${cierre.notes ? `*Incidencias:* ${cierre.notes}` : 'Sin incidencias.'}`
 
+  function openWhatsApp(phone: string) {
+    const cleaned = phone.replace(/[^0-9]/g, '')
+    const fullPhone = cleaned.length === 10 ? `52${cleaned}` : cleaned
+    window.open(`https://wa.me/${fullPhone}?text=${encodeURIComponent(message)}`, '_blank')
+  }
+
   return (
+    <>
     <Card className="shadow-sm">
       <CardHeader className="pb-3">
         <CardTitle className="text-base flex items-center gap-2">
@@ -680,18 +688,139 @@ ${cierre.notes ? `*Incidencias:* ${cierre.notes}` : 'Sin incidencias.'}`
           <Button variant="outline" onClick={() => window.open(`/api/operaciones/${cierre.id}/pdf`, '_blank')}>
             <Printer className="h-4 w-4 mr-1" /> Imprimir / PDF
           </Button>
-          <a
-            href={`https://wa.me/?text=${encodeURIComponent(message)}`}
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Button style={{ backgroundColor: '#25D366' }}>
-              <Send className="h-4 w-4 mr-1" /> Enviar al dueño por WhatsApp
-            </Button>
-          </a>
+          <Button style={{ backgroundColor: '#25D366' }} onClick={() => setWaOpen(true)}>
+            <Send className="h-4 w-4 mr-1" /> Enviar por WhatsApp
+          </Button>
         </div>
       </CardContent>
     </Card>
+
+    <WhatsAppDialog
+      open={waOpen}
+      onOpenChange={setWaOpen}
+      onSend={openWhatsApp}
+    />
+    </>
+  )
+}
+
+// ===== Dialog de WhatsApp con contactos guardados =====
+type WaContact = { name: string; phone: string }
+
+function WhatsAppDialog({
+  open,
+  onOpenChange,
+  onSend,
+}: {
+  open: boolean
+  onOpenChange: (v: boolean) => void
+  onSend: (phone: string) => void
+}) {
+  const [name, setName] = useState('')
+  const [phone, setPhone] = useState('')
+  const [contacts, setContacts] = useState<WaContact[]>([])
+
+  // Cargar contactos guardados al montar
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem('cenpod_wa_contacts')
+      if (saved) {
+        const parsed = JSON.parse(saved) as WaContact[]
+        // Usar setContacts fuera del effect body para evitar cascada de renders
+        setTimeout(() => setContacts(parsed), 0)
+      }
+    } catch {}
+  }, [])
+
+  function saveContact() {
+    const cleaned = phone.replace(/[^0-9]/g, '')
+    if (cleaned.length < 10) {
+      toast.error('Teléfono inválido (mínimo 10 dígitos)')
+      return
+    }
+    const newContact: WaContact = { name: name || 'Sin nombre', phone: cleaned }
+    const updated = [...contacts.filter((c) => c.phone !== cleaned), newContact]
+    setContacts(updated)
+    localStorage.setItem('cenpod_wa_contacts', JSON.stringify(updated))
+    setName('')
+    setPhone('')
+    toast.success('Contacto guardado')
+  }
+
+  function deleteContact(phone: string) {
+    const updated = contacts.filter((c) => c.phone !== phone)
+    setContacts(updated)
+    localStorage.setItem('cenpod_wa_contacts', JSON.stringify(updated))
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-md">
+        <DialogHeader>
+          <DialogTitle>Enviar por WhatsApp</DialogTitle>
+          <DialogDescription>
+            Selecciona un contacto guardado o agrega uno nuevo. Se abrirá WhatsApp con el mensaje del cierre.
+          </DialogDescription>
+        </DialogHeader>
+        <div className="space-y-4">
+          {/* Contactos guardados */}
+          {contacts.length > 0 && (
+            <div className="space-y-1.5">
+              <Label className="text-xs font-semibold text-muted-foreground">Contactos guardados</Label>
+              {contacts.map((c) => (
+                <div key={c.phone} className="flex items-center justify-between rounded-md border p-2">
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm font-medium">{c.name}</span>
+                    <span className="text-xs text-muted-foreground">{c.phone}</span>
+                  </div>
+                  <div className="flex gap-1">
+                    <Button size="sm" variant="ghost" onClick={() => { onSend(c.phone); onOpenChange(false) }}>
+                      <Send className="h-3.5 w-3.5" />
+                    </Button>
+                    <Button size="sm" variant="ghost" className="text-red-600" onClick={() => deleteContact(c.phone)}>
+                      <XCircle className="h-3.5 w-3.5" />
+                    </Button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+
+          <div className="border-t pt-3 space-y-2">
+            <Label className="text-xs font-semibold text-muted-foreground">Agregar nuevo contacto</Label>
+            <div className="grid grid-cols-2 gap-2">
+              <Input
+                placeholder="Nombre"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+              />
+              <Input
+                placeholder="Teléfono (10 dígitos)"
+                inputMode="tel"
+                value={phone}
+                onChange={(e) => setPhone(e.target.value)}
+              />
+            </div>
+            <p className="text-xs text-muted-foreground">Se agrega +52 automáticamente si son 10 dígitos.</p>
+          </div>
+        </div>
+        <DialogFooter className="flex gap-2">
+          <Button variant="outline" onClick={() => onOpenChange(false)}>Cancelar</Button>
+          {phone.replace(/[^0-9]/g, '').length >= 10 && (
+            <Button variant="outline" onClick={saveContact}>
+              Guardar contacto
+            </Button>
+          )}
+          <Button
+            style={{ backgroundColor: '#25D366' }}
+            disabled={phone.replace(/[^0-9]/g, '').length < 10}
+            onClick={() => { onSend(phone); onOpenChange(false) }}
+          >
+            <Send className="h-4 w-4 mr-1" /> Abrir WhatsApp
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   )
 }
 
