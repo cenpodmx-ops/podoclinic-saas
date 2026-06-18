@@ -63,6 +63,12 @@ export async function POST(req: NextRequest) {
     expectedCash: expected,
     countedCash: counted,
     difference,
+    totalEfectivo: summary.totalEfectivo,
+    totalTarjeta: summary.totalTarjeta,
+    totalTransferencia: summary.totalTransferencia,
+    totalConsulta: summary.totalConsulta,
+    totalProductos: summary.totalProductos,
+    byPodologo: summary.byPodologo,
   })
 
   // Crear DailyOperation CIERRE

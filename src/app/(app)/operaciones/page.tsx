@@ -42,6 +42,9 @@ import {
   Printer,
   CheckCircle2,
   AlertCircle,
+  Wallet,
+  CreditCard,
+  ArrowLeftRight,
 } from 'lucide-react'
 import { fmtMoney, fmtDate, fmtDateTime, METHOD_LABELS } from '@/lib/format'
 import { format, subDays } from 'date-fns'
@@ -79,6 +82,12 @@ type Summary = {
   openingFund: number
   expectedCash: number
   cashSession: any
+  totalEfectivo?: number
+  totalTarjeta?: number
+  totalTransferencia?: number
+  totalConsulta?: number
+  totalProductos?: number
+  byPodologo?: Array<{ name: string; consultas: number; total: number }>
 }
 
 type OperacionesResponse = {
@@ -483,6 +492,67 @@ function LiveSummary({ op, onCerrar }: { op: OperacionesResponse; onCerrar: () =
         </Card>
       </div>
 
+      {/* Desglose por concepto y por podólogo */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        {/* Desglose por concepto */}
+        <Card className="shadow-sm">
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base">Desglose por concepto</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-2">
+              <div className="flex justify-between text-sm">
+                <span className="text-muted-foreground">Total de consultas</span>
+                <span className="font-semibold text-emerald-700">{fmtMoney(s.totalConsulta ?? 0)}</span>
+              </div>
+              <div className="flex justify-between text-sm">
+                <span className="text-muted-foreground">Total medicamentos/productos</span>
+                <span className="font-semibold text-amber-700">{fmtMoney(s.totalProductos ?? 0)}</span>
+              </div>
+              <div className="border-t pt-2 mt-2 flex justify-between font-bold">
+                <span>Total del día</span>
+                <span style={{ color: '#0a3143' }}>{fmtMoney(s.ingresos.total)}</span>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Ingreso bruto por podólogo */}
+        <Card className="shadow-sm">
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base">Ingreso bruto por podólogo</CardTitle>
+          </CardHeader>
+          <CardContent>
+            {(!s.byPodologo || s.byPodologo.length === 0) ? (
+              <p className="text-sm text-muted-foreground text-center py-6">Sin consultas pagadas hoy.</p>
+            ) : (
+              <div className="space-y-2">
+                {s.byPodologo.map((p, i) => (
+                  <div key={i} className="flex justify-between text-sm">
+                    <span className="font-medium">{p.name}</span>
+                    <div className="text-right">
+                      <div className="font-semibold" style={{ color: '#0a3143' }}>{fmtMoney(p.total)}</div>
+                      <div className="text-[10px] text-muted-foreground">{p.consultas} consulta(s)</div>
+                    </div>
+                  </div>
+                ))}
+                <div className="border-t pt-2 mt-2 flex justify-between font-bold">
+                  <span>Total</span>
+                  <span>{fmtMoney(s.byPodologo.reduce((sum, p) => sum + p.total, 0))}</span>
+                </div>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Resumen de métodos simplificado */}
+      <div className="grid grid-cols-3 gap-3">
+        <KpiCard label="Total efectivo" value={fmtMoney(s.totalEfectivo ?? 0)} sub="ingresos en efectivo" icon={Wallet} color="#059669" />
+        <KpiCard label="Total tarjeta" value={fmtMoney(s.totalTarjeta ?? 0)} sub="débito + crédito" icon={CreditCard} color="#2563eb" />
+        <KpiCard label="Total transferencia" value={fmtMoney(s.totalTransferencia ?? 0)} sub="transferencias" icon={ArrowLeftRight} color="#7c3aed" />
+      </div>
+
       <div className="flex justify-end">
         <Button size="lg" variant="destructive" onClick={onCerrar}>
           <Lock className="h-4 w-4 mr-2" /> Cerrar sucursal
@@ -495,7 +565,40 @@ function LiveSummary({ op, onCerrar }: { op: OperacionesResponse; onCerrar: () =
 function CierreReportCard({ cierre, summary }: { cierre: DailyOperation; summary: Summary }) {
   const diff = cierre.difference ?? 0
   const diffColor = diff === 0 ? 'text-slate-700' : diff > 0 ? 'text-emerald-700' : 'text-red-700'
-  const message = `*Cierre de Sucursal CENPOD*\nFecha: ${fmtDate(cierre.date)}\nResponsable: ${cierre.performedBy || '—'}\n\n*Citas:*\n• Atendidas: ${summary.citas.atendidas}/${summary.citas.total}\n• Canceladas: ${summary.citas.canceladas}\n• No asistió: ${summary.citas.noAsistio}\n\n*Ingresos:* ${fmtMoney(summary.ingresos.total)}\n*Efectivo esperado:* ${fmtMoney(cierre.closingExpected ?? 0)}\n*Efectivo contado:* ${fmtMoney(cierre.closingCounted ?? 0)}\n*Diferencia:* ${diff >= 0 ? '+' : ''}${fmtMoney(diff)}\n\n${cierre.notes ? `*Incidencias:* ${cierre.notes}` : 'Sin incidencias.'}`
+
+  // Construir mensaje WhatsApp con todos los desgloses
+  const podMsg = (summary.byPodologo || [])
+    .map(p => `  ${p.name}: ${fmtMoney(p.total)} (${p.consultas} consulta${p.consultas !== 1 ? 's' : ''})`)
+    .join('\n')
+
+  const message = `*Cierre de Sucursal CENPOD*
+Fecha: ${fmtDate(cierre.date)}
+Responsable: ${cierre.performedBy || '—'}
+
+*Citas:*
+• Atendidas: ${summary.citas.atendidas}/${summary.citas.total}
+• Canceladas: ${summary.citas.canceladas}
+• No asistió: ${summary.citas.noAsistio}
+
+*Desglose de ingresos:*
+• Total del día: ${fmtMoney(summary.ingresos.total)}
+• Efectivo: ${fmtMoney(summary.totalEfectivo ?? 0)}
+• Tarjeta: ${fmtMoney(summary.totalTarjeta ?? 0)}
+• Transferencia: ${fmtMoney(summary.totalTransferencia ?? 0)}
+
+*Por concepto:*
+• Consultas: ${fmtMoney(summary.totalConsulta ?? 0)}
+• Medicamentos/Productos: ${fmtMoney(summary.totalProductos ?? 0)}
+
+*Ingreso bruto por podólogo:*
+${podMsg || '  Sin consultas pagadas'}
+
+*Caja:*
+• Efectivo esperado: ${fmtMoney(cierre.closingExpected ?? 0)}
+• Efectivo contado: ${fmtMoney(cierre.closingCounted ?? 0)}
+• Diferencia: ${diff >= 0 ? '+' : ''}${fmtMoney(diff)}
+
+${cierre.notes ? `*Incidencias:* ${cierre.notes}` : 'Sin incidencias.'}`
 
   return (
     <Card className="shadow-sm">
@@ -505,9 +608,10 @@ function CierreReportCard({ cierre, summary }: { cierre: DailyOperation; summary
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-3">
+        {/* KPIs principales */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
           <Stat label="Fondo apertura" value={fmtMoney(cierre.openingFund ?? summary.openingFund ?? 0)} />
-          <Stat label="Ingresos totales" value={fmtMoney(summary.ingresos.total)} />
+          <Stat label="Total del día" value={fmtMoney(summary.ingresos.total)} />
           <Stat label="Efectivo contado" value={fmtMoney(cierre.closingCounted ?? 0)} />
           <Stat label="Efectivo esperado" value={fmtMoney(cierre.closingExpected ?? 0)} />
         </div>
@@ -516,6 +620,46 @@ function CierreReportCard({ cierre, summary }: { cierre: DailyOperation; summary
           <Stat label="Canceladas" value={`${summary.citas.canceladas}`} />
           <Stat label="No asistió" value={`${summary.citas.noAsistio}`} />
           <Stat label="Diferencia" value={`${diff >= 0 ? '+' : ''}${fmtMoney(diff)}`} className={diffColor} highlight />
+        </div>
+
+        {/* Desglose por método de pago */}
+        <div className="border rounded-md p-3 space-y-1.5">
+          <div className="text-[10px] uppercase text-muted-foreground mb-1 font-semibold">Ingresos por método</div>
+          <div className="flex justify-between text-sm"><span>Efectivo</span><span className="font-semibold text-emerald-700">{fmtMoney(summary.totalEfectivo ?? 0)}</span></div>
+          <div className="flex justify-between text-sm"><span>Tarjeta (débito + crédito)</span><span className="font-semibold text-blue-700">{fmtMoney(summary.totalTarjeta ?? 0)}</span></div>
+          <div className="flex justify-between text-sm"><span>Transferencia</span><span className="font-semibold text-purple-700">{fmtMoney(summary.totalTransferencia ?? 0)}</span></div>
+          <div className="border-t pt-1.5 mt-1.5 flex justify-between font-bold text-sm"><span>Total</span><span>{fmtMoney(summary.ingresos.total)}</span></div>
+        </div>
+
+        {/* Desglose por concepto */}
+        <div className="border rounded-md p-3 space-y-1.5">
+          <div className="text-[10px] uppercase text-muted-foreground mb-1 font-semibold">Desglose por concepto</div>
+          <div className="flex justify-between text-sm"><span>Total de consultas</span><span className="font-semibold text-emerald-700">{fmtMoney(summary.totalConsulta ?? 0)}</span></div>
+          <div className="flex justify-between text-sm"><span>Total medicamentos/productos</span><span className="font-semibold text-amber-700">{fmtMoney(summary.totalProductos ?? 0)}</span></div>
+        </div>
+
+        {/* Ingreso bruto por podólogo */}
+        <div className="border rounded-md p-3 space-y-1.5">
+          <div className="text-[10px] uppercase text-muted-foreground mb-1 font-semibold">Ingreso bruto por podólogo (sin descontar comisión)</div>
+          {(summary.byPodologo || []).length === 0 ? (
+            <p className="text-xs text-muted-foreground">Sin consultas pagadas.</p>
+          ) : (
+            <>
+              {summary.byPodologo!.map((p, i) => (
+                <div key={i} className="flex justify-between text-sm">
+                  <span className="font-medium">{p.name}</span>
+                  <div className="text-right">
+                    <span className="font-semibold" style={{ color: '#0a3143' }}>{fmtMoney(p.total)}</span>
+                    <span className="text-[10px] text-muted-foreground ml-2">{p.consultas} consulta(s)</span>
+                  </div>
+                </div>
+              ))}
+              <div className="border-t pt-1.5 mt-1.5 flex justify-between font-bold text-sm">
+                <span>Total</span>
+                <span>{fmtMoney(summary.byPodologo!.reduce((sum, p) => sum + p.total, 0))}</span>
+              </div>
+            </>
+          )}
         </div>
 
         {cierre.notes && (
