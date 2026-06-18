@@ -125,15 +125,10 @@ export function FacturarDialog({
   const invoiceItems: InvoiceItem[] = useMemo(() => {
     if (!consultaQ.data) return []
     const items: InvoiceItem[] = []
-    if (consultaQ.data.consultPrice > 0) {
-      items.push({
-        name: 'Consulta médica podológica',
-        qty: 1,
-        price: consultaQ.data.consultPrice,
-        type: 'SERVICIO',
-        ivaType: 'EXENTO' as IvaType,
-      })
-    }
+
+    // Los items ya incluyen el servicio de consulta si se seleccionó.
+    // NO agregar "Consulta médica podológica" por separado — eso duplicaba el cargo.
+    // Solo usar los items que vienen de la consulta.
     for (const it of consultaQ.data.items || []) {
       const type = (it.type === 'MEDICAMENTO' || it.type === 'SERVICIO' ? it.type : 'PRODUCTO') as InvoiceItem['type']
       items.push({
@@ -144,6 +139,18 @@ export function FacturarDialog({
         ivaType: (type === 'MEDICAMENTO' ? 'IVA0' : type === 'PRODUCTO' ? 'IVA16' : 'EXENTO') as IvaType,
       })
     }
+
+    // Si NO hay items (caso raro), usar el consultPrice como fallback
+    if (items.length === 0 && consultaQ.data.consultPrice > 0) {
+      items.push({
+        name: 'Consulta médica podológica',
+        qty: 1,
+        price: consultaQ.data.consultPrice,
+        type: 'SERVICIO',
+        ivaType: 'EXENTO' as IvaType,
+      })
+    }
+
     // Aplicar descuento proporcional
     const discount = consultaQ.data.discount || 0
     if (discount > 0 && items.length > 0) {
@@ -226,7 +233,7 @@ export function FacturarDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-3xl max-h-[92vh] overflow-y-auto">
+      <DialogContent className="max-w-3xl max-h-[92vh] overflow-y-auto p-6">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2 text-lg">
             <FileText className="h-5 w-5" style={{ color: '#0a3143' }} />
@@ -255,6 +262,7 @@ export function FacturarDialog({
             created={created}
             consultation={consultation}
             simulated={created.simulated}
+            onClose={() => onOpenChange(false)}
           />
         ) : (
           <>
@@ -277,7 +285,7 @@ export function FacturarDialog({
 
             {tab === 'datos' && (
               <div className="space-y-4">
-                <div className="rounded-lg border p-3 space-y-3 bg-muted/20">
+                <div className="rounded-lg border p-4 space-y-4 bg-muted/20">
                   <div className="text-sm font-semibold flex items-center gap-1.5">
                     <span>Datos fiscales del paciente</span>
                     {!rfcValid && (
@@ -559,10 +567,12 @@ function SuccessPanel({
   created,
   consultation,
   simulated,
+  onClose,
 }: {
   created: CreateInvoiceResponse
   consultation: CitableConsultation
   simulated: boolean
+  onClose: () => void
 }) {
   const pdfHref = simulated ? `/api/facturas/${created.id}/pdf?html=1` : `/api/facturas/${created.id}?format=pdf`
 
@@ -603,36 +613,42 @@ function SuccessPanel({
 
       <Separator />
 
-      <div className="space-y-2">
+      <div className="space-y-3">
         <div className="text-sm font-semibold">Acciones</div>
-        <div className="grid sm:grid-cols-3 gap-2">
-          <Button asChild variant="default" style={{ backgroundColor: '#0a3143' }}>
+        <div className="flex flex-col gap-2">
+          <Button asChild variant="default" style={{ backgroundColor: '#0a3143' }} className="w-full justify-center">
             <a href={pdfHref} target="_blank" rel="noreferrer">
-              <FileText className="h-4 w-4 mr-2" /> Ver / imprimir PDF
+              <FileText className="h-4 w-4 mr-2 shrink-0" /> Ver / imprimir PDF
             </a>
           </Button>
-          <Button asChild variant="outline" disabled={!waUrl}>
-            <a href={waUrl || '#'} target="_blank" rel="noreferrer">
-              <MessageCircle className="h-4 w-4 mr-2" /> Enviar por WhatsApp
-            </a>
-          </Button>
-          <Button asChild variant="outline">
-            <a href={mailto}>
-              <Mail className="h-4 w-4 mr-2" /> Enviar por email
-            </a>
-          </Button>
+          <div className="grid grid-cols-2 gap-2">
+            <Button asChild variant="outline" disabled={!waUrl} className="justify-center">
+              <a href={waUrl || '#'} target="_blank" rel="noreferrer">
+                <MessageCircle className="h-4 w-4 mr-2 shrink-0" /> WhatsApp
+              </a>
+            </Button>
+            <Button asChild variant="outline" className="justify-center">
+              <a href={mailto}>
+                <Mail className="h-4 w-4 mr-2 shrink-0" /> Email
+              </a>
+            </Button>
+          </div>
+          {!simulated && created.xmlUrl && (
+            <Button asChild variant="ghost" size="sm" className="w-full justify-center">
+              <a href={created.xmlUrl} target="_blank" rel="noreferrer">
+                <Save className="h-3.5 w-3.5 mr-1.5 shrink-0" /> Descargar XML
+              </a>
+            </Button>
+          )}
         </div>
         {!waUrl && (
           <p className="text-xs text-amber-700">El paciente no tiene teléfono configurado — no se puede enviar por WhatsApp.</p>
         )}
-        {!simulated && created.xmlUrl && (
-          <Button asChild variant="ghost" size="sm" className="w-full">
-            <a href={created.xmlUrl} target="_blank" rel="noreferrer">
-              <Save className="h-3.5 w-3.5 mr-1.5" /> Descargar XML
-            </a>
-          </Button>
-        )}
       </div>
+
+      <Button variant="outline" className="w-full" onClick={onClose}>
+        Cerrar
+      </Button>
     </div>
   )
 }
