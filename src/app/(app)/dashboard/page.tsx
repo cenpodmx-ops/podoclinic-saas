@@ -14,12 +14,9 @@ export default function DashboardPage() {
   const { data, isLoading } = useQuery({
     queryKey: ['dashboard'],
     queryFn: () => fetch('/api/dashboard').then((r) => r.json()),
-    // Mostrar datos cacheados mientras refresca (placeholder suave, no skeleton)
-    placeholderData: true,
   })
 
-  // Solo mostrar skeleton si NO hay datos cacheados (primera carga)
-  if (isLoading && !data) {
+  if (isLoading || !data) {
     return (
       <div className="p-4 md:p-6 space-y-4">
         <Skeleton className="h-10 w-64" />
@@ -33,16 +30,36 @@ export default function DashboardPage() {
     )
   }
 
-  const k = data.kpis
+  const k = data.kpis || {}
+  const upcoming = data.upcoming || []
+  const revenueSeries = data.revenueSeries || []
+  const topServices = data.topServices || []
+  const byPodologist = data.byPodologist || []
+  // Defaults seguros para todos los KPIs
+  const safeK = {
+    citasHoy: k.citasHoy ?? 0,
+    pendientes: k.pendientes ?? 0,
+    confirmadas: k.confirmadas ?? 0,
+    finalizadas: k.finalizadas ?? 0,
+    canceladas: k.canceladas ?? 0,
+    noAsistio: k.noAsistio ?? 0,
+    ingresosHoy: k.ingresosHoy ?? 0,
+    productosHoy: k.productosHoy ?? 0,
+    pacientesNuevosHoy: k.pacientesNuevosHoy ?? 0,
+    monthRevenue: k.monthRevenue ?? 0,
+    monthAppts: k.monthAppts ?? 0,
+    monthFinalized: k.monthFinalized ?? 0,
+    unreadMessages: k.unreadMessages ?? 0,
+  }
   const kpis = [
-    { label: 'Citas hoy', value: k.citasHoy, sub: `${k.finalizadas} finalizadas`, icon: CalendarDays, color: 'text-blue-700 bg-blue-50' },
-    { label: 'Ingresos hoy', value: fmtMoney(k.ingresosHoy), sub: `${fmtMoney(k.monthRevenue)} este mes`, icon: DollarSign, color: 'text-emerald-700 bg-emerald-50' },
-    { label: 'Productos vendidos', value: k.productosHoy, sub: 'hoy en consultas', icon: Package, color: 'text-amber-700 bg-amber-50' },
-    { label: 'Pacientes nuevos', value: k.pacientesNuevosHoy, sub: 'hoy', icon: UserPlus, color: 'text-purple-700 bg-purple-50' },
-    { label: 'Pendientes', value: k.pendientes, sub: 'citas por confirmar', icon: Clock, color: 'text-orange-700 bg-orange-50' },
-    { label: 'Confirmadas', value: k.confirmadas, sub: 'listas para hoy', icon: CalendarDays, color: 'text-emerald-700 bg-emerald-50' },
-    { label: 'No asistió', value: k.noAsistio, sub: 'hoy', icon: CalendarDays, color: 'text-red-700 bg-red-50' },
-    { label: 'Mensajes Red', value: k.unreadMessages, sub: 'sin leer', icon: Bell, color: 'text-slate-700 bg-slate-50' },
+    { label: 'Citas hoy', value: safeK.citasHoy, sub: `${safeK.finalizadas} finalizadas`, icon: CalendarDays, color: 'text-blue-700 bg-blue-50' },
+    { label: 'Ingresos hoy', value: fmtMoney(safeK.ingresosHoy), sub: `${fmtMoney(safeK.monthRevenue)} este mes`, icon: DollarSign, color: 'text-emerald-700 bg-emerald-50' },
+    { label: 'Productos vendidos', value: safeK.productosHoy, sub: 'hoy en consultas', icon: Package, color: 'text-amber-700 bg-amber-50' },
+    { label: 'Pacientes nuevos', value: safeK.pacientesNuevosHoy, sub: 'hoy', icon: UserPlus, color: 'text-purple-700 bg-purple-50' },
+    { label: 'Pendientes', value: safeK.pendientes, sub: 'citas por confirmar', icon: Clock, color: 'text-orange-700 bg-orange-50' },
+    { label: 'Confirmadas', value: safeK.confirmadas, sub: 'listas para hoy', icon: CalendarDays, color: 'text-emerald-700 bg-emerald-50' },
+    { label: 'No asistió', value: safeK.noAsistio, sub: 'hoy', icon: CalendarDays, color: 'text-red-700 bg-red-50' },
+    { label: 'Mensajes Red', value: safeK.unreadMessages, sub: 'sin leer', icon: Bell, color: 'text-slate-700 bg-slate-50' },
   ]
 
   return (
@@ -100,7 +117,7 @@ export default function DashboardPage() {
           <CardContent>
             <div className="h-64">
               <ResponsiveContainer width="100%" height="100%">
-                <LineChart data={data.revenueSeries}>
+                <LineChart data={revenueSeries}>
                   <CartesianGrid strokeDasharray="3 3" stroke="#eee" />
                   <XAxis dataKey="date" fontSize={10} tick={{ fill: '#666' }} />
                   <YAxis fontSize={10} tick={{ fill: '#666' }} tickFormatter={(v) => `$${(v / 1000).toFixed(0)}k`} />
@@ -120,10 +137,10 @@ export default function DashboardPage() {
           </CardHeader>
           <CardContent>
             <div className="space-y-2 max-h-64 overflow-y-auto">
-              {data.upcoming.length === 0 && (
+              {upcoming.length === 0 && (
                 <p className="text-sm text-muted-foreground text-center py-8">Sin citas próximas</p>
               )}
-              {data.upcoming.map((u: any) => (
+              {upcoming.map((u: any) => (
                 <div key={u.id} className="flex items-center justify-between p-2 rounded border">
                   <div>
                     <p className="text-sm font-medium">{u.paciente}</p>
@@ -148,7 +165,7 @@ export default function DashboardPage() {
           <CardContent>
             <div className="h-56">
               <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={data.topServices} layout="vertical">
+                <BarChart data={topServices} layout="vertical">
                   <CartesianGrid strokeDasharray="3 3" stroke="#eee" />
                   <XAxis type="number" fontSize={10} tick={{ fill: '#666' }} tickFormatter={(v) => `$${(v / 1000).toFixed(0)}k`} />
                   <YAxis type="category" dataKey="name" fontSize={10} width={100} tick={{ fill: '#666' }} />
@@ -166,10 +183,10 @@ export default function DashboardPage() {
           </CardHeader>
           <CardContent>
             <div className="space-y-2">
-              {data.byPodologist.length === 0 && (
+              {byPodologist.length === 0 && (
                 <p className="text-sm text-muted-foreground text-center py-8">Sin citas hoy</p>
               )}
-              {data.byPodologist.map((p: any, i: number) => (
+              {byPodologist.map((p: any, i: number) => (
                 <div key={i} className="flex items-center justify-between p-2 rounded border">
                   <span className="text-sm font-medium">{p.name}</span>
                   <div className="flex items-center gap-2">
