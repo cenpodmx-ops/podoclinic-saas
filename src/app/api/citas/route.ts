@@ -30,10 +30,11 @@ export async function GET(req: NextRequest) {
     const baseWhere: any = clinicId ? { clinicId } : {}
     let where: any = baseWhere
     if (hoy === '1') {
-      where = { ...where, date: { gte: startOfDay(new Date()), lte: endOfDay(new Date()) } }
+      // Forzar UTC: hoy = medianoche UTC de hoy a medianoche UTC de mañana
+      const todayStr = new Date().toISOString().slice(0, 10)
+      where = { ...where, date: { gte: new Date(todayStr + 'T00:00:00.000Z'), lte: new Date(todayStr + 'T23:59:59.999Z') } }
     } else if (fecha) {
-      const d = new Date(fecha + 'T00:00:00')
-      where = { ...where, date: { gte: startOfDay(d), lte: endOfDay(d) } }
+      where = { ...where, date: { gte: new Date(fecha + 'T00:00:00.000Z'), lte: new Date(fecha + 'T23:59:59.999Z') } }
     }
     if (pacienteId) where = { ...where, patientId: pacienteId }
     if (actionable) {
@@ -84,12 +85,14 @@ export async function GET(req: NextRequest) {
   }
 
   const baseDate = parseISO(dateStr)
+  // Forzar UTC para evitar problemas de zona horaria.
+  // El campo date se guarda como medianoche UTC, así que la consulta debe usar el mismo rango.
   const rangeStart = view === 'week'
     ? startOfWeek(baseDate, { weekStartsOn: 1 })
-    : startOfDay(baseDate)
+    : new Date(dateStr + 'T00:00:00.000Z')
   const rangeEnd = view === 'week'
     ? endOfWeek(baseDate, { weekStartsOn: 1 })
-    : endOfDay(baseDate)
+    : new Date(dateStr + 'T23:59:59.999Z')
 
   // PODOLOGIST: only their own appointments
   const podFilter = user!.role === 'PODOLOGIST' && user!.podologistId
@@ -227,7 +230,8 @@ export async function POST(req: NextRequest) {
   const dayEnd = new Date(`${date}T${endTime}:00`)
   if (dayEnd <= dayStart) return bad('La hora final debe ser mayor a la inicial')
 
-  const dayDate = startOfDay(parseISO(date))
+  // Forzar medianoche UTC (igual que en el GET) para que coincidan las consultas
+  const dayDate = new Date(date + 'T00:00:00.000Z')
 
   const created = await db.appointment.create({
     data: {

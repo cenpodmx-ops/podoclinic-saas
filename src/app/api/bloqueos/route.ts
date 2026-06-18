@@ -1,7 +1,6 @@
 import { NextRequest } from 'next/server'
 import { db } from '@/lib/db'
 import { requireSession, ok, bad } from '@/lib/api'
-import { startOfDay, endOfDay, parseISO } from 'date-fns'
 
 /**
  * GET /api/bloqueos
@@ -16,8 +15,9 @@ export async function GET(req: NextRequest) {
   const dateStr = sp.get('date') || new Date().toISOString().slice(0, 10)
   const podologistId = sp.get('podologistId') || undefined
 
-  const dayStart = startOfDay(parseISO(dateStr))
-  const dayEnd = endOfDay(parseISO(dateStr))
+  // Forzar UTC para evitar problemas de zona horaria
+  const dayStart = new Date(dateStr + 'T00:00:00.000Z')
+  const dayEnd = new Date(dateStr + 'T23:59:59.999Z')
 
   const where: any = {
     date: { gte: dayStart, lte: dayEnd },
@@ -77,21 +77,22 @@ export async function POST(req: NextRequest) {
   if (!pod) return bad('Podólogo no encontrado', 404)
   if (user!.role !== 'SUPER' && pod.clinicId !== clinicId) return bad('Podólogo no permitido', 403)
 
+  // Forzar UTC en todas las fechas para consistencia
   let sTime: Date
   let eTime: Date
   if (fullDay) {
-    sTime = new Date(`${date}T00:00:00`)
-    eTime = new Date(`${date}T23:59:00`)
+    sTime = new Date(`${date}T00:00:00.000Z`)
+    eTime = new Date(`${date}T23:59:59.999Z`)
   } else {
     if (!startTime || !endTime || !/^\d{2}:\d{2}$/.test(startTime) || !/^\d{2}:\d{2}$/.test(endTime)) {
       return bad('Rango horario inválido (HH:mm)')
     }
-    sTime = new Date(`${date}T${startTime}:00`)
-    eTime = new Date(`${date}T${endTime}:00`)
+    sTime = new Date(`${date}T${startTime}:00.000Z`)
+    eTime = new Date(`${date}T${endTime}:00.000Z`)
     if (eTime <= sTime) return bad('La hora final debe ser mayor a la inicial')
   }
 
-  const dayDate = startOfDay(parseISO(date))
+  const dayDate = new Date(date + 'T00:00:00.000Z')
 
   const created = await db.appointmentBlock.create({
     data: {
