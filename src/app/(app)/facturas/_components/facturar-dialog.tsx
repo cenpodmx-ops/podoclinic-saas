@@ -564,7 +564,7 @@ function SuccessPanel({
   consultation: CitableConsultation
   simulated: boolean
 }) {
-  const pdfHref = `/api/facturas/${created.id}/pdf${simulated ? '?html=1' : ''}`
+  const pdfHref = simulated ? `/api/facturas/${created.id}/pdf?html=1` : `/api/facturas/${created.id}?format=pdf`
 
   const waUrl = useMemo(() => {
     const phone = normalizePhone(consultation.patientPhone)

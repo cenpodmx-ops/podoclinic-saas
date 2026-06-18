@@ -439,16 +439,16 @@ export function TabHistorial({ canCancel }: TabHistorialProps) {
                               title="Ver / descargar PDF"
                             >
                               <a
-                                href={`/api/facturas/${inv.id}/pdf${inv.status !== 'TIMBRADA' ? '?html=1' : ''}`}
+                                href={inv.status === 'TIMBRADA' ? `/api/facturas/${inv.id}?format=pdf` : `/api/facturas/${inv.id}/pdf?html=1`}
                                 target="_blank"
                                 rel="noreferrer"
                               >
                                 <Download className="h-3.5 w-3.5" />
                               </a>
                             </Button>
-                            {inv.status === 'TIMBRADA' && inv.xmlUrl && (
+                            {inv.status === 'TIMBRADA' && (
                               <Button size="sm" variant="ghost" asChild title="Descargar XML">
-                                <a href={inv.xmlUrl} target="_blank" rel="noreferrer">
+                                <a href={`/api/facturas/${inv.id}?format=xml`} target="_blank" rel="noreferrer">
                                   <FileText className="h-3.5 w-3.5" />
                                 </a>
                               </Button>
