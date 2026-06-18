@@ -184,44 +184,92 @@ export default function AgendaPage() {
           <div className="sub">
             {dateLabel} — {data?.clinic?.name || user?.clinicName || 'CENPOD'}
           </div>
-          <table>
-            <thead>
-              <tr>
-                <th className="hora">Hora</th>
-                <th className="podologo-col">Podólogo</th>
-                <th>Paciente</th>
-                <th className="motivo-col">Motivo</th>
-                <th className="status-col">Estatus</th>
-                <th className="notas-col">Notas</th>
-              </tr>
-            </thead>
-            <tbody>
-              {(appts || []).map((a) => {
-                const time = (() => {
-                  const s = String(a.startTime)
-                  const m = s.match(/T(\d{2}:\d{2})/)
-                  return m ? m[1] : s
-                })()
-                return (
-                  <tr key={a.id}>
-                    <td className="hora">{time}</td>
-                    <td>{a.podologist?.name || '—'}</td>
-                    <td>{a.patient.firstName} {a.patient.lastName}</td>
-                    <td>{a.reason || a.serviceName || '—'}</td>
-                    <td className={`status-${a.status}`}>{STATUS_LABELS[a.status] || a.status}</td>
-                    <td>{a.notes || ''}</td>
-                  </tr>
-                )
-              })}
-              {(!appts || appts.length === 0) && (
-                <tr>
-                  <td colSpan={6} style={{ textAlign: 'center', padding: '30px', color: '#999' }}>
-                    No hay citas agendadas para este día.
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
+
+          {/* Generar horas del día desde apertura hasta cierre */}
+          {(() => {
+            const opening = data?.clinic?.openingTime || '08:00'
+            const closing = data?.clinic?.closingTime || '20:00'
+            const slotMin = data?.clinic?.slotMinutes || 60
+            const [oh, om] = opening.split(':').map(Number)
+            const [ch, cm] = closing.split(':').map(Number)
+            const startMin = oh * 60 + om
+            const endMin = ch * 60 + cm
+            const allSlots: string[] = []
+            let cur = startMin
+            while (cur < endMin) {
+              const h = Math.floor(cur / 60)
+              const m = cur % 60
+              allSlots.push(`${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`)
+              cur += slotMin
+            }
+
+            // Agrupar citas por podólogo
+            const podologosMap: Record<string, { name: string; appts: typeof appts }> = {}
+            for (const a of appts) {
+              const key = a.podologist?.id || 'sin'
+              const name = a.podologist?.name || 'Sin asignar'
+              if (!podologosMap[key]) podologosMap[key] = { name, appts: [] }
+              podologosMap[key].appts.push(a)
+            }
+
+            // Si no hay podólogos con citas, mostrar "General"
+            const grupos = Object.values(podologosMap)
+            if (grupos.length === 0) {
+              grupos.push({ name: 'General', appts: [] })
+            }
+
+            return grupos.map((grupo, gi) => (
+              <div key={gi} style={{ marginBottom: '20px' }}>
+                <div style={{ fontWeight: 'bold', fontSize: '14px', color: '#0a3143', padding: '8px 0 4px', borderBottom: '2px solid #0a3143', marginBottom: '0' }}>
+                  {grupo.name}
+                </div>
+                <table>
+                  <thead>
+                    <tr>
+                      <th style={{ width: '70px', textAlign: 'center' }}>Hora</th>
+                      <th>Paciente</th>
+                      <th style={{ width: '110px' }}>Teléfono</th>
+                      <th style={{ width: '25%' }}>Motivo</th>
+                      <th style={{ width: '100px' }}>Estatus</th>
+                      <th style={{ width: '25%' }}>Notas</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {allSlots.map((slot) => {
+                      const apptAtSlot = grupo.appts.find((a) => {
+                        const s = String(a.startTime)
+                        const m = s.match(/T(\d{2}:\d{2})/)
+                        return m && m[1] === slot
+                      })
+                      if (apptAtSlot) {
+                        return (
+                          <tr key={slot}>
+                            <td style={{ fontWeight: 'bold', textAlign: 'center', color: '#0a3143' }}>{slot}</td>
+                            <td style={{ fontWeight: '600' }}>{apptAtSlot.patient.firstName} {apptAtSlot.patient.lastName}</td>
+                            <td>{apptAtSlot.patient.phone || '—'}</td>
+                            <td>{apptAtSlot.reason || apptAtSlot.serviceName || '—'}</td>
+                            <td className={`status-${apptAtSlot.status}`}>{STATUS_LABELS[apptAtSlot.status] || apptAtSlot.status}</td>
+                            <td>{apptAtSlot.notes || ''}</td>
+                          </tr>
+                        )
+                      }
+                      return (
+                        <tr key={slot}>
+                          <td style={{ fontWeight: 'bold', textAlign: 'center', color: '#999' }}>{slot}</td>
+                          <td style={{ color: '#ccc' }}>—</td>
+                          <td></td>
+                          <td></td>
+                          <td></td>
+                          <td></td>
+                        </tr>
+                      )
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            ))
+          })()}
+
           <div className="footer">
             Impreso el {new Date().toLocaleString('es-MX')} • Sistema CENPOD • {data?.clinic?.name || user?.clinicName || 'CENPOD'}
           </div>
