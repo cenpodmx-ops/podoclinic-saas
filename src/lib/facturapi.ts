@@ -246,26 +246,49 @@ export async function cancelInvoice(
   await client.invoices.cancel(facturapiId, { motive })
 }
 
+/** Convierte un BinaryDownload (Blob o stream de Node) a Buffer. */
+async function binaryToBuffer(data: any): Promise<Buffer> {
+  // Caso Blob (browser / Vercel Edge / fetch response)
+  if (data instanceof Blob || (data && typeof data.arrayBuffer === 'function')) {
+    const ab = await data.arrayBuffer()
+    return Buffer.from(ab)
+  }
+  // Caso Node stream (Readable)
+  if (data && typeof data.on === 'function') {
+    return new Promise<Buffer>((resolve, reject) => {
+      const chunks: Buffer[] = []
+      data.on('data', (c: any) => chunks.push(typeof c === 'string' ? Buffer.from(c) : Buffer.from(c)))
+      data.on('end', () => resolve(Buffer.concat(chunks)))
+      data.on('error', reject)
+    })
+  }
+  // Caso async iterable (for await)
+  if (data && (typeof data[Symbol.asyncIterator] === 'function' || typeof data.pipe === 'function')) {
+    const chunks: Buffer[] = []
+    for await (const chunk of data as any) {
+      chunks.push(typeof chunk === 'string' ? Buffer.from(chunk) : Buffer.from(chunk))
+    }
+    return Buffer.concat(chunks)
+  }
+  // Fallback: si ya es Buffer/Uint8Array
+  if (Buffer.isBuffer(data) || data instanceof Uint8Array) {
+    return Buffer.from(data)
+  }
+  throw new Error('Formato de descarga no soportado: ' + typeof data)
+}
+
 /** Descarga el PDF de una factura como buffer. */
 export async function downloadInvoicePdf(apiKey: string, facturapiId: string): Promise<Buffer> {
   const client = getFacturapiClient(apiKey)
-  const stream = await client.invoices.downloadPdf(facturapiId)
-  const chunks: Buffer[] = []
-  for await (const chunk of stream as any) {
-    chunks.push(typeof chunk === 'string' ? Buffer.from(chunk) : Buffer.from(chunk))
-  }
-  return Buffer.concat(chunks)
+  const data = await client.invoices.downloadPdf(facturapiId)
+  return binaryToBuffer(data)
 }
 
 /** Descarga el XML de una factura como buffer. */
 export async function downloadInvoiceXml(apiKey: string, facturapiId: string): Promise<Buffer> {
   const client = getFacturapiClient(apiKey)
-  const stream = await client.invoices.downloadXml(facturapiId)
-  const chunks: Buffer[] = []
-  for await (const chunk of stream as any) {
-    chunks.push(typeof chunk === 'string' ? Buffer.from(chunk) : Buffer.from(chunk))
-  }
-  return Buffer.concat(chunks)
+  const data = await client.invoices.downloadXml(facturapiId)
+  return binaryToBuffer(data)
 }
 
 // ============================================================
