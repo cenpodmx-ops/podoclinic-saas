@@ -885,3 +885,26 @@ Stage Summary:
 - Listo para deploy a Vercel.
 - Nota: el primer request es lento (~10s) por cold start + conexión remota; subsiguientes son rápidos.
 - Variables de entorno necesarias para Vercel: DATABASE_URL, DIRECT_URL, NEXTAUTH_SECRET, NEXTAUTH_URL, SUPABASE_URL, SUPABASE_ANON_KEY
+
+---
+Task ID: USUARIOS
+Agent: main
+Task: Panel de gestión de usuarios en Configuración
+
+Work Log:
+- Creadas APIs: /api/usuarios (GET/POST) y /api/usuarios/[id] (PATCH/DELETE)
+- GET lista usuarios (SUPER ve todos, OWNER ve los de su clínica, RECEPTION/PODOLOGIST 403)
+- POST crea usuario con hash bcrypt automático, validaciones de rol y permisos
+- PATCH actualiza (incluye cambio de contraseña con regeneración de hash)
+- DELETE desactiva (soft delete, preserva auditoría). No puedes desactivarte a ti mismo.
+- Añadido tab "Usuarios" en /config con tabla y dialog de creación/edición
+- Validado end-to-end: creado recepcion2@cenpod.com, login exitoso, ve su Clínica CENPOD 2
+- Fix: nuevos usuarios siempre se crean como active=true por defecto
+- Lint: 0 errores
+
+Stage Summary:
+- Panel de gestión de usuarios completo en Configuración → Usuarios.
+- El Súper Dueño puede crear cualquier usuario en cualquier clínica.
+- El Dueño puede crear usuarios RECEPTION/PODOLOGIST en su propia clínica.
+- Las contraseñas se encriptan automáticamente con bcrypt.
+- No más necesidad de tocar Supabase directamente para crear accesos.

@@ -14,7 +14,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Skeleton } from '@/components/ui/skeleton'
-import { Save, Plus, Pencil, Building2, Users, MessageSquare, FileText, KeyRound } from 'lucide-react'
+import { Save, Plus, Pencil, Building2, Users, MessageSquare, FileText, KeyRound, UserCog } from 'lucide-react'
 import { toast } from 'sonner'
 import { fmtMoney } from '@/lib/format'
 
@@ -38,6 +38,7 @@ export default function ConfigPage() {
           <TabsTrigger value="plantillas" className="gap-1"><MessageSquare className="h-3.5 w-3.5" /> Plantillas WhatsApp</TabsTrigger>
           <TabsTrigger value="facturacion" className="gap-1"><KeyRound className="h-3.5 w-3.5" /> FacturAPI</TabsTrigger>
           <TabsTrigger value="diagnosticos" className="gap-1"><FileText className="h-3.5 w-3.5" /> Diagnósticos</TabsTrigger>
+          <TabsTrigger value="usuarios" className="gap-1"><UserCog className="h-3.5 w-3.5" /> Usuarios</TabsTrigger>
         </TabsList>
 
         <TabsContent value="clinica"><ClinicaTab /></TabsContent>
@@ -45,6 +46,7 @@ export default function ConfigPage() {
         <TabsContent value="plantillas"><PlantillasTab /></TabsContent>
         <TabsContent value="facturacion"><FacturacionTab /></TabsContent>
         <TabsContent value="diagnosticos"><DiagnosticosTab /></TabsContent>
+        <TabsContent value="usuarios"><UsuariosTab /></TabsContent>
       </Tabs>
     </div>
   )
@@ -602,5 +604,282 @@ function DiagnosticosTab() {
         </div>
       </CardContent>
     </Card>
+  )
+}
+
+// ============================================================
+// TAB: USUARIOS — Gestión de accesos al sistema
+// ============================================================
+
+const ROLES_OPTIONS = [
+  { value: 'SUPER', label: 'Súper Dueño', desc: 'Acceso total a todas las clínicas' },
+  { value: 'OWNER', label: 'Dueño de Clínica', desc: 'Acceso total a su clínica' },
+  { value: 'RECEPTION', label: 'Recepción', desc: 'Agenda, pacientes, caja' },
+  { value: 'PODOLOGIST', label: 'Podólogo', desc: 'Solo su agenda del día' },
+] as const
+
+function UsuariosTab() {
+  const qc = useQueryClient()
+  const [open, setOpen] = useState(false)
+  const [editing, setEditing] = useState<any>(null)
+
+  const { data, isLoading } = useQuery({
+    queryKey: ['usuarios'],
+    queryFn: () => fetch('/api/usuarios').then((r) => r.json()),
+  })
+  const usuarios: any[] = data?.data || []
+
+  const { data: podologosData } = useQuery({
+    queryKey: ['podologos', 'all'],
+    queryFn: () => fetch('/api/podologos?includeInactive=1').then((r) => r.json()),
+  })
+  const podologos: any[] = Array.isArray(podologosData) ? podologosData : []
+
+  const { data: clinicasData } = useQuery({
+    queryKey: ['clinicas-list'],
+    queryFn: () => fetch('/api/clinicas').then((r) => r.json()),
+  })
+  const clinicas: any[] = clinicasData?.data || []
+
+  const saveMutation = useMutation({
+    mutationFn: async (body: any) => {
+      if (editing) {
+        const res = await fetch(`/api/usuarios/${editing.id}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(body),
+        })
+        if (!res.ok) {
+          const e = await res.json()
+          throw new Error(e.error || 'Error al actualizar')
+        }
+        return res.json()
+      } else {
+        const res = await fetch('/api/usuarios', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(body),
+        })
+        if (!res.ok) {
+          const e = await res.json()
+          throw new Error(e.error || 'Error al crear')
+        }
+        return res.json()
+      }
+    },
+    onSuccess: () => {
+      toast.success(editing ? 'Usuario actualizado' : 'Usuario creado')
+      qc.invalidateQueries({ queryKey: ['usuarios'] })
+      setOpen(false)
+      setEditing(null)
+    },
+    onError: (e: any) => toast.error(e.message || 'Error'),
+  })
+
+  const deactivateMutation = useMutation({
+    mutationFn: (id: string) => fetch(`/api/usuarios/${id}`, { method: 'DELETE' }).then((r) => r.json()),
+    onSuccess: () => {
+      toast.success('Usuario desactivado')
+      qc.invalidateQueries({ queryKey: ['usuarios'] })
+    },
+    onError: (e: any) => toast.error(e.message),
+  })
+
+  const roleLabel = (r: string) => ROLES_OPTIONS.find((o) => o.value === r)?.label || r
+  const roleBadge = (r: string) => {
+    if (r === 'SUPER') return <Badge className="bg-purple-100 text-purple-800">Súper Dueño</Badge>
+    if (r === 'OWNER') return <Badge className="bg-blue-100 text-blue-800">Dueño</Badge>
+    if (r === 'RECEPTION') return <Badge className="bg-emerald-100 text-emerald-800">Recepción</Badge>
+    if (r === 'PODOLOGIST') return <Badge className="bg-amber-100 text-amber-800">Podólogo</Badge>
+    return <Badge variant="secondary">{r}</Badge>
+  }
+
+  return (
+    <Card className="shadow-sm">
+      <CardHeader className="flex flex-row items-center justify-between">
+        <div>
+          <CardTitle className="text-base">Usuarios del sistema</CardTitle>
+          <p className="text-xs text-muted-foreground mt-1">
+            Gestiona quién puede entrar al sistema y con qué permisos. Las contraseñas se guardan encriptadas (bcrypt).
+          </p>
+        </div>
+        <Button size="sm" onClick={() => { setEditing(null); setOpen(true) }} style={{ backgroundColor: '#0a3143' }}>
+          <Plus className="h-4 w-4 mr-1" /> Nuevo usuario
+        </Button>
+      </CardHeader>
+      <CardContent className="p-0">
+        {isLoading ? (
+          <div className="p-4 space-y-2">{Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="h-12" />)}</div>
+        ) : usuarios.length === 0 ? (
+          <div className="p-12 text-center text-muted-foreground">Sin usuarios registrados</div>
+        ) : (
+          <div className="overflow-x-auto">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Nombre</TableHead>
+                  <TableHead>Correo</TableHead>
+                  <TableHead>Rol</TableHead>
+                  <TableHead>Clínica</TableHead>
+                  <TableHead>Podólogo vinculado</TableHead>
+                  <TableHead>Último acceso</TableHead>
+                  <TableHead>Estado</TableHead>
+                  <TableHead className="text-right">Acciones</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {usuarios.map((u: any) => (
+                  <TableRow key={u.id}>
+                    <TableCell className="font-medium">{u.name}</TableCell>
+                    <TableCell className="text-sm">{u.email}</TableCell>
+                    <TableCell>{roleBadge(u.role)}</TableCell>
+                    <TableCell className="text-sm">{u.clinic?.name || '—'}</TableCell>
+                    <TableCell className="text-sm">{u.podologist?.name || '—'}</TableCell>
+                    <TableCell className="text-xs text-muted-foreground">
+                      {u.lastLogin ? new Date(u.lastLogin).toLocaleDateString('es-MX', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : 'Nunca'}
+                    </TableCell>
+                    <TableCell>
+                      {u.active ? <Badge className="bg-emerald-100 text-emerald-700">Activo</Badge> : <Badge variant="secondary">Inactivo</Badge>}
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <Button variant="ghost" size="icon" onClick={() => { setEditing(u); setOpen(true) }}>
+                        <Pencil className="h-4 w-4" />
+                      </Button>
+                      {u.active && (
+                        <Button variant="ghost" size="icon" className="text-red-600" onClick={() => deactivateMutation.mutate(u.id)}>
+                          <Plus className="h-4 w-4 rotate-45" />
+                        </Button>
+                      )}
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
+        )}
+      </CardContent>
+
+      <UsuarioDialog
+        open={open}
+        onOpenChange={setOpen}
+        editing={editing}
+        clinicas={clinicas}
+        podologos={podologos}
+        onSave={saveMutation.mutate}
+        saving={saveMutation.isPending}
+      />
+    </Card>
+  )
+}
+
+function UsuarioDialog({
+  open, onOpenChange, editing, clinicas, podologos, onSave, saving,
+}: any) {
+  const isSuper = editing?.role === 'SUPER' || (!editing && false)
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent key={editing?.id || 'new'} className="max-w-lg max-h-[90vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle>{editing ? 'Editar usuario' : 'Nuevo usuario'}</DialogTitle>
+        </DialogHeader>
+        <form
+          onSubmit={(e) => {
+            e.preventDefault()
+            const fd = new FormData(e.currentTarget as any)
+            const body: any = {
+              name: fd.get('name'),
+              email: fd.get('email'),
+              role: fd.get('role'),
+              clinicId: fd.get('clinicId') || undefined,
+              podologistId: fd.get('podologistId') || undefined,
+              // Al crear: siempre activo. Al editar: respeta el switch.
+              active: editing ? fd.get('active') === 'on' : true,
+            }
+            const password = fd.get('password')
+            if (password) body.password = password
+            onSave(body)
+          }}
+          className="space-y-3"
+        >
+          <div className="space-y-1">
+            <Label>Nombre completo *</Label>
+            <Input name="name" required defaultValue={editing?.name || ''} />
+          </div>
+          <div className="space-y-1">
+            <Label>Correo electrónico *</Label>
+            <Input name="email" type="email" required defaultValue={editing?.email || ''} />
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-1">
+              <Label>{editing ? 'Nueva contraseña (dejar vacío para no cambiar)' : 'Contraseña *'}</Label>
+              <Input name="password" type="password" minLength={editing ? 0 : 6} required={!editing} placeholder={editing ? '••••••' : 'Mínimo 6 caracteres'} />
+            </div>
+            <div className="space-y-1">
+              <Label>Rol *</Label>
+              <Select name="role" defaultValue={editing?.role || 'RECEPTION'}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  {ROLES_OPTIONS.map((r) => (
+                    <SelectItem key={r.value} value={r.value}>
+                      <div>
+                        <div className="font-medium">{r.label}</div>
+                        <div className="text-[10px] text-muted-foreground">{r.desc}</div>
+                      </div>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+
+          <div className="space-y-1">
+            <Label>Clínica *</Label>
+            <Select name="clinicId" defaultValue={editing?.clinicId || ''}>
+              <SelectTrigger><SelectValue placeholder="Selecciona una clínica" /></SelectTrigger>
+              <SelectContent>
+                {clinicas.map((c: any) => (
+                  <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          {/* Podólogo vinculado — solo si rol es PODOLOGIST */}
+          <div className="space-y-1">
+            <Label>Podólogo vinculado (solo si rol = Podólogo)</Label>
+            <Select name="podologistId" defaultValue={editing?.podologistId || ''}>
+              <SelectTrigger><SelectValue placeholder="— Ninguno —" /></SelectTrigger>
+              <SelectContent>
+                {podologos.map((p: any) => (
+                  <SelectItem key={p.id} value={p.id}>{p.name}{p.specialty ? ` · ${p.specialty}` : ''}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <p className="text-[10px] text-muted-foreground">
+              Si eliges rol Podólogo, debes vincularlo a un podólogo existente (créalo antes en la pestaña Equipo).
+            </p>
+          </div>
+
+          {editing && (
+            <label className="flex items-center gap-2 text-sm">
+              <Switch name="active" defaultChecked={editing.active} />
+              Activo
+            </label>
+          )}
+
+          <div className="rounded-md bg-muted/50 p-3 text-xs text-muted-foreground">
+            <strong>Recordatorio:</strong> Las contraseñas se encriptan automáticamente con bcrypt.
+            {editing ? ' Si dejas el campo de contraseña vacío, se conserva la actual.' : ''}
+          </div>
+
+          <DialogFooter>
+            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>Cancelar</Button>
+            <Button type="submit" disabled={saving} style={{ backgroundColor: '#0a3143' }}>
+              {saving ? 'Guardando...' : 'Guardar'}
+            </Button>
+          </DialogFooter>
+        </form>
+      </DialogContent>
+    </Dialog>
   )
 }
