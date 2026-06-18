@@ -204,5 +204,325 @@
     margin: 0;
     padding: 4mm;
   }
+  .corte-print,
+  .corte-print * { visibility: visible !important; }
+  .corte-print {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 210mm;
+    min-height: 297mm;
+    margin: 0;
+    padding: 12mm;
+    background: #fff;
+    color: #111;
+  }
+  .reporte-print,
+  .reporte-print * { visibility: visible !important; }
+  .reporte-print {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 210mm;
+    min-height: 297mm;
+    margin: 0;
+    padding: 12mm;
+    background: #fff;
+    color: #111;
+  }
   @page { size: 80mm auto; margin: 0; }
+  @page corte { size: A4; margin: 10mm; }
+  @page reporte { size: A4; margin: 10mm; }
+  .corte-print { page: corte; }
+  .reporte-print { page: reporte; }
+  @page facturaresumen { size: letter; margin: 12mm; }
+}
+
+/* ===== Resumen mensual de facturación (impresión carta) ===== */
+.factura-resumen-print .print-only { display: none; }
+@media print {
+  .no-print, .no-print * { display: none !important; }
+  .factura-resumen-print .print-only { display: block !important; }
+  .factura-resumen-print { padding: 0 !important; }
+  .factura-resumen-print { page: facturaresumen; }
+}
+
+/* ===== Corte de caja / Reporte (pantalla + impresión A4) ===== */
+.corte-print, .reporte-print {
+  font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+}
+.corte-print h1, .reporte-print h1 {
+  font-size: 22px;
+  font-weight: 700;
+  color: #0a3143;
+  margin: 0 0 4px;
+}
+.corte-print h2, .reporte-print h2 {
+  font-size: 14px;
+  font-weight: 600;
+  color: #0a3143;
+  margin: 16px 0 6px;
+  padding-bottom: 4px;
+  border-bottom: 2px solid #0a3143;
+}
+.corte-print table, .reporte-print table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+  margin: 6px 0;
+}
+.corte-print table th, .reporte-print table th,
+.corte-print table td, .reporte-print table td {
+  border: 1px solid #cbd5e1;
+  padding: 5px 8px;
+  text-align: left;
+}
+.corte-print table th, .reporte-print table th {
+  background: #0a3143;
+  color: #fff;
+  font-weight: 600;
+  text-transform: uppercase;
+  font-size: 10px;
+  letter-spacing: 0.04em;
+}
+.corte-print .resumen-grid, .reporte-print .resumen-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 8px;
+  margin: 8px 0;
+}
+.corte-print .resumen-item, .reporte-print .resumen-item {
+  border: 1px solid #cbd5e1;
+  border-radius: 4px;
+  padding: 6px 10px;
+  display: flex;
+  justify-content: space-between;
+  font-size: 12px;
+}
+.corte-print .resumen-item strong, .reporte-print .resumen-item strong {
+  color: #0a3143;
+}
+.corte-print .signature-line, .reporte-print .signature-line {
+  margin-top: 48px;
+  border-top: 1px solid #333;
+  width: 60%;
+  text-align: center;
+  font-size: 11px;
+  padding-top: 4px;
+}
+
+/* ===== Vista previa de receta (Módulo 05) =====
+   Espejo del HTML que devuelve /api/recetas/[id]/print.
+   Tamaño carta/A4 con padding, encabezado de clínica, tabla de
+   medicamentos y línea de firma. */
+.rx-preview-sheet {
+  background: #fff;
+  color: #111;
+  font-family: 'Times New Roman', Georgia, serif;
+  font-size: 13px;
+  line-height: 1.5;
+  padding: 24px 28px 28px;
+  border: 1px solid #e5e7eb;
+  border-radius: 6px;
+  position: relative;
+  min-height: 700px;
+}
+.rx-preview-header {
+  border-bottom: 2.5px solid #0a3143;
+  padding-bottom: 10px;
+  margin-bottom: 14px;
+}
+.rx-preview-header-inner {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+}
+.rx-preview-logo {
+  max-height: 72px;
+  max-width: 170px;
+  object-fit: contain;
+}
+.rx-preview-clinic-name {
+  font-size: 20px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  color: #0a3143;
+  line-height: 1.15;
+}
+.rx-preview-clinic-sub {
+  font-size: 11px;
+  color: #555;
+  margin-top: 2px;
+}
+.rx-preview-clinic-line {
+  font-size: 11px;
+  color: #666;
+  margin-top: 1px;
+}
+.rx-preview-title-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  margin-bottom: 10px;
+}
+.rx-preview-title {
+  font-size: 18px;
+  font-weight: 700;
+  color: #0a3143;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+.rx-preview-folio {
+  font-size: 11px;
+  color: #888;
+  font-family: 'Courier New', ui-monospace, monospace;
+}
+.rx-preview-meta {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 4px 18px;
+  padding: 10px 12px;
+  background: rgba(10, 49, 67, 0.06);
+  border-left: 3px solid #0a3143;
+  border-radius: 4px;
+  margin-bottom: 14px;
+  font-size: 12.5px;
+}
+.rx-preview-meta > div { line-height: 1.6; }
+.rx-preview-meta strong {
+  color: #0a3143;
+  font-weight: 600;
+  text-transform: uppercase;
+  font-size: 10px;
+  letter-spacing: 0.06em;
+  display: inline-block;
+  min-width: 78px;
+}
+.rx-preview-section { margin-top: 14px; }
+.rx-preview-section-title {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  border-bottom: 1px solid #ddd;
+  padding-bottom: 3px;
+  margin-bottom: 6px;
+  color: #0a3143;
+}
+.rx-preview-section-body {
+  font-size: 13px;
+  line-height: 1.55;
+  white-space: pre-wrap;
+}
+.rx-preview-rx-symbol {
+  font-size: 36px;
+  color: #0a3143;
+  font-family: serif;
+  line-height: 1;
+  margin: 8px 0 4px;
+  font-weight: 700;
+}
+.rx-preview-meds-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 4px;
+  font-size: 12.5px;
+}
+.rx-preview-meds-table th,
+.rx-preview-meds-table td {
+  border: 1px solid #e0e0e0;
+  padding: 6px 8px;
+  text-align: left;
+  vertical-align: top;
+}
+.rx-preview-meds-table th {
+  font-weight: 700;
+  text-transform: uppercase;
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  color: #0a3143;
+  background: rgba(10, 49, 67, 0.07);
+}
+.rx-preview-meds-table .rx-num {
+  text-align: center;
+  width: 28px;
+  color: #777;
+}
+.rx-preview-meds-table .rx-med-name {
+  font-weight: 600;
+}
+.rx-preview-meds-table tr:nth-child(even) td { background: #fafafa; }
+.rx-preview-meds-table .rx-empty {
+  text-align: center;
+  color: #999;
+  font-style: italic;
+  padding: 14px;
+}
+.rx-preview-indications {
+  padding: 8px 10px;
+  background: #fafafa;
+  border-radius: 4px;
+  border-left: 3px solid #0a3143;
+}
+.rx-preview-signature {
+  margin-top: 56px;
+  text-align: center;
+}
+.rx-preview-signature .rx-sig-line {
+  border-top: 1.5px solid #333;
+  width: 260px;
+  margin: 0 auto 6px;
+}
+.rx-preview-signature .rx-sig-name {
+  font-weight: 700;
+  font-size: 13px;
+  color: #0a3143;
+}
+.rx-preview-signature .rx-sig-meta {
+  font-size: 11px;
+  color: #555;
+  margin-top: 1px;
+}
+.rx-preview-signature .rx-sig-label {
+  font-size: 10px;
+  color: #999;
+  margin-top: 2px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+.rx-preview-footer {
+  margin-top: 28px;
+  border-top: 1px solid #ddd;
+  padding-top: 6px;
+  display: flex;
+  justify-content: space-between;
+  font-size: 10px;
+  color: #888;
+}
+
+@media (max-width: 640px) {
+  .rx-preview-meta { grid-template-columns: 1fr; }
+  .rx-preview-header-inner { flex-direction: column; align-items: flex-start; gap: 6px; }
+  .rx-preview-meds-table { font-size: 11px; }
+  .rx-preview-meds-table th, .rx-preview-meds-table td { padding: 4px 5px; }
+}
+
+@media print {
+  /* Permite imprimir la vista previa directamente desde la página:
+     oculta todo excepto .rx-preview-printable .rx-preview-sheet */
+  body * { visibility: hidden !important; }
+  .rx-preview-printable,
+  .rx-preview-printable * { visibility: visible !important; }
+  .rx-preview-printable {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+  }
+  .rx-preview-sheet {
+    border: none;
+    padding: 0;
+    min-height: auto;
+  }
+  @page { size: A4; margin: 14mm 12mm 16mm; }
 }

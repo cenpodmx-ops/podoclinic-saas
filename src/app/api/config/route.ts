@@ -31,10 +31,14 @@ export async function GET(req: NextRequest) {
         logoUrl: true,
         rfc: true,
         razonSocial: true,
+        regimenFiscal: true,
         openingTime: true,
         closingTime: true,
         slotMinutes: true,
         slug: true,
+        // Sin exponer el token: solo un flag booleano
+        facturapiToken: true,
+        facturapiSeries: true,
       },
     }),
     db.clinicConfig.findUnique({
@@ -63,7 +67,15 @@ export async function GET(req: NextRequest) {
   }
 
   return ok({
-    clinic,
+    clinic: clinic
+      ? {
+          ...clinic,
+          // No exponer el token al cliente — solo un flag booleano
+          facturapiToken: undefined,
+          facturapiConfigured: !!clinic.facturapiToken,
+          facturapiSeries: clinic.facturapiSeries,
+        }
+      : null,
     diagnosesList,
     config, // plantillas WhatsApp + holidaysJson para el módulo de Agenda
   })

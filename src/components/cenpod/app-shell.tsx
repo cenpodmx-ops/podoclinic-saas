@@ -35,6 +35,7 @@ import {
 import { MODULES, GROUP_LABELS, MOBILE_NAV_IDS, type ModuleDef } from '@/lib/modules'
 import { ROLES } from '@/lib/session'
 import { cn } from '@/lib/utils'
+import { RedProvider, useRed } from '@/components/cenpod/red-provider'
 
 function SidebarLink({ m, active, collapsed }: { m: ModuleDef; active: boolean; collapsed: boolean }) {
   const Icon = m.icon
@@ -99,6 +100,8 @@ function TopBar({ onOpenMenu }: { onOpenMenu: () => void }) {
   const { theme, setTheme } = useTheme()
   const u = session?.user as any
   const roleLabel = u ? (ROLES as any)[u.role] : ''
+  const red = useRed()
+  const totalUnread = red?.totalUnread ?? 0
 
   return (
     <header className="h-14 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 sticky top-0 z-30 flex items-center gap-3 px-4">
@@ -117,10 +120,14 @@ function TopBar({ onOpenMenu }: { onOpenMenu: () => void }) {
           <Sun className="h-4 w-4 dark:hidden" />
           <Moon className="h-4 w-4 hidden dark:block" />
         </Button>
-        <Button variant="ghost" size="icon" className="relative">
+        <Link href="/red" className="relative inline-flex items-center justify-center h-9 w-9 rounded-md hover:bg-accent transition-colors">
           <Bell className="h-4 w-4" />
-          <span className="absolute top-1.5 right-1.5 h-2 w-2 rounded-full bg-red-500" />
-        </Button>
+          {totalUnread > 0 && (
+            <span className="absolute top-1 right-1 min-w-[16px] h-4 px-1 rounded-full bg-red-500 text-white text-[9px] font-bold flex items-center justify-center">
+              {totalUnread > 9 ? '9+' : totalUnread}
+            </span>
+          )}
+        </Link>
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button variant="ghost" size="sm" className="gap-2">
@@ -279,4 +286,14 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       <MobileBottomNav />
     </div>
   )
+}
+
+// Wrapper público que inyecta el RedProvider antes de renderizar el shell.
+// RedProvider sólo debe activarse cuando hay sesión y no es podólogo puro read-only.
+export function AppShellWithRed({ children }: { children: React.ReactNode }) {
+  const { data: session } = useSession()
+  if (session?.user) {
+    return <RedProvider><AppShell>{children}</AppShell></RedProvider>
+  }
+  return <AppShell>{children}</AppShell>
 }

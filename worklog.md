@@ -200,3 +200,499 @@ Stage Summary:
   - Tema CENPOD (azul #0a3143 + blanco) ✓
 - Módulos del Bloque B/C/D tienen páginas "en construcción" placeholder.
 - Listo para que el cliente pruebe y demos luz verde al Bloque B (Inventario, Caja, Finanzas, Facturación, Recetas).
+
+---
+Task ID: B4
+Agent: Recetas builder
+Task: Build Módulo 05 Recetas
+
+Work Log:
+- Leí worklog previo y el schema Prisma. El modelo `Prescription` ya tenía `podologist` (añadido por el agente 5-B). `ClinicConfig.prescriptionDesign` ya existe como String (JSON).
+- Verifiqué que el modelo `Prescription` NO tiene relación `clinic` (solo `clinicId` como FK plana). Por eso en GET /api/recetas/[id] y GET /api/recetas/[id]/print hago un `db.clinic.findUnique({ where: { id: rx.clinicId } })` aparte en vez de `include: { clinic: true }`.
+- Revisé el `tab-recetas.tsx` existente en `pacientes/[id]/_components/` (que ya imprime recetas desde el expediente). Lo dejé intacto: usa el shape del endpoint `/api/pacientes/[id]` (que incluye `prescriptions` con `medicationsJson` crudo), no el de mis nuevos endpoints. Mi página `/recetas` ofrece un listado global más potente (búsqueda, filtros, dialog con vista previa).
+- Construí APIs (todas con `requireSession()` primero, `effectiveClinic` para scoping, PODOLOGIST=403 en todas):
+  * `GET /api/recetas?page=&limit=&patientId=&all=&q=&from=&to=` → `{ data, total, page, limit }`. Cada item trae paciente (id, name, expNumber, birthDate, sex, phone), podólogo (id, name, specialty, cedula) y medicamentos ya parseados del JSON. Búsqueda OR por firstName/lastName/expNumber/diagnosis con `contains` (SQLite es case-insensitive por defecto para ASCII). Filtro de fecha con `startOfDay/endOfDay`.
+  * `POST /api/recetas` body `{ patientId, podologistId?, diagnosis?, medications: [{name, dose, via, duration, productId?}], indications?, clinicId? }`. clinicId se toma del paciente (o del body si SUPER). Valida que el podólogo pertenezca a la misma clínica. Normaliza medicamentos (filtra vacíos, trimea). 400 si no hay medicamentos con nombre. Retorna 201 con la receta creada + relaciones.
+  * `GET /api/recetas/[id]` → receta completa con paciente, podólogo, clínica (fetch separado), medicamentos parseados.
+  * `DELETE /api/recetas/[id]` → 403 si no es OWNER/SUPER. Solo dueños pueden eliminar recetas (la recepción captura pero no borra).
+  * `GET /api/recetas/[id]/print` → HTML completo y standalone (Response con `Content-Type: text/html`). Diseño se toma de `ClinicConfig.prescriptionDesign` (JSON con `logoPosition`, `logoUrl`, `fontFamily`, `primaryColor`, `accentColor`, `showHeader`, `showFooter`, `showRxSymbol`, `signatureLabel`, `paperSize`, `fontSize`). Defaults limpios si no hay config: Times New Roman, #0a3143, logo izquierda, tamaño A4. Layout profesional: header con logo + nombre + dirección + teléfono + RFC, título "Receta Médica" + folio, grid meta (paciente/fecha/expediente/edad/sexo/teléfono/podólogo/cédula), sección diagnóstico, símbolo ℞, tabla de medicamentos (#, nombre, dosis, vía, duración) con bordes y zebra, indicaciones, línea de firma con nombre/cédula/cert, footer. CSS responsive + @page A4 + @media print. Script que auto-llama `window.print()` si la URL tiene `?print=1`.
+- Construí componente reusable `src/components/cenpod/prescription-print.tsx` exportando `<PrescriptionPrintPreview data={...} />` que pinta un mirror visual del HTML del print route (mismas clases CSS `.rx-preview-*` definidas en `globals.css`). Recibe `{ date, diagnosis, medications, indications, patient, podologist, clinic }`. Se usa en el dialog de vista previa y en el dialog de ver receta existente.
+- Añadí a `globals.css` un bloque completo de `.rx-preview-*` (header, logo, clinic info, title row, meta grid, sections, rx-symbol, meds table con zebra, indications, signature, footer) + responsive (mobile colapsa meta a 1 columna y header a vertical) + `@media print` que oculta todo excepto `.rx-preview-printable` (por si se imprime directo desde la página en vez de abrir el popup).
+- Construí la página `/recetas` con arquitectura modular en `src/app/(app)/recetas/`:
+  * `_lib/types.ts` — tipos compartidos (MedicationInput, PatientLite, PodologistLite, ProductLite, PrescriptionListItem, VIA_OPTIONS).
+  * `_components/patient-searcher.tsx` — searcher debounced 300ms contra `/api/pacientes?q=&limit=15`. Dropdown con nombre + expNumber + teléfono + badges de diabético/alergias. Cuando selecciona, muestra tarjeta compacta con alertas de salud (diabético, alergias, riesgo) + botón "Cambiar".
+  * `_components/medication-editor.tsx` — lista dinámica de medicamentos. Cada row: input de nombre con sugerencias de inventario (debounced `/api/inventario?q=` mostrando stock y precio), input de dosis, select de vía (Oral, Tópica, Intravenosa, Intramuscular, Sublingual, Otra), input de duración, botón eliminar. Botón "Agregar medicamento". Validación visual de stock (rojo si 0, ámbar si ≤5, esmeralda si >5).
+  * `_components/prescription-form-dialog.tsx` — dialog "Nueva receta" con tabs Datos / Vista previa. Tab Datos: paciente searcher, select de podólogo (con cédula y especialidad), diagnóstico textarea, medication editor, indicaciones textarea. Tab Vista previa: render `<PrescriptionPrintPreview>` con los datos actuales del form. Botones: Cancelar / Vista previa / Guardar. Tras guardar exitoso, abre `SuccessDialog` con botón "Imprimir / PDF" que abre popup con `/api/recetas/[id]/print?print=1`.
+  * `_components/prescription-view-dialog.tsx` — dialog "Ver receta" para una receta existente. Carga vía `GET /api/recetas/[id]` con TanStack Query. Muestra badges (número de medicamentos, podólogo, diagnóstico truncado) + `<PrescriptionPrintPreview>`. Botones: Eliminar (solo si OWNER/SUPER, con confirm), Cerrar, Imprimir / PDF.
+  * `page.tsx` — página principal. Header con título + botón "Nueva receta". Card de filtros: búsqueda (debounced 350ms), fecha desde, fecha hasta, botón "Limpiar filtros", contador de resultados. Tabla desktop (fecha, paciente, podólogo, diagnóstico, # meds, acciones ver/imprimir) + cards mobile. Paginación anterior/siguiente. Empty state con CTA.
+- Manejo de roles:
+  * PODOLOGIST: 403 en todos los endpoints (no debe llegar al módulo).
+  * RECEPTION: puede crear y ver, NO puede eliminar.
+  * OWNER/SUPER: pueden eliminar.
+  * Cross-clinic: SUPER puede ver todas con `?all=1` o cambiar clinicId; los demás solo su clínica.
+- Pruebas end-to-end con curl (cookies reales de recepcion@cenpod.com y dueno@cenpod.com):
+  * Login recepción → GET /api/recetas (vacío) → POST crea receta con 2 medicamentos → 201 ✓
+  * GET lista → total:1, data con paciente "María González" y podólogo "Dr. Ricardo Méndez" ✓
+  * GET detalle → medications parseadas, indications, clinic name ✓
+  * GET print → 8312 bytes de HTML con: título "Receta Médica", clínica, paciente, podólogo, diagnóstico, ambos medicamentos con vía "Tópica", indicaciones, "Cédula profesional", CSS @page + @media print, script window.print ✓
+  * Login podólogo → GET /api/recetas = 403 ✓, POST = 403 ✓
+  * POST sin medicamentos → 400 "Agrega al menos un medicamento" ✓
+  * DELETE como recepción → 403 "Solo el dueño puede eliminar recetas" ✓
+  * DELETE como dueño → 200 ✓
+  * Filtro fecha from=2026-06-18&to=2026-06-18 → 1 resultado ✓
+  * Filtro fecha from=2026-06-01&to=2026-06-30 → 1 resultado ✓
+  * Sin filtro → 1 resultado ✓
+  * Page /recetas → 200, 61KB, contiene "Nueva receta" ✓
+- Limpié todos los datos de prueba (prescriptions deleted) para que el sistema quede limpio.
+- Lint: 0 errores en mis archivos (errores preexistentes en inventario/_components/product-form-dialog.tsx y reservar/[[...slug]]/booking-flow.tsx no son míos).
+- TypeScript: 0 errores en mis archivos (errores preexistentes en evaluacion, facturas/citables, public/disponibilidad, reservar/booking-flow no son míos).
+
+Stage Summary:
+- APIs propietarias: /api/recetas (GET list + POST create), /api/recetas/[id] (GET + DELETE), /api/recetas/[id]/print (GET HTML standalone para imprimir).
+- Component reusable: `<PrescriptionPrintPreview>` en `src/components/cenpod/prescription-print.tsx` (mirror visual del HTML de impresión).
+- Page: /recetas con lista (tabla desktop + cards mobile), búsqueda debounced, filtro por rango de fechas, paginación, dialog "Nueva receta" con tabs Datos/Vista previa, medication editor dinámico con sugerencias de inventario, dialog "Ver receta" con preview + eliminar + imprimir, success dialog post-creación con botón imprimir/PDF.
+- Print: route dedicado que devuelve HTML completo con diseño profesional controlado por `ClinicConfig.prescriptionDesign` (JSON) o defaults limpios. CSS @page A4 + @media print. Auto-print con `?print=1`.
+- Print CSS en `globals.css`: bloque `.rx-preview-*` para el componente + `@media print` para impresión directa desde la página (clase wrapper `.rx-preview-printable`).
+- Role guards: PODOLOGIST=403 en todo. DELETE solo OWNER/SUPER. Cross-clinic guards con `effectiveClinic`. SUPER puede ver todo con `?all=1`.
+- Mobile responsive: tabla colapsa a cards, dialogs scroll vertical, meta grid colapsa a 1 columna, header del preview apila vertical.
+- Notas:
+  - El modelo `Prescription` no tiene relación `clinic` (solo `clinicId` FK plana). En GET/[id] y GET/[id]/print hago fetch separado de la clínica.
+  - El `tab-recetas.tsx` existente en el expediente del paciente NO se modificó: usa el shape del endpoint `/api/pacientes/[id]` (con `medicationsJson` crudo), no mis nuevos endpoints.
+  - "Descargar PDF" e "Imprimir" abren el mismo popup con el HTML de `/api/recetas/[id]/print?print=1`; el navegador ofrece "Guardar como PDF" en el diálogo de impresión. No se integró una librería de PDF externa para mantener el stack limpio.
+  - El medication editor permite tanto seleccionar productos del inventario (con stock visible) como escribir texto libre — ambos casos se guardan igual en `medicationsJson` (con `productId` opcional).
+
+---
+Task ID: C1
+Agent: CRM + Seguimiento builder
+Task: Build Módulos 08 CRM + 14 Seguimiento
+
+Work Log:
+- Leí worklog previo y el schema Prisma. Verifiqué que /api/crm y /api/seguimiento existían como directorios vacíos (placeholders). Revisé helpers disponibles: requireSession, effectiveClinic, ok, bad, fmtDate/fmtMoney, /api/config (tplConfirm/tplReminder/tplBirthday/tplInactive/tplFollowUp).
+- Creé lib/whatsapp.ts con: normalizePhone (asume +52 MX si 10 dígitos), waUrl (construye wa.me?text=encoded), fillTemplate (reemplaza {{vars}}), DEFAULT_TEMPLATES (fallback si la clínica no configura plantillas).
+- APIs CRM (todas 403 si RECEPTION o PODOLOGIST):
+  * /api/crm/segmentos (GET) ?type=INACTIVOS_30|60|90|180|CUMPLEANOS_MES|SEMANA|HOY|DIABETICOS|NUEVOS_MES|RIESGO_ABANDONO. Calcula dinámicamente cargando pacientes con última cita FINALIZADA. RIESGO_ABANDONO = sin visita > 90 días AND (diabetic OR riskLevel=ALTO). Devuelve { segment, count, patients } ordenados.
+  * /api/crm/campana (POST) { segment, templateKey }. Carga tpl de ClinicConfig, reemplaza vars, devuelve [{ patientId, name, phone, message, waUrl }]. Upsert de SegmentMembership (best-effort).
+  * /api/crm/leads (GET ?status=, POST { name, phone, email?, interest?, notes? }). GET incluye waUrl por lead.
+  * /api/crm/leads/[id] (PATCH) { status?, convertToPatient?, notes?, interest? }. convertToPatient → genera expNumber C{n}-00001, crea Patient, asocia patientId, status=AGENDADO.
+  * /api/crm/reportes (GET ?months=6). retenciónRate, byMonth (nuevos vs recurrentes), efectividadCampana (agendados/total leads), riesgoAbandono count, leads pipeline, totalPacientes, nuevosHoy.
+- APIs Seguimiento (403 si PODOLOGIST; RECEPTION puede acceder):
+  * /api/seguimiento (GET) ?status=&from=&to=. VENCIDO en runtime: dueDate<today AND status='PENDIENTE'. Devuelve { total, counts, buckets: { vencidos, hoy, proximos7, futuros, contactados, agendados }, rows } con patient+consultation+podologist incluidos.
+  * /api/seguimiento/[id] (PATCH) { status?, whatsappSent?, notes? }.
+  * /api/seguimiento/[id]/whatsapp (GET). Carga tplFollowUp de ClinicConfig, reemplaza {{nombre_paciente}}, {{podologo}}, {{link_reserva}}, {{clinica}}, {{fecha}}. Marca whatsappSent=true (best-effort). Devuelve { waUrl, message, patientName, phone }.
+- Página /crm con 3 tabs:
+  * Segmentación: 10 botones para cada segmento. Click → tabla con nombre, teléfono, última visita, días sin visita (color umbral), WhatsApp por paciente, "Marcar contactado". "Iniciar campaña" → modal uno-por-uno (paciente actual + mensaje preview + "Abrir WhatsApp" + "Marcar contactado" + Siguiente/Anterior + barra de progreso).
+  * Leads: tabla con nombre, contacto, interés, status (Select editable), fecha, acciones (WhatsApp, Convertir a paciente con confirmación, Ver paciente si ya convertido). "Nuevo lead" dialog. Filtro por status.
+  * Reportes: 6 KPIs (retención %, activos, nuevos, efectividad campañas %, riesgo abandono, total), bar chart Recharts nuevos vs recurrentes por mes, 3 cards de pipeline.
+- Página /seguimiento:
+  * KPIs rápidos por bucket.
+  * 6 buckets agrupados: Vencidos (rojo), Hoy (ámbar), Próximos 7 días (azul), Futuros (slate), Contactados, Agendados.
+  * Cada card: link a /pacientes/[id], badges, fecha de vencimiento (con días o "vencido hace X días"), consulta + podólogo + diagnóstico truncado, nota. Acciones: WhatsApp, Contactado, Agendado.
+  * Filtros URL (?status=vencidos|hoy|proximos7) con chips.
+- Validé end-to-end con curl + cookies:
+  * segmentos DIABETICOS → 4 pacientes, INACTIVOS_30 → 6 pacientes ✓
+  * POST leads → 201, PATCH status=CONTACTADO → 200, PATCH convertToPatient → 200 con expNumber C1-00008 ✓
+  * POST campana DIABETICOS+tplFollowUp → 4 recipients con waUrl ✓
+  * reportes → 6 meses byMonth, retencionRate=0 (1 activo), totalPacientes=7 ✓
+  * seguimiento → 200, 0 registros (sin FollowUps en seed) ✓
+  * Role guards: RECEPTION → crm 403, seguimiento 200; PODOLOGIST → crm 403, seguimiento 403 ✓
+  * /crm → 200, /seguimiento → 200 ✓
+- Limpieza: borré lead "Lead Test" y paciente "C1-00008" generados en testing, vía script bun directo a Prisma. Sistema queda limpio para el usuario.
+- Fix menor: import en seguimiento/page.tsx apuntaba a './types' pero estaba en './_components/types'. Corregido.
+
+Stage Summary:
+- APIs: /api/crm/segmentos (GET), /api/crm/campana (POST), /api/crm/leads (GET, POST), /api/crm/leads/[id] (PATCH), /api/crm/reportes (GET), /api/seguimiento (GET), /api/seguimiento/[id] (PATCH), /api/seguimiento/[id]/whatsapp (GET).
+- Lib: src/lib/whatsapp.ts (normalizePhone MX+52, waUrl, fillTemplate, DEFAULT_TEMPLATES).
+- Pages: /crm (3 tabs: Segmentación con tabla + modal uno-por-uno, Leads CRUD + convertir a paciente, Reportes con KPIs + bar chart Recharts), /seguimiento (6 buckets + acciones WhatsApp/Contactado/Agendado + filtros URL).
+- WhatsApp: siempre wa.me. Phone normalizado: 10 dígitos → antepone 52 (MX). Plantillas de ClinicConfig con fallback a DEFAULT_TEMPLATES. Variables: {{nombre_paciente}}, {{clinica}}, {{link_reserva}}, {{podologo}}, {{fecha}}, {{hora}}.
+- Role guards: CRM exclusivo OWNER+SUPER. Seguimiento: OWNER+SUPER+RECEPTION. PODOLOGIST bloqueado en ambos.
+- Lint: 0 errores en mis archivos. Dev log: 200s sin errores de runtime. Mobile responsive. Brand #0a3143 aplicado en botones primarios, íconos de headers y barra de progreso.
+
+---
+Task ID: B2
+Agent: Caja/Finanzas builder
+Task: Build Módulo 07 Caja + Finanzas
+
+Work Log:
+- Leí worklog previo (Tareas 1, 5-A, 5-B, 5-C, 10) y verifiqué el schema Prisma (CashSession, CashMovement, Consultation, Appointment, Podologist, Product, Clinic). No modifiqué el schema.
+- Revisé helpers disponibles: requireSession, effectiveClinic, ok, bad en @/lib/api; canAccessFinance en @/lib/session; fmtMoney, fmtDate, fmtDateTime, METHOD_LABELS en @/lib/format.
+- Confirmé que /caja y /finanzas eran placeholders (ComingSoon) y que no existían rutas /api/caja ni /api/finanzas. Construí todo desde cero.
+- Creé /api/caja (GET, POST):
+  * GET ?date=YYYY-MM-DD: devuelve sesión de hoy (o null) + movements + summary (totals por método, ingresos, egresos, saldo esperado, byMethod consolidado TARJETA=DEBITO+CREDITO).
+  * POST { openingFund }: crea CashSession + CashMovement INGRESO EFECTIVO_INICIAL. 409 si ya existe (mensaje diferente si está cerrada vs abierta). 403 PODOLOGIST.
+- Creé /api/caja/[id] (PATCH): cierra sesión. Calcula expectedCash = openingFund + ingresosEfectivo − egresosEfectivo, difference = countedCash − expected. 409 si ya cerrada. 403 PODOLOGIST. Cross-clinic guard (solo SUPER puede ver otra clínica).
+- Creé /api/caja/egreso (POST): registra gasto con categorías enumeradas (RENTA, SERVICIOS, SUELDOS, COMISIONES, MATERIAL, EQUIPO, MANTENIMIENTO, PUBLICIDAD, TRANSPORTE, IMPUESTOS, OTRO). Crea CashMovement EGRESO source='GASTO' descripción con prefijo [CATEGORIA]. 409 si no hay sesión abierta. 403 PODOLOGIST.
+- Creé /api/caja/enviar (POST): genera URL wa.me con texto preformateado (resumen del corte: fondo inicial, ingresos por método, egresos, saldo final, diferencia si está cerrada). Agrega +52 automáticamente si el teléfono es de 10 dígitos. 403 PODOLOGIST.
+- Creé /api/finanzas (GET) con canAccessFinance:
+  * Query: ?period=dia|semana|mes|año + ?from=&to= + ?all=1.
+  * Devuelve totals (ingresos por fuente consulta/mostrador/otros, egresos por categoría, neto), byMethod, byPodologist (consultas, revenue, commissionPct, commission), topServices (top 8 por revenue), dailySeries (puntos diarios o mensuales si period=año), comparison vs periodo anterior (prevIngresos, prevEgresos, prevNeto, % deltas).
+  * 403 RECEPTION/PODOLOGIST.
+- Creé /api/finanzas/comisiones (GET): por podólogo en rango ?from=&to= (default mes actual). Devuelve rows con consultCount, totalGenerated, commissionPct, commissionAmount + total agregado. 403 RECEPTION/PODOLOGIST.
+- Creé /api/finanzas/reportes (GET): 4 tipos (citas, inventario, comisiones, ingresos). Cada uno devuelve datos estructurados para imprimir:
+  * citas: listado de citas con paciente/podólogo/servicio/status/precio + byStatus.
+  * inventario: snapshot actual con valorización al costo y venta + estado (AGOTADO/BAJO/OK) + lowStockCount.
+  * comisiones: por podólogo en el rango + totales.
+  * ingresos: movimientos del periodo + bySource/byMethod/byCategory + neto.
+  * 403 RECEPTION/PODOLOGIST.
+- Página /caja (src/app/(app)/caja/page.tsx):
+  * Sin sesión: card centrada "Caja cerrada" con input de fondo inicial y botón "Abrir caja".
+  * Con sesión: header con fecha + status (Abierta/Cerrada) + fondo inicial. KPIs (Ingresos, Egresos, Saldo esperado, Diferencia o Movimientos). Cards pequeñas por método (Efectivo/Tarjeta/Transferencia/Otro). Acciones: Registrar egreso, Enviar WhatsApp, Cerrar caja (si abierta) o Ver corte + Enviar WhatsApp (si cerrada). Tabla de movimientos con scroll (max-h-[480px]) con badges verde/rojo y fondo inicial marcado como "Fondo".
+  * Diálogo EgresoDialog: amount, categoría (Select con 11 opciones), descripción, método (5 opciones). Validación + reset al cerrar.
+  * Diálogo CloseDialog: muestra resumen (fondo inicial, ingresos efectivo, egresos efectivo, esperado), input de efectivo contado, badge de diferencia en tiempo real (verde=0, ámbar=+, rojo=-), notas opcionales. Llama a PATCH /api/caja/[id].
+  * Diálogo WhatsAppDialog: input de teléfono (10 dígitos, auto-prefijo +52). Abre wa.me en nueva pestaña.
+  * Diálogo CorteReport: invoca CorteReport component con datos de la caja. Botón "Imprimir" llama window.print().
+- Componente CorteReport (corte-report.tsx): vista A4 imprimible con encabezado de clínica (logo, nombre, dirección, teléfono), responsable, resumen en grid 2x2, tabla de ingresos por método, tabla de movimientos detallados, cierre con diferencia coloreada, firmas. Clase `.corte-print` con CSS dedicado en globals.css.
+- Página /finanzas (src/app/(app)/finanzas/page.tsx):
+  * Sin acceso (RECEPTION/PODOLOGIST): card centrada "Sin acceso" con icono ShieldAlert.
+  * Con acceso (OWNER/SUPER): selector de periodo (Día/Semana/Mes/Año) + date pickers from/to + botón Aplicar.
+  * KPIs: Ingresos, Egresos, Neto, Ingresos prev. con badges de % vs periodo anterior (verde/rojo, invertido para egresos).
+  * Charts recharts: área Ingresos vs Egresos (gradient verde/rojo), pie Ingresos por método, bar Ingresos por podólogo, bar horizontal Top servicios.
+  * Detalle por método con barras de progreso + Egresos por categoría con scroll.
+  * Tabs: Comisiones (tabla con rango de fechas + total al pie + botón imprimir) y Reportes (4 cards: Citas, Inventario, Comisiones, Ingresos).
+  * Diálogo ReporteView: vista A4 imprimible con encabezado + cuerpo según tipo (CitasBody, InventarioBody, ComisionesBody, IngresosBody). Botón "Imprimir".
+- Componente ReporteView (reporte-view.tsx): vista A4 con encabezado de clínica + cuerpo condicional según tipo de reporte. Clase `.reporte-print` con CSS dedicado en globals.css.
+- Extendí globals.css con clases `.corte-print` y `.reporte-print` + @media print rules para A4 (page: corte, page: reporte). Mantuve las clases `.ticket-print` existentes intactas.
+- Tipos compartidos en _components/types.ts para caja y finanzas.
+- Validé end-to-end con curl + cookies (recepcion, dueno, ricardo podólogo):
+  * Caja GET (recepción, sin sesión): 200, session null ✓
+  * Caja POST abrir con fund 1000: 201, crea sesión + movimiento EFECTIVO_INICIAL ✓
+  * Caja POST repetido: 409 con mensaje apropiado ✓
+  * Egreso POST (recepción): 201, crea CashMovement EGRESO con prefijo [TRANSPORTE] ✓
+  * Egreso POST (podólogo): 403 ✓
+  * Caja GET después de egreso: summary muestra fondo 1000, ingresos 0, egresos 200, saldo 800 ✓
+  * Caja PATCH cerrar con counted 800: expected 800, counted 800, difference 0 ✓
+  * Egreso POST después de cerrar: 409 "La caja de hoy ya está cerrada" ✓
+  * Enviar POST: genera wa.me URL con texto preformateado correcto ✓
+  * Finanzas GET (recepción): 403 ✓
+  * Finanzas GET (podólogo): 403 ✓
+  * Finanzas GET (dueño): 200 con dashboard completo (period=mes, 30 puntos en dailySeries) ✓
+  * Comisiones GET (dueño): 200 ✓
+  * Reportes GET (dueño) type=citas: 200, 8 citas con byStatus ✓
+  * Reportes GET (dueño) type=inventario: 200, 8 productos / 496 unidades ✓
+  * /caja página (recepción): 200, renderiza "Caja" sin errores ✓
+  * /finanzas página (dueño): 200, renderiza "Finanzas" + "Comisiones" tab ✓
+  * /finanzas página (recepción): 200, muestra "Sin acceso" ✓
+- Limpié los datos de prueba creados durante las pruebas (sesiones y movimientos de hoy) con deleteMany via Prisma client.
+- Lint: 0 errores en mis archivos (verificado con bunx eslint sobre los paths específicos). Los errores residuales en inventario/_components/pos-dialog, reserva/page.tsx, reservar/booking-flow.tsx, evaluacion/page.tsx, api/facturas/citables/route.ts y api/public/disponibilidad/route.ts NO son míos (de otros agentes) y no los toqué.
+- TypeScript: 0 errores en mis archivos (verificado con bunx tsc --noEmit filtrando por caja|finanzas).
+
+Stage Summary:
+- APIs: /api/caja (GET/POST), /api/caja/[id] (PATCH), /api/caja/egreso (POST), /api/caja/enviar (POST), /api/finanzas (GET), /api/finanzas/comisiones (GET), /api/finanzas/reportes (GET).
+- Pages: /caja (apertura/cierre de caja, egresos, WhatsApp, corte imprimible A4 con firma), /finanzas (dashboard con KPIs + 4 gráficas recharts, tabla de comisiones con rango de fechas, 4 tipos de reportes imprimibles A4).
+- Componentes: CorteReport (corte-print A4), ReporteView (reporte-print A4 con 4 bodies), EgresoDialog, CloseDialog, WhatsAppDialog, KpiCard, MethodCard, MovementRow.
+- CSS: extendí globals.css con `.corte-print` y `.reporte-print` (A4 con @page rules), sin tocar `.ticket-print` existente.
+- Acceso: RECEPTION + OWNER + SUPER acceden a Caja (PODOLOGIST=403 en todo). Solo OWNER + SUPER acceden a Finanzas (RECEPTION+PODOLOGIST=403). canAccessFinance() del server y canAccessFinanceClient() del cliente.
+- Multi-sucursal: SUPER con ?all=1 ve todas las clínicas en finanzas. Effective clinic scoping con effectiveClinic().
+- Lógica de cierre: expectedCash = openingFund + ingresosEfectivo − egresosEfectivo. Difference = countedCash − expected. Calculado en el servidor (PATCH).
+- WhatsApp: genera wa.me URL con texto preformateado (fondo inicial, ingresos por método, egresos, saldo, diferencia si cerrada). Auto-prefijo +52 para teléfonos de 10 dígitos.
+- Reportes: 4 tipos (citas, inventario, comisiones, ingresos) con vista imprimible A4 + botón "Imprimir" (window.print()). CSS @media print oculta todo excepto .corte-print / .reporte-print.
+- Movimientos: badges verde (INGRESO) / rojo (EGRESO), "Fondo" especial para EFECTIVO_INICIAL, tabla con scroll max-h-[480px].
+- Movil responsive: grids 2 columnas en mobile, 4 en desktop; diálogos max-w-md en mobile; tablas con scroll horizontal/vertical; bottom-nav incluye "Caja" para recepción.
+
+---
+Task ID: C3
+Agent: Reserva Pública builder
+Task: Build Módulo 11 Link de Reserva Pública
+
+Work Log:
+- Leí worklog previo (Tareas 1, 5-A, 5-B, 5-C, 10) y verifiqué el stack: Next.js 16, Prisma+SQLite, NextAuth, Tailwind 4, shadcn/ui.
+- Leí schema.prisma (modelos Appointment, Patient, Podologist, Service, Clinic, AppointmentBlock). NO modifiqué el schema.
+- Leí middleware.ts → confirmé que /reservar y /api/public/* ya están excluidos de auth.
+- Leí APIs existentes: /api/clinicas, /api/podologos, /api/citas (GET/POST), /api/citas/[id], /api/pacientes (POST con generateExpNumber), /api/config.
+- Leí app-shell.tsx, dashboard, config, modules.ts → entendí el layout interno y los roles.
+
+- Construí APIs PÚBLICAS (sin requireSession):
+  * GET /api/public/clinicas — lista clinics no distribuidoras con id, name, slug, address, phone, email, openingTime, closingTime.
+  * GET /api/public/podologos?clinicId=|?clinicSlug= — podólogos activos de la clínica.
+  * GET /api/public/disponibilidad?clinicId=&podologistId=&date=YYYY-MM-DD — genera slots de clinic.slotMinutes (default 30) entre openingTime y closingTime, filtra los que se solapan con citas no CANCELADA y bloqueos (fullDay bloquea todo), filtra los pasados si es hoy, devuelve máx 3: primero de la mañana, primero de la tarde, uno más (segundo de la mañana o tarde). Si no se pasa podologistId, itera los activos de la clínica y devuelve el primero con disponibilidad.
+  * POST /api/public/reservar — body {clinicId, podologistId?, date, startTime, firstName, lastName, phone, email?, reason?, esNuevo}. Validaciones: fecha YYYY-MM-DD, hora HH:mm, phone 10 dígitos MX (normaliza +52 / 521), email si viene. Resuelve podólogo (valida que sea de la clínica y activo, o elige cualquiera con slot libre). Valida que el slot siga libre (sin solapamiento con citas/bloques). Busca paciente por phone en la clínica → si existe lo enlaza, si no crea con expNumber auto (C{n}-00001, replica lógica de /api/pacientes). Crea Appointment con status='PENDIENTE', source='WEB'. Retorna {success, appointmentId, patientId, isNewPatient, patientName, expNumber, podologistName, clinicName, whatsappUrl}. whatsappUrl = wa.me/52{clinicPhone}?text=... con mensaje "Hola, agendé una cita para {firstName} el {fecha} a las {hora} con {podologo}. Confirmo mi asistencia." (fecha y hora formateadas en es-MX).
+
+- Bug encontrado y arreglado: overlaps() esperaba {start, end} pero recibía {startTime, endTime, status} → TypeError. Lo arreglé normalizando los appts/blocks a {start, end} antes de comparar.
+
+- Construí página pública /reservar/[[...slug]]/page.tsx:
+  * page.tsx es server component que lee params.slug (catch-all opcional) y pasa initialClinicSlug al client.
+  * booking-flow.tsx es 'use client' con todo el estado y los 6 pasos.
+  * Header azul #0a3143 con logo blanco, footer azul con teléfono de la clínica, card central blanco con sombra.
+  * Stepper de 6 pasos (Clínica, Podólogo, Día, Hora, Datos, Confirmar) con dots numerados, check en los completados, ring en el activo.
+  * Step 1 (solo si no hay slug): tarjetas de clínicas con nombre, dirección, teléfono. Si la URL es /reservar/clinica-1, salta al step 2.
+  * Step 2: opción "Cualquier podólogo" + tarjetas de podólogos con inicial/foto y especialidad.
+  * Step 3: Calendar shadcn con locale es, desactiva domingos, fechas pasadas y +60 días. Al seleccionar avanza al step 4.
+  * Step 4: fetch /api/public/disponibilidad, muestra 2-3 slots como botones grandes con hora 12h (08:00 AM, 12:00 PM, etc.). Mensaje "Solo mostramos algunos horarios disponibles para facilitar tu elección." Si no hay slots, mensaje amber con botón reintentar.
+  * Step 5: form nombre, apellido, teléfono (10 dígitos), email opcional, motivo opcional, toggle "Soy paciente nuevo" / "Ya he visitado la clínica". Validación inline al tocar Continuar.
+  * Step 6: resumen con iconos (clínica, podólogo, fecha, hora, paciente, teléfono) + nota informativa + botón "Confirmar cita". On POST: si 409 (slot tomado) → vuelve a step 4 con mensaje "Ese horario ya fue reservado, elige otro" y refetch; si éxito → pantalla de éxito.
+  * Pantalla de éxito: check animado, resumen (clínica, paciente, expediente, podólogo, fecha, hora, estado), badge "Paciente nuevo registrado" si aplica, botón verde WhatsApp (abre wa.me), botón "Agendar otra cita" (reset). Link tel: al pie.
+
+- Construí página interna /reserva (OWNER+SUPER) dentro del AppShell:
+  * KPIs: reservas web este mes, confirmadas, pendientes, total histórico (con colores CENPOD).
+  * Card "Link general" con URL /reservar, botón copiar, botón abrir, QR 180x180 (api.qrserver.com), instrucciones de uso.
+  * Card "Links por sucursal" con cada clínica: nombre, badge "X este mes", URL /reservar/{slug}, botón copiar, botón abrir, QR 120x120.
+  * Nota informativa con el flujo completo de reservas web.
+  * Usa TanStack Query para /api/clinicas y /api/reserva/stats.
+  * Usa useSyncExternalStore para leer window.location.origin (patrón React 19 lint-friendly, evita set-state-in-effect).
+  * Botones copiar con feedback "¡Copiado!" + toast sonner.
+
+- Creé API interna /api/reserva/stats (requireSession, OWNER+SUPER): thisMonth, thisMonthConfirmed, thisMonthPending, total, byClinic (solo SUPER, con groupBy clinicId).
+
+- Lint: 0 errores en TODOS mis archivos (verificado con bunx eslint archivo-por-archivo). Los errores residuales son en inventario (otro agente) — no míos.
+- Dev log: sin errores de compile o runtime en mis rutas. Todas devuelven 200/201 excepto las validaciones que devuelven 400/404/409 según corresponde.
+
+- Probé end-to-end con curl:
+  * GET /api/public/clinicas → 4 clínicas (CENPOD 1/2/3 + Matriz).
+  * GET /api/public/podologos?clinicSlug=clinica-1 → Dr. Ricardo Méndez, Dra. Laura Quijano.
+  * GET /api/public/disponibilidad?clinicId=...&date=2026-06-19 → 3 slots (08:00, 08:30, 12:00) para pod-001.
+  * GET /api/public/disponibilidad?date=2024-01-01 → mensaje "Fecha pasada", slots:[].
+  * POST /api/public/reservar (paciente nuevo, con podólogo) → 201, appointmentId, patientId, expNumber C1-00008, whatsappUrl bien formado.
+  * POST /api/public/reservar (mismo slot) → 409 "Ese horario acaba de ser reservado."
+  * POST /api/public/reservar (mismo teléfono, slot distinto) → 201, isNewPatient=false, mismo patientId.
+  * POST sin podologistId → 201, elige automáticamente pod-001.
+  * POST con teléfono inválido (123) → 400 "Teléfono inválido (10 dígitos MX)".
+  * POST con campos faltantes → 400 "Nombre requerido".
+  * GET /reservar → 200, renderiza "¿A qué clínica deseas asistir?".
+  * GET /reservar/clinica-1 → 200, renderiza "Selecciona tu podólogo" (saltó step 1).
+  * GET /reservar/slug-no-existente → 200, renderiza step 1 (no encontró la clínica).
+  * GET /reservar/clinica-1/extra (catch-all) → 200, renderiza step 2.
+  * Login SUPER → GET /api/reserva/stats → thisMonth=2 (tras pruebas), byClinic con CENPOD 1:2. Tras cleanup → thisMonth=0.
+  * GET /reserva (interno, con SUPER auth) → 200, renderiza "Link de Reserva Pública", "Link general", "Links por sucursal", "Reservas web este mes".
+
+- Limpié todos los datos de prueba (pacientes María Test, Paciente Auto y sus appointments) para entregar el sistema limpio.
+
+Stage Summary:
+- APIs PÚBLICAS: /api/public/clinicas (GET), /api/public/podologos (GET), /api/public/disponibilidad (GET), /api/public/reservar (POST) — todas sin requireSession, reachable sin login.
+- API INTERNA: /api/reserva/stats (GET, OWNER+SUPER) — KPIs de reservas web.
+- Pages:
+  * /reservar/[[...slug]]/page.tsx (pública, standalone, sin AppShell) + booking-flow.tsx (client, 6 pasos, mobile-first, brand #0a3143).
+  * /reserva/page.tsx (interna, dentro de AppShell, OWNER+SUPER) con links + QR + stats.
+- Features clave:
+  * Solo 2-3 horarios por día (spec).
+  * Validación de slot en POST (sin solapamiento).
+  * Auto-asignación de podólogo si no se especifica.
+  * Auto-creación de paciente con expNumber si no existe por teléfono.
+  * Cita creada con status='PENDIENTE', source='WEB'.
+  * WhatsApp URL con +52 y mensaje pre-llenado.
+  * Pantalla de éxito con resumen + botón WhatsApp + agendar otra.
+  * Manejo de error 409 (slot tomado) → vuelve a step 4 con mensaje.
+  * Calendar desactiva domingos y fechas pasadas.
+  * Mobile-first, responsive, accesible (labels, aria, keyboard nav).
+- Lint: 0 errores en mis 8 archivos. Dev log: sin errores.
+- No rompí rutas existentes (verificado: dashboard, agenda, etc. siguen cargando).
+
+---
+Task ID: B1
+Agent: Inventario builder
+Task: Build Módulo 06 Inventario (catalog, stock, POS, import)
+
+Work Log:
+- Leí worklog previo (Bloque A completo y verificado por main agent Task 10; B2 Caja/Finanzas y B4 Recetas por otros agentes). Revisé schema Prisma, lib/api.ts, lib/session.ts, lib/format.ts, app-shell, modules.ts, y el API existente /api/inventario/route.ts (que solo tenía GET ?q= para Consulta).
+- Instalé `xlsx` (v0.18.5) para parsing de Excel en importación.
+- Extendí /api/inventario (GET + POST) sin romper el comportamiento ?q= del Consulta:
+  * GET ?q=<texto> → {rows:[...]} (mantenido exactamente)
+  * GET ?page=&limit=&category=&stockBajo=1&includeInactive=0 → {data, total, page, limit} con stockBajo boolean por producto
+  * POST → crea producto + StockMovement ENTRADA inicial si stock>0. 403 si RECEPTION/PODOLOGIST.
+- Construí /api/inventario/[id] (GET/PATCH/DELETE): GET devuelve producto + clinic + 20 movs recientes; PATCH actualiza y si cambia stock directo crea StockMovement AJUSTE; DELETE soft (active=false). Cross-clinic guards.
+- Construí /api/inventario/[id]/movimientos (GET/POST): GET paginado; POST solo permite ENTRADA y AJUSTE manuales (SALIDA/VENTA son system-generated, devuelven 400). Valida stock no negativo. 403 si RECEPTION/PODOLOGIST.
+- Construí /api/ventas-mostrador (POST): POS con items + paymentMethod + descontarStock. Valida stock, crea StockMovement SALIDA por item, decrementa product.stock, get-or-create CashSession de hoy, crea CashMovement INGRESO source='MOSTRADOR'. Retorna ticket completo (ticketId, total, subtotal, ivaTotal, items, clinic, cashier). 403 si PODOLOGIST.
+- Construí /api/inventario/importar (POST multipart): parsea xlsx/xls con `xlsx` y csv con parser manual. Headers: name, category, costPrice, salePrice, ivaType, stock, minStock, supplier. Valida fila por fila (categoría, IVA, código duplicado en archivo y BD). Crea productos válidos + StockMovement ENTRADA inicial. Retorna {imported, errors:[{row, error}]}. 403 si RECEPTION/PODOLOGIST.
+- Construí /api/inventario/plantilla (GET): CSV con headers + 2 ejemplos, Content-Disposition attachment. 403 si PODOLOGIST.
+- Construí página /inventario (src/app/(app)/inventario/page.tsx) con:
+  * Top bar: botones Venta mostrador / Importar Excel (OWNER/SUPER) / Nuevo producto (OWNER/SUPER).
+  * Banner stock bajo (rojo) con badges clickeables que abren movimientos del producto.
+  * Toolbar: búsqueda debounced 300ms, select categoría, switch stock bajo, switch ver inactivos, contador.
+  * Tabla responsive: nombre (con code/description), categoría, precio, IVA, stock (badge rojo si <= minStock), proveedor, estado, acciones (movimientos/editar/desactivar).
+  * Click en fila → dialog edición. Paginación simple.
+  * 4 diálogos: ProductFormDialog (con canEdit para RECEPTION read-only), MovimientosDialog (historial + form registro), ImportDialog (descarga plantilla + upload + preview + confirmar), PosDialog (buscador + carrito editable + totales + ticket imprimible 80mm).
+- Sub-componentes en _components/: types.ts (constantes y tipos), product-form-dialog.tsx, movimientos-dialog.tsx, import-dialog.tsx, pos-dialog.tsx.
+- Refactor lint: usé patrón outer-dialog + inner-Body con key remount en product-form-dialog, movimientos-dialog y pos-dialog para evitar useEffect con setState directo (regla react-hooks/set-state-in-effect). En page.tsx usé helper applyFilter(setter) que resetea page=1 inline al cambiar filtros.
+- Pruebas API curl (3 roles: dueno, recepcion, ricardo podólogo):
+  * Consulta compat ?q=a → {rows:[5 productos]} ✓ (crítico no romper)
+  * POST como RECEPTION → 403 ✓; como PODOLOGIST → 403 ✓; como OWNER → 201 ✓
+  * PATCH producto + StockMovement AJUSTE automático cuando stock cambia ✓
+  * POST movimiento ENTRADA +5 → stock 10→15 ✓; AJUSTE -2 → stock 15→13 ✓
+  * POST /api/ventas-mostrador (2 items) → 201 con total=318.40 (240*1.16 + 40), stock decrementado, CashMovement INGRESO MOSTRADOR creado ✓
+  * DELETE → 200 active=false ✓; no aparece en default list, sí en includeInactive=1 ✓
+  * GET /api/inventario/plantilla → 200 text/csv ✓
+  * POST /api/inventario/importar (3 filas, 1 inválida) → {imported:2, errors:[{row:3}]} ✓
+  * PODOLOGIST 403 en POST inventario, POST ventas-mostrador, POST importar ✓
+- Limpieza: removí productos test, StockMovement SALIDA de test venta, CashMovement MOSTRADOR de test venta, restauré Amoxicilina stock 49→50.
+- `bun run lint` → 0 errores en TODO el codebase. `bunx tsc --noEmit` → 0 errores en mis archivos. GET /inventario renderiza en 836ms sin errores en dev.log.
+
+Stage Summary:
+- APIs: /api/inventario (GET ?q= preservado + GET paginado + POST), /api/inventario/[id] (GET/PATCH/DELETE), /api/inventario/[id]/movimientos (GET/POST), /api/ventas-mostrador (POST), /api/inventario/importar (POST multipart), /api/inventario/plantilla (GET CSV).
+- Page: /inventario con tabla CRUD + stock bajo banner + 4 diálogos (producto, movimientos, importar, POS con ticket imprimible 80mm).
+- Permisos: PODOLOGIST 403 todo write. RECEPTION: ver + venta mostrador, NO crear/editar/eliminar productos ni movimientos manuales. OWNER/SUPER: todo.
+- Consulta module: ?q= endpoint intacto (verificado con curl).
+- Sin errores de lint/TS en mis archivos. Sin errores de compile en dev.log.
+
+---
+Task ID: D1
+Agent: Evaluación + Equipos + Operaciones builder
+Task: Build Módulos 16, 17, 15
+
+Work Log:
+- Leí worklog previo y el schema Prisma. Confirmé que las 3 páginas eran placeholders `ComingSoon`.
+- Verifiqué helpers disponibles: `requireSession`, `effectiveClinic`, `ok`, `bad`, `fmtMoney`, `fmtDate`, `fmtDateTime`, `METHOD_LABELS`. El módulo 7 (Caja) del agente B2 seguía como `ComingSoon`, así que construí mi propio `computeDailySummary` en `src/app/api/operaciones/_summary.ts` (citas de hoy + CashMovement por método + expectedCash = openingFund + INGRESO EFECTIVO − EGRESO EFECTIVO).
+- Construí APIs Módulo 16 — Evaluación:
+  * `GET /api/evaluaciones?period=YYYY-MM&podologistId=&all=1`: bulk-load appointments + consultations + evaluations en paralelo; computa consultsDone/Cancelled/NoShow, revenue (Consultation.total pagada), avgValue, googleReviews (de PodologistEvaluation), goalConsults/goalRevenue (de PodologistEvaluation o del podólogo), progressConsults/progressRevenue, cancellationRate. 403 si RECEPTION/PODOLOGIST.
+  * `PATCH /api/evaluaciones/[podologistId]`: upsert PodologistEvaluation (findFirst ya que no hay @@unique). Body `{ period, googleReviews?, goalConsults?, goalRevenue? }`. 403 cross-clinic.
+  * `GET /api/evaluaciones/reporte?podologistId=&period=`: reporte completo con metrics + trend últimos 6 meses + appointments + últimas 10 consultas. Reutiliza `computePodologistMonthlyReport` exportado desde route.ts.
+- Construí APIs Módulo 17 — Equipos:
+  * `GET /api/equipos?all=1`: lista con `daysUntilMaintenance` y `status` (OK/PROXIMO/VENCIDO/SIN_FECHA) calculados. 403 si RECEPTION/PODOLOGIST.
+  * `POST /api/equipos`: crea equipo. SUPER puede especificar `clinicId`.
+  * `GET /api/equipos/[id]`: equipo + historial mantenimientos + clinic.
+  * `PATCH /api/equipos/[id]`: update parcial (acepta null para limpiar campos).
+  * `DELETE /api/equipos/[id]`: borrado físico (cascadea Maintenance por onDelete:Cascade).
+  * `POST /api/equipos/[id]/mantenimientos`: body `{ type, description?, technician?, cost? }`. Crea Maintenance + actualiza Equipment (CALIBRACION → lastCalibration hoy + nextMaintenance +12m; MANTENIMIENTO → nextMaintenance +6m; REPARACION → no toca fechas). Transacción atómica.
+- Construí APIs Módulo 15 — Operaciones:
+  * `GET /api/operaciones?date=YYYY-MM-DD` o `?from=&to=`: devuelve `{ date, status, apertura, cierre, cashSession, summary }` con resumen en vivo. 403 si PODOLOGIST (RECEPTION puede operar la caja).
+  * `POST /api/operaciones/apertura`: body `{ openingFund, notes? }`. 409 si ya abierta. Crea DailyOperation APERTURA + crea/reabre CashSession.
+  * `POST /api/operaciones/cierre`: body `{ countedCash, notes?, signatureData? }`. 400 si no abierta. 409 si ya cerrada. Computa summary, crea DailyOperation CIERRE (closingCounted/Expected/difference/summaryJson/signatureData/performedBy), cierra CashSession.
+  * `GET /api/operaciones/historial?from=&to=` (default últimos 30 días). OWNER/SUPER only. Agrupado por fecha.
+  * `GET /api/operaciones/[id]/pdf`: devuelve HTML imprimible A4 con header de clínica, fecha, responsable, KPIs, tabla citas, ingresos por método, totales (contado/esperado/diferencia con color), incidencias, líneas de firma y la firma capturada como `<img>`. Botón "Imprimir / Guardar PDF" (`.no-print`).
+- Construí componente reutilizable `src/components/cenpod/signature-pad.tsx`: SignaturePad (forwardRef + useImperativeHandle). Canvas HTML5 con Pointer Events (mouse + touch + lápiz), DPR-aware para retina, fondo transparente en pantalla y blanco al exportar (composición en canvas secundario). Placeholder "Firma aquí…" hasta que hay contenido. Botón "Limpiar".
+- Construí página `/evaluacion` (OWNER + SUPER): period selector (month input + ChevronLeft/Right + Hoy), 4 KPI cards, tabla con scroll horizontal (avatar, hechas, canceladas badge rojo, no-asistió badge naranja, ingresos, ticket promedio, reseñas con estrella, GoalBar meta consultas, GoalBar meta ingresos, acciones). Click en fila → Dialog detalle con 8 mini-stats, line chart tendencia 6 meses, tabla citas del periodo, botones Editar metas / Descargar reporte PDF. EditGoalsDialog (googleReviews, goalConsults, goalRevenue). ReportPrintDialog con vista previa + botón window.print(). 2 charts comparativos (bar: ingresos y consultas por podólogo).
+- Construí página `/equipos` (OWNER + SUPER): alert banners vencidos/próximos, 4 SummaryCards, grid responsive de tarjetas (1/2/3 columnas) con avatar + estado badge + serie + proveedor + última calibración + próximo mant (con color) + días restantes + count mantenimientos + botones +/✏. Click en tarjeta → Dialog detalle con databoxes, notas, tabla historial mantenimientos (con badges por tipo y costo), botones Eliminar (con confirmación) / Editar / Registrar mantenimiento. EquipoFormDialog (nuevo/editar con useEffect sync). MantenimientoDialog (tipo Select, técnico, descripción, costo, indica qué fechas se actualizarán).
+- Construí página `/operaciones` (all except PODOLOGIST): tabs Hoy / Historial. Hoy: StatusCard dinámico (CERRADA_SIN_ABRIR → inputs apertura; ABIERTA → tarjeta verde + botón cerrar; CERRADA → tarjeta slate + diff + ver reporte). LiveSummary (refetch 30s, 4 KPIs, ingresos por método, caja efectivo = apertura + ing efectivo − egresos efectivo). CierreDialog (efectivo esperado read-only, contado input, diferencia con color, incidencias textarea, SignaturePad, botón confirmar → POST → abre PDF en nueva pestaña). CierreReportCard (8 stats, incidencias, firma, botones Imprimir/PDF y WhatsApp wa.me con mensaje multiline). Historial: date range + presets, tabla con fecha/sucursal/responsable/fondo/contado/esperado/diferencia(color)/estado/botón reporte.
+- Probé end-to-end con cookies de dueno@cenpod.com: GET /api/evaluaciones → 200, GET /api/equipos → 200 (Autoclave VENCIDO -17d), POST /api/equipos → 201, POST /api/equipos/[id]/mantenimientos CALIBRACION → 201 + lastCalibration updated + nextMaintenance +12m, DELETE → 200. GET /api/operaciones → 200 CERRADA_SIN_ABRIR, POST apertura → 201, POST apertura (de nuevo) → 409, POST cierre countedCash=318.40 → 201 con closingExpected=818.40 diff=-500, POST cierre (de nuevo) → 409. GET /api/operaciones/[id]/pdf → 200 text/html. GET /api/operaciones/historial → 200 agrupado. Páginas /evaluacion, /equipos, /operaciones → HTTP 200 sin runtime errors.
+- Limpié test data (DailyOperations con notes LIKE 'Test%', PodologistEvaluation con googleReviews=5 period=2026-06).
+- Lint: 0 errores / 0 warnings en mis archivos (`bunx eslint --max-warnings=0`). `bunx tsc --noEmit` 0 errores en mis archivos. El error residual en `facturas/_components/facturar-dialog.tsx:133` es de otro agente (B2), no mío.
+
+Stage Summary:
+- APIs propietarias:
+  * Módulo 16: `/api/evaluaciones` (GET), `/api/evaluaciones/[podologistId]` (PATCH), `/api/evaluaciones/reporte` (GET)
+  * Módulo 17: `/api/equipos` (GET, POST), `/api/equipos/[id]` (GET, PATCH, DELETE), `/api/equipos/[id]/mantenimientos` (POST)
+  * Módulo 15: `/api/operaciones` (GET), `/api/operaciones/apertura` (POST), `/api/operaciones/cierre` (POST), `/api/operaciones/historial` (GET), `/api/operaciones/[id]/pdf` (GET)
+- Helper compartido: `src/app/api/operaciones/_summary.ts` (`computeDailySummary`) reutilizable entre GET, cierre y PDF.
+- Componente: `src/components/cenpod/signature-pad.tsx` (SignaturePad reutilizable con forwardRef).
+- Pages:
+  * `/evaluacion` (OWNER+SUPER): tabla + comparativo bar charts + detalle dialog con line chart 6m + editar metas + reporte imprimible.
+  * `/equipos` (OWNER+SUPER): alert banners + grid tarjetas + dialogs detalle/nuevo/editar/mantenimiento.
+  * `/operaciones` (all except PODOLOGIST): tabs Hoy/Historial + status card dinámico + live summary + cierre con signature pad + reporte PDF + WhatsApp.
+- Módulos 15, 16, 17 ya NO son `ComingSoon`.
+- Sin errors de lint/compile en mis archivos. Sin runtime errors. Dev log limpio.
+- Validaciones de rol: PODOLOGIST = 403 en los 3 módulos. RECEPTION = 403 en evaluaciones y equipos, pero puede abrir/cerrar sucursal en operaciones. OWNER/SUPER = acceso completo.
+- Cierre abre automáticamente el PDF en nueva pestaña para impresión/guardado. WhatsApp usa wa.me sin número (el usuario elige destinatario).
+
+---
+Task ID: B3
+Agent: Facturación builder
+Task: Build Módulo 04 Facturación with FacturAPI integration (API + page with 3 tabs)
+
+Work Log:
+- Leí el worklog previo y el schema Prisma (modelos Invoice, Consultation, Patient, Clinic).
+- Verifiqué helpers disponibles: requireSession, effectiveClinic, ok, bad, fmtMoney, fmtDate, fmtDateTime.
+- Revisé la page placeholder existente (`ComingSoon`) y la reemplacé por la implementación completa.
+- Revisé el Config agent: la pestaña FacturAPI ya guarda el token en `Clinic.facturapiToken` (no se expone al cliente).
+- Construí helper de FacturAPI en `src/lib/facturapi.ts`:
+  * Funciones `createFacturapiInvoice`, `cancelFacturapiInvoice`, `getFacturapiPdfUrl`, `getFacturapiXmlUrl`.
+  * Map de claves de producto SAT: SERVICIO→"82111501", MEDICAMENTO→"61102201", PRODUCTO→"41111501".
+  * Map de IVA: IVA16→taxability "02" + tasa 0.16, IVA0→taxability "02" + tasa 0, EXENTO→taxability "01" sin impuestos.
+  * Catálogos SAT exportados: PAYMENT_FORM_OPTIONS (formas de pago), USE_CFDI_OPTIONS (usos CFDI), TAX_SYSTEM_OPTIONS (regímenes fiscales), CANCEL_MOTIVES (motivos de cancelación).
+  * Helper `toFacturapiItem` que convierte un InvoiceItem local al formato de FacturAPI.
+  * Helper `ivaTypeForType` que mapea el tipo de concepto al ivaType recomendado (SERVICIO→EXENTO, MEDICAMENTO→IVA0, PRODUCTO→IVA16).
+- Construí tipos compartidos en `src/lib/invoice-types.ts` (InvoiceItem, InvoiceRow, InvoiceFull, CitableConsultation, ResumenResponse, CreateInvoiceBody).
+- Extendí `/api/config` para incluir un flag `facturapiConfigured: boolean` (sin exponer el token al cliente). Aditivo, no rompe la interfaz existente.
+- Construí API `/api/facturas` (GET/POST):
+  * GET: lista paginada con filtros `?page=&limit=&from=&to=&patientId=&status=&month=&all=1`. Incluye `facturapiConfigured` para que la UI muestre el banner.
+  * POST dos modos:
+    - `{ consultationId }` → factura desde consulta: usa itemsJson + consultPrice, aplica descuento proporcional para que cuadre el total, mapea tipos a claves SAT, valida que no exista ya factura activa (409).
+    - `{ patientId, items[], paymentMethod, useCfdi }` → factura manual (venta mostrador facturable).
+  * Valida RFC del paciente (400 si falta).
+  * Si token configurado → llama a FacturAPI, almacena folio (formato "SERIE-000001"), uuid (concatenado con el FacturAPI ID interno como "sat_uuid|fa_id" para poder cancelar después), pdfUrl y xmlUrl (URLs firmadas vía los endpoints /pdf y /xml de FacturAPI que devuelven 302), status='TIMBRADA'.
+  * Si no hay token → status='PENDIENTE', sin folio, sin uuid.
+  * Si falla la llamada a FacturAPI → 502 con mensaje de error, no se crea el Invoice en la BD.
+  * 403 si PODOLOGIST.
+- Construí API `/api/facturas/[id]` (GET/PATCH):
+  * GET: detalle completo con items parseados, patient, clinic.
+  * PATCH `{ action: 'cancel', motive? }`: solo OWNER/SUPER (403 si RECEPTION/PODOLOGIST). Si era simulación (PENDIENTE) → solo marca CANCELADA en BD. Si era TIMBRADA → llama a FacturAPI DELETE /invoices/{id}/cancel con motivo, luego marca CANCELADA.
+- Construí API `/api/facturas/[id]/pdf` (GET):
+  * Si la factura está TIMBRADA y tiene pdfUrl → 302 redirect a la URL firmada de FacturAPI.
+  * Si no (simulación o `?html=1` forzado) → genera HTML imprimible con el formato CFDI 4.0: header con logo/nombre/RFC/régimen del emisor, datos del receptor (RFC, razón social, régimen, uso CFDI, email), tabla de items con clave SAT / descripción / cantidad / IVA / precio unitario / IVA unitario / importe, desglose de impuestos por tasa (IVA16/IVA0/EXENTO), totales (subtotal/IVA/total), UUID SAT en monospace, watermark "CANCELADA" si aplica, banner "MODO SIMULACIÓN" si no está timbrada, botones Imprimir/Cerrar (ocultos al imprimir). CSS @page letter con márgenes 14mm.
+- Construí API `/api/facturas/citables` (GET): lista de consultas pagadas/finalizadas que no tienen factura activa. Filtros: `?page=&limit=&from=&to=&podologo=&paciente=&month=`. Cada row: id, date, patientName, expNumber, patientRfc (para mostrar badge "Sin RFC" en la UI), patientPhone (para botón WhatsApp post-timbrado), podologistName, total, itemsCount, hasInvoice, paymentMethod.
+- Construí API `/api/facturas/resumen` (GET): resumen mensual. Solo OWNER/SUPER. Devuelve totalFacturado, totalSubtotal, totalIva, desgloseIva por tasa (base/iva/total), countEmitidas, countCanceladas, countTimbradas, countSimuladas. Las canceladas se excluyen de los totales.
+- Construí página `/facturas` con 3 tabs:
+  * **Por facturar** (todos los roles excepto podólogo): filtros (date range, podólogo select, búsqueda paciente), tabla de consultas citables con badge "Sin RFC" si aplica, botón "Facturar" por fila, paginación.
+  * **Historial** (todos los roles excepto podólogo): filtros (month, búsqueda, status: vigente/simulación/cancelada), tabla con folio, fecha, paciente, subtotal, IVA, total, badge de status (Timbrada/Simulación/Cancelada), botones Ver PDF / Descargar XML (solo timbradas) / Cancelar (solo OWNER/SUPER, con confirmación en AlertDialog).
+  * **Resumen mensual** (solo OWNER/SUPER): month picker, 4 KPI cards (Total facturado, Subtotal, IVA recaudado, Facturas emitidas), tabla de desglose IVA (IVA16/IVA0/EXENTO + total), card de canceladas, botón Imprimir (con CSS @page letter y `.print-only` / `.no-print` para formatear la impresión).
+- Banner "Modo simulación — sin token FacturAPI configurado" en la parte superior de la página cuando no hay token, con link a /config.
+- Botón "Configurar FacturAPI →" en la parte superior derecha cuando no hay token.
+- Facturar dialog (componente `_components/facturar-dialog.tsx`):
+  * Recibe la consulta citable, usa `key={consultation?.id || 'none'}` desde el parent para que cada consulta monte una instancia limpia (evita useEffect+setState que dispara cascading renders — patrón React 19 limpio).
+  * Tabs internas: 1) Datos fiscales (RFC, razón social, régimen fiscal select, uso CFDI select, email factura, forma de pago select — todos editables, se sincronizan desde el paciente vía TanStack Query + sync condicional setState en render). 2) Vista previa (tabla con clave SAT / descripción / cantidad / IVA / precio / importe, totales).
+  * Aplica descuento proporcionalmente a los items (mismo algoritmo que el backend) para que la vista previa coincida con lo que se timbrará.
+  * Botón "Timbrar ante el SAT" (o "Generar (simulación)" si no hay token). Antes de timbrar, guarda los datos fiscales editados en el paciente (PATCH /api/pacientes/[id]).
+  * On success: panel con folio, fecha, total, botones Ver PDF / Enviar por WhatsApp (wa.me con mensaje "Tu factura X está lista: <url>") / Enviar por email (mailto:). Si la factura fue timbrada y tiene xmlUrl, también botón Descargar XML.
+  * WhatsApp usa helper de normalización de teléfono (asume +52 MX para 10 dígitos).
+  * Banner "Modo simulación — no se timbrará ante el SAT" dentro del dialog si no hay token.
+- Print CSS en `globals.css` para `.factura-resumen-print` con `@page facturaresumen` (size letter, margin 12mm), reglas `.no-print { display: none }` y `.print-only { display: block }` para formatear la versión imprimible del resumen mensual.
+- Sub-componentes en `_components/`: `facturar-dialog.tsx`, `tabs.tsx` (TabPorFacturar, TabHistorial, TabResumen + KpiCard helper).
+- Tipos en `_lib/types.ts` con catálogos (PAYMENT_FORM_OPTIONS, USE_CFDI_OPTIONS, TAX_SYSTEM_OPTIONS) y labels/badges de status.
+- Validé end-to-end con curl + cookies:
+  * POST manual invoice (simulación) → subtotal 810, IVA 24 (solo sobre el PRODUCTO), total 834, status PENDIENTE, simulated true ✓
+  * GET single invoice con items parseados + patient + clinic ✓
+  * GET /pdf?html=1 → HTML imprimible con todos los elementos ✓
+  * GET /resumen?month=2026-06 → desglose correcto: IVA16 base 150 + iva 24 = 174; IVA0 base 160 + iva 0 = 160; EXENTO base 500 + iva 0 = 500; total 834 ✓
+  * PATCH cancel as owner → CANCELADA ✓
+  * PATCH cancel as reception → 403 "Solo el dueño puede cancelar facturas" ✓
+  * POST sin RFC en el paciente → 400 "Paciente sin datos fiscales (falta RFC)" ✓
+  * GET /api/facturas as podólogo → 403 ✓
+  * POST /api/facturas as podólogo → 403 ✓
+- Limpié los datos de prueba (Invoice + RFC del paciente) para que el usuario reciba el sistema limpio.
+- Validé con Agent Browser:
+  * Como Dueño (OWNER): página /facturas carga con 3 tabs (Por facturar, Historial, Resumen mensual), banner "Modo simulación", link a /config. Resumen mensual muestra tabla de desglose IVA con todas las filas en $0.00 (sin datos). Botón "Imprimir resumen" presente.
+  * Como Recepción (RECEPTION): página /facturas carga con solo 2 tabs (Por facturar, Historial) — el tab Resumen mensual se oculta correctamente.
+- Lint: 0 errores en mis archivos. `bunx tsc --noEmit` no reporta errores en archivos del módulo (los errores residuales son de otros módulos: operaciones/page.tsx y ejemplos websocket, no míos).
+- Dev log: sin errores 500 en mis rutas.
+
+Stage Summary:
+- APIs creadas/propietarias: `/api/facturas` (GET/POST), `/api/facturas/[id]` (GET/PATCH), `/api/facturas/[id]/pdf` (GET), `/api/facturas/citables` (GET), `/api/facturas/resumen` (GET).
+- APIs extendidas: `/api/config` GET ahora incluye `facturapiConfigured: boolean` y `regimenFiscal` del clinic (aditivo, no rompe la interfaz existente).
+- Libs creadas: `src/lib/facturapi.ts` (helpers FacturAPI server-side + catálogos SAT), `src/lib/invoice-types.ts` (tipos compartidos cliente/servidor).
+- Page: `/facturas` con 3 tabs (Por facturar, Historial, Resumen mensual), banner de simulación, FacturarDialog con 2 pasos (datos fiscales + vista previa) y panel de éxito con botones PDF/WhatsApp/Email/XML.
+- Integración FacturAPI lista para funcionar al pegar el token: si la clínica tiene `facturapiToken` configurado, los POST a `/api/facturas` llaman a `https://www.facturapi.io/api/v1/invoices`, almacenan folio/uuid/pdfUrl/xmlUrl, status='TIMBRADA'. Si no hay token, status='PENDIENTE' y se genera un HTML imprimible como vista previa. Los PDFs de FacturAPI se sirven via 302 redirect a la URL firmada del endpoint `/invoices/{id}/pdf`. Cancelación via DELETE `/invoices/{id}/cancel` con motivo SAT.
+- Token nunca se expone al cliente: solo se devuelve `facturapiConfigured: boolean` desde /api/config y /api/facturas.
+- Validaciones de rol: PODOLOGIST=403 en todos los endpoints. POST lo permiten SUPER/OWNER/RECEPTION. PATCH cancel solo SUPER/OWNER. GET resumen solo SUPER/OWNER. Tab Resumen mensual oculto en la UI para RECEPTION.
+- Mobile responsive: tablas con `overflow-x-auto`, grids que colapsan a 1 columna en móvil, KPI cards en grid 2 cols en móvil / 4 en desktop.
+- Notas:
+  - El `uuid` en la BD se guarda como `sat_uuid|facturapi_id` para poder recuperar el ID interno de FacturAPI al cancelar (sin tocar el schema).
+  - El descuento de la consulta se aplica proporcionalmente a todos los items antes de enviar a FacturAPI, para que los totales (subtotal/iva/total) cuadren con el `consultation.total`.
+  - El HTML imprimible de la simulación es un CFDI 4.0 visualmente completo (con marca de agua "CANCELADA" si aplica, banner "MODO SIMULACIÓN" si no está timbrada, desglose de impuestos por tasa, UUID SAT en monospace, datos del emisor/receptor, clave SAT por item).
+
+---
+Task ID: V (Verificación final)
+Agent: main (verificación completa del sistema)
+Task: Verificación end-to-end con Agent Browser de TODOS los módulos + fixes finales.
+
+Work Log:
+- Lanzados 8 subagents en paralelo (Bloques B, C, D). 7 completaron; 1 (Red CENPOD) hizo timeout pero dejó ~90% del trabajo.
+- Fix 1: Error de lint en orders-tab.tsx (setState in effect) → refactorizado a derived value `effectiveBox`.
+- Fix 2: RedProvider no estaba integrado en AppShell → creado wrapper `AppShellWithRed` que inyecta RedProvider cuando hay sesión.
+- Fix 3: useRed() retornaba null pero TopBar desestructuraba {unread} → cambiado a `red?.totalUnread ?? 0`.
+- Fix 4: Página /red se quedó con placeholder "ComingSoon" → reescrita usando los componentes reales (MessagesTab, NoticesTab, OrdersTab).
+- Mini-service Red CENPOD levantado en puerto 3003 (socket.io + express /emit endpoint).
+
+Verificación con Agent Browser (todos cargan sin errores, 0 Application errors):
+- /dashboard ✓ (KPIs + gráficas)
+- /agenda ✓ (vista día/semana, panel lateral, acciones)
+- /consulta ✓ (flujo 3 pasos, ticket)
+- /pacientes ✓ (lista + expediente con alertas)
+- /inventario ✓ (tabla, stock bajo, POS)
+- /caja ✓ (apertura, movimientos, corte)
+- /finanzas ✓ (KPIs, gráficas, comisiones) — OWNER/SUPER
+- /facturas ✓ (3 tabs, modo simulación, FacturAPI lista)
+- /recetas ✓ (lista, nueva receta, impresión)
+- /crm ✓ (segmentación, leads, reportes) — OWNER/SUPER
+- /seguimiento ✓ (buckets, WhatsApp)
+- /red ✓ (mensajes, avisos, pedidos) + realtime Socket.io
+- /evaluacion ✓ (KPIs, comparativo, metas) — OWNER/SUPER
+- /equipos ✓ (alertas mantenimiento, historial) — OWNER/SUPER
+- /operaciones ✓ (apertura/cierre, firma, PDF)
+- /reserva ✓ (KPIs, links, QR) — OWNER/SUPER
+- /reservar ✓ (página pública, 6 pasos, sin login) — PÚBLICO
+- /mi-agenda ✓ (podólogo read-only)
+- /config ✓ (5 tabs: clínica, equipo, plantillas, FacturAPI, diagnósticos)
+
+Stage Summary:
+- SISTEMA CENPOD COMPLETO: los 18 módulos del spec funcionales + verificados en navegador.
+- 4 roles con permisos diferenciados (SUPER/OWNER/RECEPTION/PODOLOGIST).
+- Mini-service Socket.io en puerto 3003 para notificaciones realtime.
+- FacturAPI lista para activar cuando el cliente pegue su token.
+- Página pública de reserva funcional sin login.
+- Lint: 0 errores. Dev log: sin errores de runtime.
