@@ -1,6 +1,7 @@
 import { NextRequest } from 'next/server'
 import { db } from '@/lib/db'
 import { requireSession, ok, bad } from '@/lib/api'
+import { logAudit } from '@/lib/audit'
 import { startOfDay, endOfDay, addDays } from 'date-fns'
 
 // ============================================================
@@ -68,6 +69,7 @@ export async function GET(_req: NextRequest, ctx: { params: Promise<{ id: string
     ticketPrinted: c.ticketPrinted,
     followUpDays: c.followUpDays,
     items: safeParse(c.itemsJson),
+    soapJson: c.soapJson ? safeParseSoap(c.soapJson) : null,
     patient: c.patient,
     podologist: c.podologist,
     appointment: c.appointment,
@@ -76,6 +78,14 @@ export async function GET(_req: NextRequest, ctx: { params: Promise<{ id: string
     createdAt: c.createdAt,
     updatedAt: c.updatedAt,
   })
+}
+
+function safeParseSoap(s: string): { S?: string; O?: any; A?: string; P?: string } {
+  try {
+    return JSON.parse(s)
+  } catch {
+    return {}
+  }
 }
 
 export async function PATCH(req: NextRequest, ctx: { params: Promise<{ id: string }> }) {
@@ -110,6 +120,7 @@ export async function PATCH(req: NextRequest, ctx: { params: Promise<{ id: strin
     paid,
     followUpDays,
     ticketPrinted,
+    soapJson,
   } = body as {
     reason?: string | null
     referredBy?: string | null
@@ -123,6 +134,7 @@ export async function PATCH(req: NextRequest, ctx: { params: Promise<{ id: strin
     paid?: boolean
     followUpDays?: number | null
     ticketPrinted?: boolean
+    soapJson?: { S?: string; O?: any; A?: string; P?: string }
   }
 
   // Recalcular totales si se actualizan items/precio/descuento
@@ -170,25 +182,55 @@ export async function PATCH(req: NextRequest, ctx: { params: Promise<{ id: strin
   }
 
   // ── Actualizar consulta
+  const updateData: any = {
+    reason: reason !== undefined ? (reason || null) : existing.reason,
+    referredBy: referredBy !== undefined ? (referredBy || null) : existing.referredBy,
+    diagnosis: diagnosis !== undefined ? (diagnosis || null) : existing.diagnosis,
+    treatment: treatment !== undefined ? (treatment || null) : existing.treatment,
+    notes: notes !== undefined ? (notes || null) : existing.notes,
+    itemsJson,
+    consultPrice: consultPrice !== undefined ? Number(consultPrice) || 0 : existing.consultPrice,
+    discount: discount !== undefined ? Number(discount) || 0 : existing.discount,
+    productsTotal,
+    total,
+    paymentMethod: paymentMethod !== undefined ? (paymentMethod || null) : existing.paymentMethod,
+    paid: willPay,
+    followUpDays: followUpDays !== undefined ? (followUpDays ?? null) : existing.followUpDays,
+    ticketPrinted: ticketPrinted !== undefined ? !!ticketPrinted : existing.ticketPrinted,
+  }
+
+  // SOAP note (sección 20 del spec NOM-004): nota de evolución
+  let soapChanged = false
+  if (soapJson !== undefined) {
+    if (soapJson === null) {
+      updateData.soapJson = null
+      soapChanged = true
+    } else if (typeof soapJson === 'object') {
+      // Merge con SOAP existente (si lo hay) para soportar guardado parcial
+      const existingSoap = existing.soapJson ? safeParseSoap(existing.soapJson) : {}
+      const merged = { ...existingSoap, ...soapJson }
+      updateData.soapJson = JSON.stringify(merged)
+      soapChanged = true
+    }
+  }
+
   const updated = await db.consultation.update({
     where: { id },
-    data: {
-      reason: reason !== undefined ? (reason || null) : existing.reason,
-      referredBy: referredBy !== undefined ? (referredBy || null) : existing.referredBy,
-      diagnosis: diagnosis !== undefined ? (diagnosis || null) : existing.diagnosis,
-      treatment: treatment !== undefined ? (treatment || null) : existing.treatment,
-      notes: notes !== undefined ? (notes || null) : existing.notes,
-      itemsJson,
-      consultPrice: consultPrice !== undefined ? Number(consultPrice) || 0 : existing.consultPrice,
-      discount: discount !== undefined ? Number(discount) || 0 : existing.discount,
-      productsTotal,
-      total,
-      paymentMethod: paymentMethod !== undefined ? (paymentMethod || null) : existing.paymentMethod,
-      paid: willPay,
-      followUpDays: followUpDays !== undefined ? (followUpDays ?? null) : existing.followUpDays,
-      ticketPrinted: ticketPrinted !== undefined ? !!ticketPrinted : existing.ticketPrinted,
-    },
+    data: updateData,
   })
+
+  // Auditoría de nota de evolución SOAP (NOM-004 sección 20)
+  if (soapChanged) {
+    await logAudit(
+      existing.patientId,
+      existing.clinicId,
+      user!.id,
+      user!.name,
+      'CREATE_EVOLUTION',
+      'EVOLUCION',
+      `Actualización de nota de evolución SOAP en consulta ${existing.id}`,
+    )
+  }
 
   // ── Si cambió a pagado, ejecutar lógica de cobro
   if (becamePaid) {

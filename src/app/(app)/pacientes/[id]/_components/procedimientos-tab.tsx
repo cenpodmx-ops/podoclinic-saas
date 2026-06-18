@@ -1,0 +1,587 @@
+'use client'
+
+import { useRef, useState } from 'react'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
+import { Card, CardContent } from '@/components/ui/card'
+import { Button } from '@/components/ui/button'
+import { Badge } from '@/components/ui/badge'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import { Textarea } from '@/components/ui/textarea'
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+  DialogDescription,
+} from '@/components/ui/dialog'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
+import { Plus, Loader2, FileText, Trash2, Pencil, Printer } from 'lucide-react'
+import { toast } from 'sonner'
+import { fmtDate, fmtDateTime } from '@/lib/format'
+import { SignaturePad, type SignaturePadHandle } from '@/components/cenpod/signature-pad'
+import { ChipMultiSelect } from './chip-multi-select'
+import {
+  PROCEDIMIENTOS_SUGERIDOS,
+  ANTISEPTICOS,
+  INSTRUMENTAL,
+  ANESTESIA_TIPOS,
+} from './constants'
+import type { Patient, ProcedureRow } from './types'
+
+type FormState = Partial<ProcedureRow> & {
+  fecha?: string
+  anestesia?: { tipo?: string; concentracion?: string; dosis?: string; lote?: string; caducidad?: string; reaccionAdversa?: string }
+}
+
+const EMPTY: FormState = {
+  procedimiento: '',
+  indicacion: '',
+  diagnosticoRelacionado: '',
+  regionAnatomica: '',
+  pieDedoLado: '',
+  tecnica: '',
+  antisepctico: '',
+  instrumental: '',
+  hemostasia: '',
+  hallazgos: '',
+  complicaciones: '',
+  materialCuracion: '',
+  indicacionesPost: '',
+  tolerancia: '',
+  profesionalResponsable: '',
+  fecha: new Date().toISOString().slice(0, 16),
+  anestesia: { tipo: 'Ninguna' },
+}
+
+function tryParseAnestesia(json?: string | null) {
+  if (!json) return null
+  try {
+    return JSON.parse(json)
+  } catch {
+    return null
+  }
+}
+
+export function ProcedimientosTab({ patient }: { patient: Patient }) {
+  const qc = useQueryClient()
+  const [open, setOpen] = useState(false)
+  const [editId, setEditId] = useState<string | null>(null)
+  const [form, setForm] = useState<FormState>(EMPTY)
+  const [viewing, setViewing] = useState<ProcedureRow | null>(null)
+  const [saving, setSaving] = useState(false)
+  const sigRef = useRef<SignaturePadHandle>(null)
+
+  const { data, isLoading } = useQuery<ProcedureRow[]>({
+    queryKey: ['procedimientos', patient.id],
+    queryFn: () =>
+      fetch(`/api/procedimientos?patientId=${patient.id}`)
+        .then((r) => r.json())
+        .then((d) => d?.data || d || []),
+    enabled: !!patient.id,
+    retry: false,
+  })
+
+  const procs = data || patient.procedures || []
+
+  function openNew() {
+    setEditId(null)
+    setForm({ ...EMPTY, profesionalResponsable: '' })
+    setOpen(true)
+  }
+
+  function openEdit(p: ProcedureRow) {
+    setEditId(p.id)
+    setForm({
+      ...p,
+      fecha: new Date(p.fecha).toISOString().slice(0, 16),
+      anestesia: tryParseAnestesia(p.anestesiaJson) || { tipo: 'Ninguna' },
+    })
+    setOpen(true)
+  }
+
+  async function save() {
+    if (!form.procedimiento?.trim()) {
+      toast.error('Indica el procedimiento')
+      return
+    }
+    setSaving(true)
+    try {
+      const firma = sigRef.current?.getDataUrl() || form.firmaData || null
+      const body = {
+        ...form,
+        fecha: form.fecha ? new Date(form.fecha).toISOString() : new Date().toISOString(),
+        anestesiaJson: JSON.stringify(form.anestesia || {}),
+        firmaData: firma,
+      }
+      const url = editId
+        ? `/api/procedimientos/${editId}`
+        : `/api/procedimientos?patientId=${patient.id}`
+      const method = editId ? 'PATCH' : 'POST'
+      const res = await fetch(url, {
+        method,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      })
+      if (!res.ok) {
+        const e = await res.json().catch(() => ({}))
+        throw new Error(e.error || 'Error al guardar')
+      }
+      toast.success(editId ? 'Procedimiento actualizado' : 'Procedimiento registrado')
+      setOpen(false)
+      qc.invalidateQueries({ queryKey: ['procedimientos', patient.id] })
+      qc.invalidateQueries({ queryKey: ['paciente', patient.id] })
+    } catch (e: any) {
+      toast.error(e.message)
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  async function remove(p: ProcedureRow) {
+    if (!confirm(`¿Eliminar el procedimiento "${p.procedimiento}"?`)) return
+    try {
+      const res = await fetch(`/api/procedimientos/${p.id}`, { method: 'DELETE' })
+      if (!res.ok) throw new Error('Error al eliminar')
+      toast.success('Procedimiento eliminado')
+      qc.invalidateQueries({ queryKey: ['procedimientos', patient.id] })
+    } catch (e: any) {
+      toast.error(e.message)
+    }
+  }
+
+  const set = <K extends keyof FormState>(k: K, v: FormState[K]) =>
+    setForm((f) => ({ ...f, [k]: v }))
+  const setAnest = (k: string, v: any) =>
+    setForm((f) => ({ ...f, anestesia: { ...(f.anestesia || {}), [k]: v } }))
+
+  return (
+    <div className="space-y-3">
+      <div className="flex items-center justify-between">
+        <p className="text-sm text-muted-foreground">
+          {procs.length} procedimiento(s) registrado(s)
+        </p>
+        <Button size="sm" onClick={openNew} style={{ backgroundColor: '#0a3143' }}>
+          <Plus className="h-4 w-4" /> Nuevo procedimiento
+        </Button>
+      </div>
+
+      {isLoading ? (
+        <div className="flex items-center justify-center p-6">
+          <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+        </div>
+      ) : procs.length === 0 ? (
+        <Card>
+          <CardContent className="p-8 text-center text-sm text-muted-foreground">
+            Sin procedimientos registrados.
+          </CardContent>
+        </Card>
+      ) : (
+        <div className="space-y-2">
+          {procs.map((p) => (
+            <Card key={p.id} className="hover:shadow-sm transition-shadow">
+              <CardContent className="p-3 flex items-start justify-between gap-2">
+                <button
+                  className="text-left min-w-0 flex-1"
+                  onClick={() => setViewing(p)}
+                >
+                  <p className="text-sm font-medium flex items-center gap-2">
+                    <FileText className="h-4 w-4" style={{ color: '#0a3143' }} />
+                    {p.procedimiento}
+                  </p>
+                  <p className="text-xs text-muted-foreground mt-0.5">
+                    {fmtDate(p.fecha)} · {p.regionAnatomica || 'Sin región'} · {p.pieDedoLado || ''}
+                  </p>
+                  {p.profesionalResponsable && (
+                    <p className="text-xs text-muted-foreground">
+                      Profesional: {p.profesionalResponsable}
+                    </p>
+                  )}
+                </button>
+                <div className="flex gap-1 shrink-0">
+                  {p.firmaData && (
+                    <Badge variant="outline" className="text-[10px] text-emerald-700 border-emerald-300">
+                      Firmado
+                    </Badge>
+                  )}
+                  <Button size="icon" variant="ghost" onClick={() => openEdit(p)}>
+                    <Pencil className="h-3.5 w-3.5" />
+                  </Button>
+                  <Button size="icon" variant="ghost" onClick={() => remove(p)} className="text-red-600">
+                    <Trash2 className="h-3.5 w-3.5" />
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      )}
+
+      {/* Form dialog */}
+      <Dialog open={open} onOpenChange={setOpen}>
+        <DialogContent className="max-w-3xl max-h-[92vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>
+              {editId ? 'Editar procedimiento' : 'Nuevo procedimiento'}
+            </DialogTitle>
+            <DialogDescription>
+              Registra el procedimiento realizado. Todos los campos clínicos son requeridos por NOM-004.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-3">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              <div>
+                <Label>Procedimiento *</Label>
+                <Input
+                  list="proc-list"
+                  value={form.procedimiento || ''}
+                  onChange={(e) => set('procedimiento', e.target.value)}
+                />
+                <datalist id="proc-list">
+                  {PROCEDIMIENTOS_SUGERIDOS.map((p) => (
+                    <option key={p} value={p} />
+                  ))}
+                </datalist>
+              </div>
+              <div>
+                <Label>Fecha</Label>
+                <Input
+                  type="datetime-local"
+                  value={form.fecha || ''}
+                  onChange={(e) => set('fecha', e.target.value)}
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              <div>
+                <Label>Indicación</Label>
+                <Input
+                  value={form.indicacion || ''}
+                  onChange={(e) => set('indicacion', e.target.value)}
+                />
+              </div>
+              <div>
+                <Label>Diagnóstico relacionado</Label>
+                <Input
+                  value={form.diagnosticoRelacionado || ''}
+                  onChange={(e) => set('diagnosticoRelacionado', e.target.value)}
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+              <div>
+                <Label>Región anatómica</Label>
+                <Input
+                  value={form.regionAnatomica || ''}
+                  onChange={(e) => set('regionAnatomica', e.target.value)}
+                />
+              </div>
+              <div>
+                <Label>Pie / dedo / lado</Label>
+                <Input
+                  placeholder="Ej: Hallux derecho"
+                  value={form.pieDedoLado || ''}
+                  onChange={(e) => set('pieDedoLado', e.target.value)}
+                />
+              </div>
+              <div>
+                <Label>Antiséptico</Label>
+                <Select
+                  value={form.antisepctico || ''}
+                  onValueChange={(v) => set('antisepctico', v)}
+                >
+                  <SelectTrigger className="w-full">
+                    <SelectValue placeholder="Selecciona..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {ANTISEPTICOS.map((a) => (
+                      <SelectItem key={a} value={a}>
+                        {a}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
+            <div>
+              <Label>Técnica</Label>
+              <Textarea
+                rows={2}
+                value={form.tecnica || ''}
+                onChange={(e) => set('tecnica', e.target.value)}
+              />
+            </div>
+
+            <div>
+              <Label>Instrumental</Label>
+              <div className="mt-1">
+                <ChipMultiSelect
+                  options={INSTRUMENTAL}
+                  selected={(form.instrumental || '').split(',').map((s) => s.trim()).filter(Boolean)}
+                  onChange={(arr) => set('instrumental', arr.join(', '))}
+                />
+              </div>
+            </div>
+
+            {/* Anestesia */}
+            <div className="rounded-md border p-3 space-y-2 bg-muted/30">
+              <Label className="text-xs uppercase font-semibold">Anestesia</Label>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
+                <div>
+                  <Label className="text-xs">Tipo</Label>
+                  <Select
+                    value={form.anestesia?.tipo || 'Ninguna'}
+                    onValueChange={(v) => setAnest('tipo', v)}
+                  >
+                    <SelectTrigger className="w-full">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {ANESTESIA_TIPOS.map((a) => (
+                        <SelectItem key={a} value={a}>
+                          {a}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <Label className="text-xs">Concentración</Label>
+                  <Input
+                    className="h-9"
+                    placeholder="1%, 2%..."
+                    value={form.anestesia?.concentracion || ''}
+                    onChange={(e) => setAnest('concentracion', e.target.value)}
+                  />
+                </div>
+                <div>
+                  <Label className="text-xs">Dosis</Label>
+                  <Input
+                    className="h-9"
+                    placeholder="1.5 mL"
+                    value={form.anestesia?.dosis || ''}
+                    onChange={(e) => setAnest('dosis', e.target.value)}
+                  />
+                </div>
+                <div>
+                  <Label className="text-xs">Lote</Label>
+                  <Input
+                    className="h-9"
+                    value={form.anestesia?.lote || ''}
+                    onChange={(e) => setAnest('lote', e.target.value)}
+                  />
+                </div>
+                <div>
+                  <Label className="text-xs">Caducidad</Label>
+                  <Input
+                    className="h-9"
+                    placeholder="MM/AAAA"
+                    value={form.anestesia?.caducidad || ''}
+                    onChange={(e) => setAnest('caducidad', e.target.value)}
+                  />
+                </div>
+                <div>
+                  <Label className="text-xs">Reacción adversa</Label>
+                  <Input
+                    className="h-9"
+                    value={form.anestesia?.reaccionAdversa || ''}
+                    onChange={(e) => setAnest('reaccionAdversa', e.target.value)}
+                  />
+                </div>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              <div>
+                <Label>Hemostasia</Label>
+                <Input
+                  value={form.hemostasia || ''}
+                  onChange={(e) => set('hemostasia', e.target.value)}
+                />
+              </div>
+              <div>
+                <Label>Tolerancia del paciente</Label>
+                <Input
+                  value={form.tolerancia || ''}
+                  onChange={(e) => set('tolerancia', e.target.value)}
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              <div>
+                <Label>Hallazgos</Label>
+                <Textarea
+                  rows={2}
+                  value={form.hallazgos || ''}
+                  onChange={(e) => set('hallazgos', e.target.value)}
+                />
+              </div>
+              <div>
+                <Label>Complicaciones</Label>
+                <Textarea
+                  rows={2}
+                  value={form.complicaciones || ''}
+                  onChange={(e) => set('complicaciones', e.target.value)}
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              <div>
+                <Label>Material de curación</Label>
+                <Input
+                  value={form.materialCuracion || ''}
+                  onChange={(e) => set('materialCuracion', e.target.value)}
+                />
+              </div>
+              <div>
+                <Label>Profesional responsable</Label>
+                <Input
+                  value={form.profesionalResponsable || ''}
+                  onChange={(e) => set('profesionalResponsable', e.target.value)}
+                />
+              </div>
+            </div>
+
+            <div>
+              <Label>Indicaciones post-procedimiento</Label>
+              <Textarea
+                rows={2}
+                value={form.indicacionesPost || ''}
+                onChange={(e) => set('indicacionesPost', e.target.value)}
+              />
+            </div>
+
+            {/* Firma */}
+            <div>
+              <Label className="text-xs uppercase tracking-wider text-muted-foreground">
+                Firma del profesional
+              </Label>
+              <SignaturePad ref={sigRef} className="mt-1" />
+              {form.firmaData && !sigRef.current?.getDataUrl() && (
+                <p className="text-[10px] text-muted-foreground mt-1">
+                  Ya existe una firma guardada. Dibuja encima para reemplazarla.
+                </p>
+              )}
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setOpen(false)} disabled={saving}>
+              Cancelar
+            </Button>
+            <Button onClick={save} disabled={saving} style={{ backgroundColor: '#0a3143' }}>
+              {saving && <Loader2 className="h-4 w-4 animate-spin" />}
+              {editId ? 'Guardar cambios' : 'Registrar procedimiento'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* View dialog */}
+      <Dialog open={!!viewing} onOpenChange={(o) => !o && setViewing(null)}>
+        <DialogContent className="max-w-2xl max-h-[92vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center justify-between gap-2">
+              <span>{viewing?.procedimiento}</span>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => {
+                  if (viewing) {
+                    const w = window.open('', '_blank', 'width=800,height=900')
+                    if (!w) return toast.error('Habilita popups para imprimir')
+                    w.document.write(`<pre>${JSON.stringify(viewing, null, 2)}</pre>`)
+                    w.document.close()
+                    w.onload = () => w.print()
+                  }
+                }}
+              >
+                <Printer className="h-4 w-4" />
+              </Button>
+            </DialogTitle>
+            <DialogDescription>
+              {viewing && fmtDateTime(viewing.fecha)} · {viewing?.regionAnatomica} · {viewing?.pieDedoLado}
+            </DialogDescription>
+          </DialogHeader>
+          {viewing && (
+            <div className="space-y-3 text-sm">
+              {viewing.indicacion && (
+                <div>
+                  <p className="text-[10px] uppercase text-muted-foreground">Indicación</p>
+                  <p>{viewing.indicacion}</p>
+                </div>
+              )}
+              {viewing.diagnosticoRelacionado && (
+                <div>
+                  <p className="text-[10px] uppercase text-muted-foreground">Diagnóstico</p>
+                  <p>{viewing.diagnosticoRelacionado}</p>
+                </div>
+              )}
+              {viewing.tecnica && (
+                <div>
+                  <p className="text-[10px] uppercase text-muted-foreground">Técnica</p>
+                  <p className="whitespace-pre-wrap">{viewing.tecnica}</p>
+                </div>
+              )}
+              {viewing.instrumental && (
+                <div>
+                  <p className="text-[10px] uppercase text-muted-foreground">Instrumental</p>
+                  <p>{viewing.instrumental}</p>
+                </div>
+              )}
+              {viewing.hallazgos && (
+                <div>
+                  <p className="text-[10px] uppercase text-muted-foreground">Hallazgos</p>
+                  <p className="whitespace-pre-wrap">{viewing.hallazgos}</p>
+                </div>
+              )}
+              {viewing.complicaciones && (
+                <div>
+                  <p className="text-[10px] uppercase text-muted-foreground">Complicaciones</p>
+                  <p className="whitespace-pre-wrap">{viewing.complicaciones}</p>
+                </div>
+              )}
+              {viewing.indicacionesPost && (
+                <div>
+                  <p className="text-[10px] uppercase text-muted-foreground">Indicaciones post</p>
+                  <p className="whitespace-pre-wrap">{viewing.indicacionesPost}</p>
+                </div>
+              )}
+              {viewing.tolerancia && (
+                <div>
+                  <p className="text-[10px] uppercase text-muted-foreground">Tolerancia</p>
+                  <p>{viewing.tolerancia}</p>
+                </div>
+              )}
+              {viewing.profesionalResponsable && (
+                <div>
+                  <p className="text-[10px] uppercase text-muted-foreground">Profesional</p>
+                  <p>{viewing.profesionalResponsable}</p>
+                </div>
+              )}
+              {viewing.firmaData && (
+                <div>
+                  <p className="text-[10px] uppercase text-muted-foreground">Firma</p>
+                  <img src={viewing.firmaData} alt="Firma" className="max-h-24 border rounded bg-white" />
+                </div>
+              )}
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+    </div>
+  )
+}

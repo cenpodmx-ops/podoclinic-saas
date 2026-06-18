@@ -12,8 +12,27 @@ const TYPE_LABELS: Record<string, string> = {
   BIOQUIMICO: 'BIOQUIMICO',
   RADIOGRAFIA: 'RADIOGRAFIA',
   ESTUDIO: 'ESTUDIO',
-  FOTO: 'FOTO',
+  CONSENTIMIENTO: 'CONSENTIMIENTO',
+  FOTO_CLINICA: 'FOTO_CLINICA',
+  FOTO: 'FOTO_CLINICA',
+  DOCUMENTO: 'DOCUMENTO',
+  IDENTIFICACION: 'IDENTIFICACION',
   OTRO: 'OTRO',
+}
+
+const ZONA_LABELS: Record<string, string> = {
+  PIE_DERECHO: 'PIE_DERECHO',
+  PIE_IZQUIERDO: 'PIE_IZQUIERDO',
+  AMBOS: 'AMBOS',
+}
+
+const VISTA_LABELS: Record<string, string> = {
+  DORSAL: 'DORSAL',
+  PLANTAR: 'PLANTAR',
+  LATERAL: 'LATERAL',
+  MEDIAL: 'MEDIAL',
+  POSTERIOR: 'POSTERIOR',
+  ACERCAMIENTO: 'ACERCAMIENTO',
 }
 
 async function loadPatientForUser(id: string, user: { role: string; clinicId: string }) {
@@ -55,6 +74,17 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
   const type = TYPE_LABELS[typeRaw] || 'OTRO'
   const customName = form.get('name') ? String(form.get('name')) : null
 
+  // Metadata para fotos clínicas (NOM-004 sección 19)
+  const zonaAnatomicaRaw = form.get('zonaAnatomica') ? String(form.get('zonaAnatomica')).toUpperCase() : ''
+  const zonaAnatomica = ZONA_LABELS[zonaAnatomicaRaw] || null
+  const vistaRaw = form.get('vista') ? String(form.get('vista')).toUpperCase() : ''
+  const vista = VISTA_LABELS[vistaRaw] || null
+  const motivoFoto = form.get('motivoFoto') ? String(form.get('motivoFoto')) : null
+  const relacionadoDiagnostico = form.get('relacionadoDiagnostico') ? String(form.get('relacionadoDiagnostico')) : null
+  const autorizaUsoClinico = form.get('autorizaUsoClinico') === 'true' || form.get('autorizaUsoClinico') === '1'
+  const autorizaDocencia = form.get('autorizaDocencia') === 'true' || form.get('autorizaDocencia') === '1'
+  const permiteIdentificar = form.get('permiteIdentificar') === 'true' || form.get('permiteIdentificar') === '1'
+
   if (!(file instanceof File)) return bad('Archivo no recibido')
   if (file.size === 0) return bad('Archivo vacío')
   if (file.size > MAX_SIZE) return bad('El archivo excede el tamaño máximo de 20MB')
@@ -88,6 +118,16 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
       fileUrl: relPath,
       mimeType,
       sizeBytes: file.size,
+      // Metadatos exclusivos para fotos clínicas (sección 19 NOM-004)
+      ...(type === 'FOTO_CLINICA' && {
+        zonaAnatomica,
+        vista,
+        motivoFoto,
+        relacionadoDiagnostico,
+        autorizaUsoClinico,
+        autorizaDocencia,
+        permiteIdentificar,
+      }),
     },
   })
 

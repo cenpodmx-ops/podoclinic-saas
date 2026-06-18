@@ -2,6 +2,7 @@ import { NextRequest } from 'next/server'
 import { db } from '@/lib/db'
 import { requireSession, ok, bad } from '@/lib/api'
 import { Prisma } from '@prisma/client'
+import { logAudit } from '@/lib/audit'
 
 /** Carga el paciente verificando acceso cross-clinic. */
 async function loadPatientForUser(id: string, user: { role: string; clinicId: string }) {
@@ -12,6 +13,16 @@ async function loadPatientForUser(id: string, user: { role: string; clinicId: st
   if (!p) return null
   if (user.role !== 'SUPER' && p.clinicId !== user.clinicId) return 'forbidden' as const
   return p
+}
+
+/** Parsea un campo JSON string de forma segura. */
+function safeJsonParse<T = any>(s: string | null | undefined, fallback: T = {} as T): T {
+  if (!s) return fallback
+  try {
+    return JSON.parse(s) as T
+  } catch {
+    return fallback
+  }
 }
 
 export async function GET(_req: NextRequest, ctx: { params: Promise<{ id: string }> }) {
@@ -44,7 +55,54 @@ export async function GET(_req: NextRequest, ctx: { params: Promise<{ id: string
     },
   })
 
-  return ok(patient)
+  if (!patient) return bad('Paciente no encontrado', 404)
+
+  // Cargar modelos NOM-004 adicionales en paralelo (procedimientos,
+  // consentimientos, referencias y últimos 50 logs de auditoría).
+  const [procedures, consents, referrals, auditLogs] = await Promise.all([
+    db.procedure.findMany({
+      where: { patientId: id },
+      orderBy: { fecha: 'desc' },
+      include: { podologist: { select: { id: true, name: true } } },
+    }),
+    db.consent.findMany({ where: { patientId: id }, orderBy: { fecha: 'desc' } }),
+    db.referral.findMany({ where: { patientId: id }, orderBy: { fecha: 'desc' } }),
+    db.auditLog.findMany({ where: { patientId: id }, orderBy: { createdAt: 'desc' }, take: 50 }),
+  ])
+
+  // Parsear campos JSON del expediente NOM-004 para el frontend
+  const fichaIdentificacion = safeJsonParse(patient.fichaIdentificacion, null)
+  const historiaClinicaInicial = safeJsonParse(patient.historiaClinicaInicial, null)
+
+  // Registrar acceso al expediente (auditoría legal NOM-004)
+  await logAudit(
+    patient.id,
+    patient.clinicId,
+    user!.id,
+    user!.name,
+    'VIEW',
+    'EXPEDIENTE',
+    `Acceso al expediente del paciente ${patient.firstName} ${patient.lastName} (${patient.expNumber})`,
+  )
+
+  return ok({
+    ...patient,
+    fichaIdentificacion,
+    historiaClinicaInicial,
+    procedures: procedures.map((p) => ({
+      ...p,
+      anestesiaJson: p.anestesiaJson ? safeJsonParse(p.anestesiaJson) : null,
+    })),
+    consents: consents.map((c) => ({
+      ...c,
+      riesgosJson: c.riesgosJson ? safeJsonParse<string[]>(c.riesgosJson, []) : [],
+    })),
+    referrals: referrals.map((r) => ({
+      ...r,
+      motivoClinicoJson: r.motivoClinicoJson ? safeJsonParse<string[]>(r.motivoClinicoJson, []) : [],
+    })),
+    auditLogs,
+  })
 }
 
 export async function PATCH(req: NextRequest, ctx: { params: Promise<{ id: string }> }) {
@@ -61,6 +119,8 @@ export async function PATCH(req: NextRequest, ctx: { params: Promise<{ id: strin
   if (!body) return bad('Cuerpo inválido')
 
   const data: Prisma.PatientUpdateInput = {}
+  const editedSections: string[] = []
+
   if (body.firstName !== undefined) data.firstName = String(body.firstName).trim()
   if (body.lastName !== undefined) data.lastName = String(body.lastName).trim()
   if (body.phone !== undefined) data.phone = String(body.phone).trim()
@@ -86,8 +146,53 @@ export async function PATCH(req: NextRequest, ctx: { params: Promise<{ id: strin
   if (body.clinicalSummary !== undefined) data.clinicalSummary = body.clinicalSummary || null
   if (body.generalNotes !== undefined) data.generalNotes = body.generalNotes || null
 
+  // Ficha de identificación NOM-004 (JSON object)
+  if (body.fichaIdentificacion !== undefined) {
+    const fichaStr = body.fichaIdentificacion
+      ? JSON.stringify(body.fichaIdentificacion)
+      : null
+    data.fichaIdentificacion = fichaStr
+    editedSections.push('FICHA')
+  }
+
+  // Historia clínica inicial NOM-004 (JSON object)
+  if (body.historiaClinicaInicial !== undefined) {
+    const histoStr = body.historiaClinicaInicial
+      ? JSON.stringify(body.historiaClinicaInicial)
+      : null
+    data.historiaClinicaInicial = histoStr
+    // Primera vez que se guarda la historia clínica → marcar completa + fecha
+    const existing = await db.patient.findUnique({
+      where: { id },
+      select: { historiaClinicaCompleta: true },
+    })
+    if (!existing?.historiaClinicaCompleta && body.historiaClinicaInicial) {
+      data.historiaClinicaCompleta = true
+      data.historiaClinicaFecha = new Date()
+    }
+    editedSections.push('HISTORIA')
+  }
+
   const updated = await db.patient.update({ where: { id }, data })
-  return ok(updated)
+
+  // Auditoría de edición
+  const sectionLabel = editedSections.length > 0 ? editedSections.join('+') : 'EXPEDIENTE'
+  await logAudit(
+    id,
+    updated.clinicId,
+    user!.id,
+    user!.name,
+    'EDIT',
+    sectionLabel,
+    `Edición de datos del paciente: ${Object.keys(body).join(', ')}`,
+  )
+
+  // Devolver con los JSON parseados (igual que GET)
+  return ok({
+    ...updated,
+    fichaIdentificacion: safeJsonParse(updated.fichaIdentificacion, null),
+    historiaClinicaInicial: safeJsonParse(updated.historiaClinicaInicial, null),
+  })
 }
 
 export async function DELETE(_req: NextRequest, ctx: { params: Promise<{ id: string }> }) {

@@ -101,6 +101,7 @@ model Podologist {
   prescriptions Prescription[]
   blocks        AppointmentBlock[]
   evaluations   PodologistEvaluation[]
+  procedures    Procedure[]
 }
 
 // ============================================================
@@ -132,13 +133,22 @@ model Patient {
   currentMeds     String?
   chronicConditions String?
   riskLevel       String? // BAJO | MEDIO | ALTO
-  // Historia clínica inicial (texto)
+  // Historia clínica inicial (texto legacy — se conserva por compatibilidad)
   antecedentsHereditary  String?
   antecedentsPathologic  String?
   antecedentsNonPathologic String?
   physicalExploration    String?
   clinicalSummary        String?
   generalNotes           String?
+
+  // ===== EXPEDIENTE CLÍNICO NOM-004 (JSON estructurado) =====
+  // Ficha de identificación completa (sección 3 del spec)
+  fichaIdentificacion   String?  // JSON: estadoCivil, ocupacion, escolaridad, contactoEmergencia, parentesco, grupoSanguineo, religion, grupoEtnico, pacienteNuevoSubsecuente, medioLlegada, motivoAdmin
+  // Historia clínica inicial completa (secciones 4-13 del spec)
+  historiaClinicaInicial String? // JSON grande: motivoConsulta, padecimientoActual, antecedentesFamiliares, antecedentesPatologicos, antecedentesNoPatologicos, interrogatorioAparatos, signosVitales, exploracionGeneral, exploracionPodologica, evaluacionRiesgo, diagnosticos, pronostico, planManejo
+  // Metadata de auditoría
+  historiaClinicaCompleta Boolean @default(false)
+  historiaClinicaFecha    DateTime?
   // Meta
   totalSpent      Float    @default(0)
   createdAt       DateTime @default(now())
@@ -152,6 +162,10 @@ model Patient {
   followUps       FollowUp[]
   segmentMembers  SegmentMembership[]
   leads           Lead[]
+  procedures      Procedure[]
+  consents        Consent[]
+  referrals       Referral[]
+  auditLogs       AuditLog[]
 
   @@index([clinicId])
   @@index([phone])
@@ -162,10 +176,18 @@ model PatientFile {
   patientId   String
   patient     Patient  @relation(fields: [patientId], references: [id], onDelete: Cascade)
   name        String
-  type        String   // BIOQUIMICO | RADIOGRAFIA | ESTUDIO | CONSENTIMIENTO | FOTO | OTRO
+  type        String   // BIOQUIMICO | RADIOGRAFIA | ESTUDIO | CONSENTIMIENTO | FOTO_CLINICA | DOCUMENTO | IDENTIFICACION | OTRO
   fileUrl     String
   mimeType    String
   sizeBytes   Int
+  // Metadata para fotos clínicas (sección 19)
+  zonaAnatomica String?  // PIE_DERECHO | PIE_IZQUIERDO | AMBOS
+  vista         String?  // DORSAL | PLANTAR | LATERAL | MEDIAL | POSTERIOR | ACERCAMIENTO
+  motivoFoto    String?
+  relacionadoDiagnostico String?
+  autorizaUsoClinico   Boolean @default(true)
+  autorizaDocencia     Boolean @default(false)
+  permiteIdentificar   Boolean @default(false)
   createdAt   DateTime @default(now())
 }
 
@@ -249,6 +271,8 @@ model Consultation {
   // Items cobrados (JSON string)
   itemsJson       String   // [{name, qty, price, type}]
   followUpDays    Int?     // Seguimiento en X días
+  // Nota de evolución SOAP (sección 20 del spec)
+  soapJson        String?  // JSON: { S: subjetivo, O: objetivo, A: analisis, P: plan }
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
 
@@ -655,4 +679,109 @@ model ClinicConfig {
   // Compartir BD con otras sucursales
   sharedDbCode    String?
   updatedAt       DateTime @updatedAt
+}
+
+// ============================================================
+// EXPEDIENTE CLÍNICO NOM-004 — Modelos adicionales
+// ============================================================
+
+// Procedimientos podológicos (sección 17)
+model Procedure {
+  id              String   @id @default(cuid())
+  patientId       String
+  patient         Patient  @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  clinicId        String
+  consultationId  String?
+  podologistId    String?
+  podologist      Podologist? @relation(fields: [podologistId], references: [id], onDelete: SetNull)
+  fecha           DateTime @default(now())
+  procedimiento   String
+  indicacion      String?
+  diagnosticoRelacionado String?
+  regionAnatomica String?
+  pieDedoLado     String?
+  tecnica         String?
+  antisepctico    String?
+  instrumental    String?
+  anestesiaJson   String?  // {tipo, concentracion, dosis, lote, caducidad, reaccionAdversa}
+  hemostasia      String?
+  hallazgos       String?
+  complicaciones  String?
+  materialCuracion String?
+  indicacionesPost String?
+  tolerancia      String?
+  profesionalResponsable String?
+  firmaData       String?  // base64 signature del profesional
+  createdAt       DateTime @default(now())
+
+  @@index([patientId])
+  @@index([clinicId])
+}
+
+// Consentimientos informados digitales (sección 18)
+model Consent {
+  id              String   @id @default(cuid())
+  patientId       String
+  patient         Patient  @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  clinicId        String
+  procedimientoPropuesto String
+  diagnostico     String?
+  explicacion     String?
+  beneficios      String?
+  riesgosJson     String?  // JSON array of strings
+  alternativas    String?
+  consecuenciasNoRealizar String?
+  confirmacionPreguntas Boolean @default(false)
+  aceptacionVoluntaria   Boolean @default(false)
+  firmaPaciente   String?  // base64
+  firmaProfesional String? // base64
+  firmaTestigo    String?  // base64
+  firmaTutor      String?  // base64 (menores)
+  identificacionAdjuntaUrl String?
+  fecha           DateTime @default(now())
+  createdAt       DateTime @default(now())
+
+  @@index([patientId])
+  @@index([clinicId])
+}
+
+// Referencias / contrarreferencias (sección 22)
+model Referral {
+  id              String   @id @default(cuid())
+  patientId       String
+  patient         Patient  @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  clinicId        String
+  tipo            String   @default("REFERENCIA") // REFERENCIA | CONTRARREFERENCIA
+  motivoReferencia String?
+  diagnosticoPresuntivo String?
+  hallazgosRelevantes String?
+  tratamientoRealizado String?
+  motivoClinicoJson String? // JSON array: sospecha infeccion, pie diabetico, etc.
+  servicioSugerido String?  // MEDICINA_GENERAL | URGENCIAS | ANGIOLOGIA | DERMATOLOGIA | TRAUMATOLOGIA | CIRUGIA | HERIDAS | ENDOCRINOLOGIA
+  prioridad       String   @default("ORDINARIA") // ORDINARIA | PREFERENTE | URGENTE
+  firmaData       String?  // base64
+  fecha           DateTime @default(now())
+  createdAt       DateTime @default(now())
+
+  @@index([patientId])
+  @@index([clinicId])
+}
+
+// Auditoría de accesos y cambios al expediente (sección 1 + 27)
+model AuditLog {
+  id              String   @id @default(cuid())
+  patientId       String
+  patient         Patient  @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  clinicId        String
+  userId          String?
+  userName        String?
+  action          String   // VIEW | EDIT | CREATE | DELETE | EXPORT | CREATE_PROCEDURE | CREATE_CONSENT | CREATE_REFERRAL
+  section         String?  // FICHA | HISTORIA | PROCEDIMIENTO | CONSENT | REFERRAL | EVOLUCION | etc.
+  details         String?  // descripción legible
+  ip              String?
+  createdAt       DateTime @default(now())
+
+  @@index([patientId])
+  @@index([clinicId])
+  @@index([userId])
 }
