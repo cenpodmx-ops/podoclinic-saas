@@ -44,8 +44,8 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
     total: inv.total,
     status: inv.status,
     paymentMethod: inv.paymentMethod,
-    pdfUrl: facturapiId ? `/api/facturas/${inv.id}/pdf?faId=${facturapiId}` : inv.pdfUrl,
-    xmlUrl: facturapiId ? `/api/facturas/${inv.id}/xml?faId=${facturapiId}` : inv.xmlUrl,
+    pdfUrl: facturapiId ? `/api/facturas/pdf?faId=${facturapiId}&invoiceId=${inv.id}` : inv.pdfUrl,
+    xmlUrl: facturapiId ? `/api/facturas/xml?faId=${facturapiId}&invoiceId=${inv.id}` : inv.xmlUrl,
   })
 }
 

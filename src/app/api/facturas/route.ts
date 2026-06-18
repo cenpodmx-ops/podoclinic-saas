@@ -259,14 +259,27 @@ export async function POST(req: NextRequest) {
       iva: round2(iva),
       total: round2(total),
       status,
-      pdfUrl: facturapiId ? `/api/facturas/${null}/pdf?faId=${facturapiId}` : null,
-      xmlUrl: facturapiId ? `/api/facturas/${null}/xml?faId=${facturapiId}` : null,
+      pdfUrl: null, // se actualiza abajo con el ID real
+      xmlUrl: null,
       paymentMethod: paymentMethod || paymentForm,
     },
     include: {
       patient: { select: { id: true, firstName: true, lastName: true, expNumber: true } },
     },
   })
+
+  // Actualizar pdfUrl/xmlUrl con el ID real de la factura (para verificación de acceso)
+  if (facturapiId) {
+    await db.invoice.update({
+      where: { id: created.id },
+      data: {
+        pdfUrl: `/api/facturas/pdf?faId=${facturapiId}&invoiceId=${created.id}`,
+        xmlUrl: `/api/facturas/xml?faId=${facturapiId}&invoiceId=${created.id}`,
+      },
+    })
+    created.pdfUrl = `/api/facturas/pdf?faId=${facturapiId}&invoiceId=${created.id}`
+    created.xmlUrl = `/api/facturas/xml?faId=${facturapiId}&invoiceId=${created.id}`
+  }
 
   return ok(
     {
