@@ -454,68 +454,240 @@ function PlantillasTab() {
 }
 
 function FacturacionTab() {
-  const { data, isLoading } = useConfig()
+  const { data: cfgData } = useConfig()
   const qc = useQueryClient()
-  const [token, setToken] = useState<string | null>(null)
 
-  const clinic = data?.clinic
-  if (!isLoading && clinic && token === null) {
-    setToken(clinic.facturapiToken || '')
-  }
-
-  const save = useMutation({
-    mutationFn: (body: any) =>
-      fetch('/api/config/clinica', {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(body),
-      }).then((r) => r.json()),
-    onSuccess: () => {
-      toast.success('Token guardado. La facturación estará activa.')
-      qc.invalidateQueries({ queryKey: ['config'] })
-    },
+  // Estado de FacturAPI (GET /api/config/facturapi/sync)
+  const { data: faStatus, isLoading: faLoading } = useQuery({
+    queryKey: ['facturapi-status'],
+    queryFn: () => fetch('/api/config/facturapi/sync').then((r) => r.json()),
   })
 
-  if (isLoading || token === null) return <Skeleton className="h-64" />
+  // Form de datos fiscales
+  const [form, setForm] = useState<any>(null)
+  const clinic = cfgData?.clinic
+  if (!faLoading && clinic && !form) {
+    setForm({
+      rfc: clinic.rfc || faStatus?.clinic?.rfc || '',
+      razonSocial: clinic.razonSocial || faStatus?.clinic?.razonSocial || '',
+      regimenFiscal: clinic.regimenFiscal || faStatus?.clinic?.regimenFiscal || '601',
+      street: clinic.address || '',
+      exterior: '',
+      interior: '',
+      neighborhood: '',
+      municipality: '',
+      state: 'Sonora',
+      zip: '',
+    })
+  }
+
+  const syncMutation = useMutation({
+    mutationFn: (body: any) =>
+      fetch('/api/config/facturapi/sync', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      }).then(async (r) => {
+        const j = await r.json()
+        if (!r.ok) throw new Error(j?.error || 'Error al sincronizar')
+        return j
+      }),
+    onSuccess: () => {
+      toast.success('Organización sincronizada con FacturAPI. La facturación está activa.')
+      qc.invalidateQueries({ queryKey: ['facturapi-status'] })
+      qc.invalidateQueries({ queryKey: ['config'] })
+    },
+    onError: (e: any) => toast.error(e.message || 'Error'),
+  })
+
+  if (faLoading || !form) return <Skeleton className="h-64" />
+
+  const apiKeyOk = faStatus?.apiKeyConfigured
+  const orgId = faStatus?.organizationId
+  const org = faStatus?.organization
 
   return (
     <Card className="shadow-sm">
       <CardHeader>
-        <CardTitle className="text-base flex items-center gap-2"><KeyRound className="h-4 w-4" /> Integración con FacturAPI</CardTitle>
+        <CardTitle className="text-base flex items-center gap-2">
+          <KeyRound className="h-4 w-4" /> Facturación con FacturAPI (CFDI 4.0)
+        </CardTitle>
       </CardHeader>
-      <CardContent className="space-y-4">
-        <div className="rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
-          <p className="font-medium mb-1">Configuración pendiente</p>
-          <p>
-            Para activar la emisión de CFDI 4.0 necesitas una cuenta en{' '}
-            <a href="https://facturapi.io" target="_blank" rel="noreferrer" className="underline">facturapi.io</a>{' '}
-            y pegar aquí tu <strong>API Key (secret)</strong>. Mientras tanto, el módulo de Facturación funciona en
-            modo simulación: genera el payload pero no timbra ante el SAT.
-          </p>
-        </div>
-        <div className="space-y-1">
-          <Label>FacturAPI API Key (secret)</Label>
-          <Input
-            type="password"
-            value={token}
-            onChange={(e) => setToken(e.target.value)}
-            placeholder="fk_live_..."
-          />
-          <p className="text-xs text-muted-foreground">Guárdalo en un lugar seguro. No se comparte con nadie.</p>
-        </div>
-        <div className="rounded-lg border p-4 bg-muted/30 text-sm">
-          <p className="font-medium mb-2">Estado actual</p>
-          {token ? (
-            <Badge className="bg-emerald-100 text-emerald-700">Token configurado ✓</Badge>
-          ) : (
-            <Badge variant="secondary">Sin configurar — modo simulación</Badge>
+      <CardContent className="space-y-5">
+        {/* Estado de la API key global */}
+        <div className="rounded-lg border p-4 bg-muted/30">
+          <div className="flex items-center justify-between gap-2 flex-wrap">
+            <div>
+              <p className="font-medium text-sm">API Key global (Grupo CENPOD)</p>
+              <p className="text-xs text-muted-foreground">
+                La API key de FacturAPI es compartida por todas las sucursales.
+              </p>
+            </div>
+            {apiKeyOk ? (
+              <Badge className="bg-emerald-100 text-emerald-700">API Key configurada ✓</Badge>
+            ) : (
+              <Badge variant="destructive">API Key NO configurada</Badge>
+            )}
+          </div>
+          {!apiKeyOk && (
+            <p className="text-xs text-red-600 mt-2">
+              Contacta al administrador para configurar la variable <code>FACTURAPI_KEY</code>.
+            </p>
           )}
         </div>
-        <div className="flex justify-end">
-          <Button onClick={() => save.mutate({ facturapiToken: token })} disabled={save.isPending} style={{ backgroundColor: '#0a3143' }}>
-            <Save className="h-4 w-4 mr-1" /> {save.isPending ? 'Guardando...' : 'Guardar token'}
+
+        {/* Estado de la organización de esta sucursal */}
+        <div className="rounded-lg border p-4">
+          <div className="flex items-center justify-between gap-2 flex-wrap mb-2">
+            <p className="font-medium text-sm">Organización de esta sucursal</p>
+            {orgId ? (
+              <Badge className="bg-emerald-100 text-emerald-700">Conectada ✓</Badge>
+            ) : (
+              <Badge variant="secondary">Sin crear — modo simulación</Badge>
+            )}
+          </div>
+          {org && (
+            <div className="text-xs text-muted-foreground space-y-0.5">
+              <p><strong>ID FacturAPI:</strong> <code>{org.id}</code></p>
+              <p><strong>Nombre:</strong> {org.name || org.legal_name}</p>
+              <p><strong>Razón social:</strong> {org.legal_name}</p>
+              <p><strong>RFC:</strong> {org.tax_id || '(no configurado en FacturAPI)'}</p>
+              <p><strong>Régimen:</strong> {org.tax_system}</p>
+              <p><strong>Lista para producir:</strong> {org.is_production_ready ? 'Sí ✓' : 'No (faltan pasos)'}</p>
+              {org.pending_steps && org.pending_steps.length > 0 && (
+                <p className="text-amber-700 mt-1">
+                  <strong>Pendiente:</strong> {org.pending_steps.map((s: any) => s.description).join(', ')}
+                </p>
+              )}
+            </div>
+          )}
+          {!orgId && (
+            <p className="text-xs text-amber-700 mt-2">
+              Completa tus datos fiscales abajo y sincroniza para crear tu organización en FacturAPI.
+            </p>
+          )}
+        </div>
+
+        {/* Form de datos fiscales del emisor (esta sucursal) */}
+        <div className="space-y-3">
+          <h3 className="text-sm font-medium">Datos fiscales del emisor (esta sucursal)</h3>
+          <div className="grid md:grid-cols-2 gap-3">
+            <div className="space-y-1">
+              <Label className="text-xs">RFC *</Label>
+              <Input
+                value={form.rfc}
+                onChange={(e) => setForm({ ...form, rfc: e.target.value.toUpperCase() })}
+                placeholder="Ej. CEN010101AB1"
+                className="uppercase"
+              />
+            </div>
+            <div className="space-y-1">
+              <Label className="text-xs">Razón social *</Label>
+              <Input
+                value={form.razonSocial}
+                onChange={(e) => setForm({ ...form, razonSocial: e.target.value })}
+                placeholder="Ej. Grupo CENPOD Clínica 1 S.A. de C.V."
+              />
+            </div>
+          </div>
+          <div className="grid md:grid-cols-2 gap-3">
+            <div className="space-y-1">
+              <Label className="text-xs">Régimen fiscal *</Label>
+              <Select value={form.regimenFiscal} onValueChange={(v) => setForm({ ...form, regimenFiscal: v })}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="601">601 · General de Ley Personas Morales</SelectItem>
+                  <SelectItem value="626">626 · Régimen Simplificado de Confianza</SelectItem>
+                  <SelectItem value="612">612 · Personas Físicas con Actividades Empresariales</SelectItem>
+                  <SelectItem value="603">603 · Personas Morales con Fines no Lucrativos</SelectItem>
+                  <SelectItem value="608">608 · Demás ingresos</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1">
+              <Label className="text-xs">Código postal *</Label>
+              <Input
+                value={form.zip}
+                onChange={(e) => setForm({ ...form, zip: e.target.value })}
+                placeholder="Ej. 83000"
+                maxLength={5}
+              />
+            </div>
+          </div>
+          <div className="grid md:grid-cols-3 gap-3">
+            <div className="space-y-1">
+              <Label className="text-xs">Calle</Label>
+              <Input
+                value={form.street}
+                onChange={(e) => setForm({ ...form, street: e.target.value })}
+                placeholder="Av. Obregón"
+              />
+            </div>
+            <div className="space-y-1">
+              <Label className="text-xs">No. exterior</Label>
+              <Input
+                value={form.exterior}
+                onChange={(e) => setForm({ ...form, exterior: e.target.value })}
+                placeholder="123"
+              />
+            </div>
+            <div className="space-y-1">
+              <Label className="text-xs">No. interior</Label>
+              <Input
+                value={form.interior}
+                onChange={(e) => setForm({ ...form, interior: e.target.value })}
+                placeholder="—"
+              />
+            </div>
+          </div>
+          <div className="grid md:grid-cols-3 gap-3">
+            <div className="space-y-1">
+              <Label className="text-xs">Colonia</Label>
+              <Input
+                value={form.neighborhood}
+                onChange={(e) => setForm({ ...form, neighborhood: e.target.value })}
+                placeholder="Centro"
+              />
+            </div>
+            <div className="space-y-1">
+              <Label className="text-xs">Municipio/Ciudad</Label>
+              <Input
+                value={form.municipality}
+                onChange={(e) => setForm({ ...form, municipality: e.target.value })}
+                placeholder="Hermosillo"
+              />
+            </div>
+            <div className="space-y-1">
+              <Label className="text-xs">Estado</Label>
+              <Input
+                value={form.state}
+                onChange={(e) => setForm({ ...form, state: e.target.value })}
+                placeholder="Sonora"
+              />
+            </div>
+          </div>
+        </div>
+
+        <div className="flex justify-end gap-2">
+          <Button
+            onClick={() => syncMutation.mutate(form)}
+            disabled={syncMutation.isPending || !apiKeyOk}
+            style={{ backgroundColor: '#0a3143' }}
+          >
+            <Save className="h-4 w-4 mr-1" />
+            {syncMutation.isPending
+              ? 'Sincronizando...'
+              : orgId
+                ? 'Actualizar en FacturAPI'
+                : 'Crear organización en FacturAPI'}
           </Button>
         </div>
+
+        {!apiKeyOk && (
+          <p className="text-xs text-red-600 text-right">
+            No se puede sincronizar hasta que el administrador configure la API key global.
+          </p>
+        )}
       </CardContent>
     </Card>
   )

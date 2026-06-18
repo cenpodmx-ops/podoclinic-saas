@@ -38,6 +38,7 @@ model Clinic {
   // FacturAPI
   facturapiToken String?
   facturapiSeries String? // JSON string con series por tipo
+  facturapiOrgId String?  // ID de la organización en FacturAPI (una por sucursal)
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 

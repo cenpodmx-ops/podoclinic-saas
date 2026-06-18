@@ -13,24 +13,28 @@ export const authOptions: NextAuthOptions = {
       },
       async authorize(credentials) {
         if (!credentials?.email || !credentials?.password) return null
-        const user = await db.user.findUnique({
-          where: { email: credentials.email },
-          include: { clinic: true, podologist: true },
-        })
-        if (!user || !user.active) return null
-        const ok = bcrypt.compareSync(credentials.password, user.passwordHash)
-        if (!ok) return null
-        await db.user.update({ where: { id: user.id }, data: { lastLogin: new Date() } })
-        return {
-          id: user.id,
-          name: user.name,
-          email: user.email,
-          role: user.role,
-          clinicId: user.clinicId ?? '',
-          clinicName: user.clinic?.name ?? '',
-          clinicSlug: user.clinic?.slug ?? '',
-          podologistId: user.podologistId ?? '',
-        } as any
+        try {
+          const user = await db.user.findUnique({
+            where: { email: credentials.email },
+            include: { clinic: true, podologist: true },
+          })
+          if (!user || !user.active) return null
+          const ok = bcrypt.compareSync(credentials.password, user.passwordHash)
+          if (!ok) return null
+          await db.user.update({ where: { id: user.id }, data: { lastLogin: new Date() } })
+          return {
+            id: user.id,
+            name: user.name,
+            email: user.email,
+            role: user.role,
+            clinicId: user.clinicId ?? '',
+            clinicName: user.clinic?.name ?? '',
+            clinicSlug: user.clinic?.slug ?? '',
+            podologistId: user.podologistId ?? '',
+          } as any
+        } catch {
+          return null
+        }
       },
     }),
   ],

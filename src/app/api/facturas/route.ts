@@ -74,7 +74,7 @@ export async function GET(req: NextRequest) {
     }),
     db.invoice.count({ where }),
     clinicId
-      ? db.clinic.findUnique({ where: { id: clinicId }, select: { facturapiToken: true } })
+      ? db.clinic.findUnique({ where: { id: clinicId }, select: { facturapiToken: true, facturapiOrgId: true } })
       : null,
   ])
 
@@ -101,7 +101,7 @@ export async function GET(req: NextRequest) {
     total,
     page,
     limit,
-    facturapiConfigured: !!clinic?.facturapiToken,
+    facturapiConfigured: !!clinic?.facturapiOrgId || !!clinic?.facturapiToken,
   })
 }
 
@@ -196,11 +196,13 @@ export async function POST(req: NextRequest) {
     .reduce((s, i) => s + i.qty * i.price * 0.16, 0)
   const total = subtotal + iva
 
-  // ── Resolver clínica + token FacturAPI
+  // ── Resolver clínica + configuración FacturAPI
   const clinic = await db.clinic.findUnique({ where: { id: clinicId } })
   if (!clinic) return bad('Clínica no encontrada', 404)
-  const token = clinic.facturapiToken?.trim()
-  const isSimulation = !token
+  // La API key es global (env); la organización es por sucursal.
+  const apiKey = process.env.FACTURAPI_KEY?.trim() || clinic.facturapiToken?.trim() || ''
+  const orgId = clinic.facturapiOrgId?.trim() || ''
+  const isSimulation = !apiKey || !orgId
 
   // ── Series (opcional)
   let series: string | undefined
@@ -211,7 +213,7 @@ export async function POST(req: NextRequest) {
     } catch {}
   }
 
-  // ── FacturAPI call (si hay token)
+  // ── FacturAPI call (si hay API key + orgId)
   let folio: string | null = null
   let uuid: string | null = null
   let pdfUrl: string | null = null
@@ -236,7 +238,7 @@ export async function POST(req: NextRequest) {
 
     let faResp
     try {
-      faResp = await createFacturapiInvoice(token!, payload)
+      faResp = await createFacturapiInvoice(apiKey, payload, orgId)
     } catch (e: any) {
       return bad(e?.message || 'Error al timbrar con FacturAPI', 502)
     }

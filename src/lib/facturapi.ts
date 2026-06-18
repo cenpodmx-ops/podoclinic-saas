@@ -7,7 +7,158 @@
 
 import type { InvoiceItem } from '@/lib/invoice-types'
 
-const FACTURAPI_BASE = 'https://www.facturapi.io/api/v1'
+const FACTURAPI_BASE = 'https://www.facturapi.io/v2'
+
+/** Devuelve la API key de FacturAPI para operar (facturas) — sk_test_ o sk_live_. */
+export function getFacturapiKey(): string {
+  return process.env.FACTURAPI_KEY || ''
+}
+
+/** Devuelve la User Secret Key de FacturAPI para gestionar organizaciones — sk_user_. */
+export function getFacturapiUserKey(): string {
+  return process.env.FACTURAPI_USER_KEY || ''
+}
+
+/** ¿Está configurada la API key global de FacturAPI? */
+export function isFacturapiConfigured(): boolean {
+  return !!getFacturapiKey()
+}
+
+// ============================================================
+// ORGANIZACIONES (una por sucursal — contiene los datos fiscales del emisor)
+// En FacturAPI v2: POST /organizations crea con solo `name`.
+// PUT /organizations/{id}/legal actualiza los datos fiscales.
+// ============================================================
+
+export type FacturapiOrganizationInput = {
+  name: string // nombre corto de la organización
+  legal_name: string // razón social
+  tax_system: string // régimen fiscal (601, 626, etc.)
+  address?: {
+    street?: string
+    exterior?: string
+    interior?: string
+    neighborhood?: string
+    municipality?: string
+    state?: string
+    zip?: string
+  }
+}
+
+export type FacturapiOrganization = {
+  id: string
+  name: string
+  legal?: {
+    name: string
+    legal_name: string
+    tax_id: string
+    tax_system: string
+    address?: Record<string, string>
+  }
+  is_production_ready: boolean
+  pending_steps?: Array<{ type: string; description: string }>
+  created_at: string
+}
+
+/** Crea una organización en FacturAPI (entidad emisora de la sucursal).
+ *  Requiere la User Secret Key (sk_user_...). */
+export async function createFacturapiOrganization(
+  data: FacturapiOrganizationInput,
+): Promise<FacturapiOrganization> {
+  const key = getFacturapiUserKey()
+  if (!key) throw new Error('FACTURAPI_USER_KEY no configurada (requerida para gestionar organizaciones)')
+
+  // 1) Crear organización con solo `name`
+  const createRes = await fetch(`${FACTURAPI_BASE}/organizations`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${key}`,
+    },
+    body: JSON.stringify({ name: data.name }),
+  })
+  if (!createRes.ok) {
+    let msg = `FacturAPI respondió ${createRes.status}`
+    try {
+      const err = await createRes.json()
+      if (err?.message) msg = err.message
+    } catch {}
+    throw new Error(`FacturAPI crear organización: ${msg}`)
+  }
+  const created = (await createRes.json()) as FacturapiOrganization
+
+  // 2) Actualizar datos fiscales con PUT /legal
+  const legalBody: any = {
+    name: data.name,
+    legal_name: data.legal_name,
+    tax_system: data.tax_system,
+  }
+  if (data.address) {
+    legalBody.address = { ...data.address }
+  }
+  const legalRes = await fetch(`${FACTURAPI_BASE}/organizations/${created.id}/legal`, {
+    method: 'PUT',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${key}`,
+    },
+    body: JSON.stringify(legalBody),
+  })
+  if (!legalRes.ok) {
+    // La organización se creó pero no se pudieron actualizar los datos fiscales
+    // Devolvemos la organización igualmente — el usuario puede actualizar después
+    return created
+  }
+  return (await legalRes.json()) as FacturapiOrganization
+}
+
+/** Actualiza los datos fiscales de una organización existente en FacturAPI.
+ *  Requiere la User Secret Key. */
+export async function updateFacturapiOrganization(
+  orgId: string,
+  data: Partial<FacturapiOrganizationInput>,
+): Promise<FacturapiOrganization> {
+  const key = getFacturapiUserKey()
+  if (!key) throw new Error('FACTURAPI_USER_KEY no configurada')
+  const legalBody: any = {}
+  if (data.name) legalBody.name = data.name
+  if (data.legal_name) legalBody.legal_name = data.legal_name
+  if (data.tax_system) legalBody.tax_system = data.tax_system
+  if (data.address) legalBody.address = { ...data.address }
+  const res = await fetch(`${FACTURAPI_BASE}/organizations/${orgId}/legal`, {
+    method: 'PUT',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${key}`,
+    },
+    body: JSON.stringify(legalBody),
+  })
+  if (!res.ok) {
+    let msg = `FacturAPI respondió ${res.status}`
+    try {
+      const err = await res.json()
+      if (err?.message) msg = err.message
+      if (err?.errors?.length) msg = err.errors.map((e: any) => e.message || JSON.stringify(e)).join('; ')
+    } catch {}
+    throw new Error(`FacturAPI actualizar organización: ${msg}`)
+  }
+  return (await res.json()) as FacturapiOrganization
+}
+
+/** Obtiene una organización por ID. Usa la User Key. */
+export async function getFacturapiOrganization(orgId: string): Promise<FacturapiOrganization | null> {
+  const key = getFacturapiUserKey()
+  if (!key) return null
+  try {
+    const res = await fetch(`${FACTURAPI_BASE}/organizations/${orgId}`, {
+      headers: { Authorization: `Bearer ${key}` },
+    })
+    if (!res.ok) return null
+    return (await res.json()) as FacturapiOrganization
+  } catch {
+    return null
+  }
+}
 
 /** Claves de producto SAT según el tipo de concepto. */
 export const PRODUCT_KEYS: Record<string, string> = {
@@ -103,12 +254,18 @@ export type FacturapiInvoiceResponse = {
   created_at: string
 }
 
-/** Llama a FacturAPI para timbrar la factura. */
+/** Llama a FacturAPI para timbrar la factura.
+ *  Si se pasa `organizationId`, la factura se emite a nombre de esa organización (sucursal).
+ */
 export async function createFacturapiInvoice(
   token: string,
   body: FacturapiInvoiceBody,
+  organizationId?: string,
 ): Promise<FacturapiInvoiceResponse> {
-  const res = await fetch(`${FACTURAPI_BASE}/invoices`, {
+  const url = organizationId
+    ? `${FACTURAPI_BASE}/invoices?organization=${encodeURIComponent(organizationId)}`
+    : `${FACTURAPI_BASE}/invoices`
+  const res = await fetch(url, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
