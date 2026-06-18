@@ -38,6 +38,8 @@ export type PrescriptionDesign = {
   showMedications?: boolean
   showIndications?: boolean
   showSignature?: boolean
+  doctorNameMode?: 'podologist' | 'fixed'
+  doctorFixedName?: string
 }
 
 export type PreviewClinic = {

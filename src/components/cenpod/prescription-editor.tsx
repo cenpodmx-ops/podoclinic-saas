@@ -56,6 +56,8 @@ const DEFAULT_DESIGN: PrescriptionDesign = {
   showMedications: true,
   showIndications: true,
   showSignature: true,
+  doctorNameMode: 'podologist',
+  doctorFixedName: '',
 }
 
 const SAMPLE_DATA: PrescriptionPreviewData = {
@@ -243,9 +245,7 @@ export function PrescriptionEditor() {
                   {uploadMut.isPending ? 'Subiendo…' : 'Subir logo'}
                 </Button>
                 {clinic?.logoUrl && (
-                  <span className="text-xs text-muted-foreground">
-                    Logo actual: <code className="bg-muted px-1 rounded">{clinic.logoUrl}</code>
-                  </span>
+                  <Badge className="bg-emerald-100 text-emerald-700 text-xs">✓ Logo subido</Badge>
                 )}
               </div>
               {uploadedLogoUrl && (
@@ -291,7 +291,7 @@ export function PrescriptionEditor() {
               label="Tamaño del logo"
               value={design.logoSize ?? 78}
               min={40}
-              max={200}
+              max={400}
               unit="px"
               onChange={(v) => update({ logoSize: v })}
             />
@@ -467,22 +467,49 @@ export function PrescriptionEditor() {
               <ToggleRow label="Info del paciente" value={design.showPatientInfo !== false} onChange={(v) => update({ showPatientInfo: v })} />
               <ToggleRow label="Info del doctor" value={design.showDoctorInfo !== false} onChange={(v) => update({ showDoctorInfo: v })} />
               <ToggleRow label="Diagnóstico" value={design.showDiagnosis !== false} onChange={(v) => update({ showDiagnosis: v })} />
-              <ToggleRow label="Tabla de medicamentos" value={design.showMedications !== false} onChange={(v) => update({ showMedications: v })} />
+              <ToggleRow label="Tabla de medicamentos o productos" value={design.showMedications !== false} onChange={(v) => update({ showMedications: v })} />
               <ToggleRow label="Indicaciones" value={design.showIndications !== false} onChange={(v) => update({ showIndications: v })} />
               <ToggleRow label="Línea de firma" value={design.showSignature !== false} onChange={(v) => update({ showSignature: v })} />
             </div>
             <Separator />
-            <div className="space-y-1">
-              <Label className="text-xs">Texto bajo la firma (etiqueta)</Label>
-              <Input
-                value={design.signatureLabel || ''}
-                onChange={(e) => update({ signatureLabel: e.target.value })}
-                placeholder="Cédula profesional"
-                className="h-9"
-              />
-              <p className="text-[10px] text-muted-foreground">
-                Ejemplos: &ldquo;Cédula profesional&rdquo;, &ldquo;Número de certificación&rdquo;, &ldquo;Matrícula&rdquo;
-              </p>
+            <div className="space-y-3">
+              <div className="space-y-1">
+                <Label className="text-xs">Nombre del profesional en la receta</Label>
+                <Select
+                  value={design.doctorNameMode || 'podologist'}
+                  onValueChange={(v) => update({ doctorNameMode: v as any })}
+                >
+                  <SelectTrigger className="h-9"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="podologist">Nombre del podólogo que receta</SelectItem>
+                    <SelectItem value="fixed">Nombre fijo (responsable de la clínica)</SelectItem>
+                  </SelectContent>
+                </Select>
+                {design.doctorNameMode === 'fixed' && (
+                  <Input
+                    value={design.doctorFixedName || ''}
+                    onChange={(e) => update({ doctorFixedName: e.target.value })}
+                    placeholder="Nombre del responsable"
+                    className="h-9 mt-1"
+                  />
+                )}
+                <p className="text-[10px] text-muted-foreground">
+                  La cédula profesional siempre es la misma (se configura en Equipo → Podólogo).
+                </p>
+              </div>
+              <Separator />
+              <div className="space-y-1">
+                <Label className="text-xs">Texto bajo la firma (etiqueta)</Label>
+                <Input
+                  value={design.signatureLabel || ''}
+                  onChange={(e) => update({ signatureLabel: e.target.value })}
+                  placeholder="Cédula profesional"
+                  className="h-9"
+                />
+                <p className="text-[10px] text-muted-foreground">
+                  Ejemplos: &ldquo;Cédula profesional&rdquo;, &ldquo;Número de certificación&rdquo;, &ldquo;Matrícula&rdquo;
+                </p>
+              </div>
             </div>
           </CardContent>
         </Card>
@@ -666,7 +693,11 @@ function buildTestPrintHtml(design: PrescriptionDesign, data: PrescriptionPrevie
   else if (clinic?.logoUrl) logoUrl = clinic.logoUrl
 
   const patientName = patient?.name || (patient ? `${patient.firstName} ${patient.lastName}` : 'Paciente de ejemplo')
-  const podName = pod?.name || 'Dr. Ejemplo'
+  // Doctor name: usar nombre fijo si está configurado, sino el del podólogo
+  const doctorNameMode = d.doctorNameMode || 'podologist'
+  const podName = doctorNameMode === 'fixed' && d.doctorFixedName
+    ? d.doctorFixedName
+    : (pod?.name || 'Dr. Ejemplo')
   const podCed = pod?.cedula || '1234567'
   const podSpec = pod?.specialty || 'Podología'
   const podCert = pod?.certNumber || ''
@@ -758,8 +789,8 @@ function buildTestPrintHtml(design: PrescriptionDesign, data: PrescriptionPrevie
   .rx-sheet > * { position: relative; z-index: 1; }
   .rx-header { border-bottom: 2.5px solid ${primary}; padding-bottom: 10px; margin-bottom: 14px; }
   .rx-header-inner { display: flex; align-items: center; gap: 18px; }
-  .rx-header-inner[style*="text-align:center"] { flex-direction: column; text-align: center; }
-  .rx-header-inner[style*="text-align:right"] { flex-direction: row-reverse; text-align: right; }
+  .rx-header-inner.rx-pos-center { flex-direction: column; text-align: center; align-items: center; }
+  .rx-header-inner.rx-pos-right { flex-direction: row-reverse; text-align: right; }
   .rx-logo { max-height: ${logoSize}px; max-width: ${Math.round(logoSize * 2.3)}px; object-fit: contain; }
   .rx-clinic-name { font-size: 22px; font-weight: 700; color: ${primary}; letter-spacing: 0.04em; line-height: 1.15; }
   .rx-clinic-sub { font-size: 12px; color: #555; margin-top: 2px; }
@@ -798,12 +829,12 @@ function buildTestPrintHtml(design: PrescriptionDesign, data: PrescriptionPrevie
 <body>
   <div class="rx-sheet">
     ${watermarkHtml}
-    ${showHeader ? `<div class="rx-header"><div class="rx-header-inner" style="text-align:${d.logoPosition || 'left'};">${logoHtml}<div class="rx-clinic-info"><div class="rx-clinic-name">${esc(clinic?.name || 'Clínica CENPOD')}</div>${clinic?.address ? `<div class="rx-clinic-line">${esc(clinic.address)}</div>` : ''}<div class="rx-clinic-line">${clinic?.phone ? `Tel. ${esc(clinic.phone)}` : ''}</div></div></div></div>` : ''}
-    <div class="rx-title-row"><div class="rx-title">Receta Médica</div><div class="rx-folio">Folio: PRUEBA-0001</div></div>
+    ${showHeader ? `<div class="rx-header"><div class="rx-header-inner rx-pos-${d.logoPosition || 'left'}">${logoHtml}<div class="rx-clinic-info"><div class="rx-clinic-name">${esc(clinic?.name || 'Clínica CENPOD')}</div>${clinic?.address ? `<div class="rx-clinic-line">${esc(clinic.address)}</div>` : ''}<div class="rx-clinic-line">${clinic?.phone ? `Tel. ${esc(clinic.phone)}` : ''}</div></div></div></div>` : ''}
+    <div class="rx-title-row"><div class="rx-title">Sugiero</div><div class="rx-folio">Folio: PRUEBA-0001</div></div>
     ${metaCells.length > 0 ? `<div class="rx-meta-grid">${metaCells.join('')}</div>` : ''}
     ${showDiagnosis && data.diagnosis ? `<div class="rx-section"><div class="rx-section-title">Diagnóstico</div><div class="rx-section-body">${esc(data.diagnosis)}</div></div>` : ''}
     ${showRx ? `<div class="rx-rx-symbol">℞</div>` : ''}
-    ${showMedications ? `<div class="rx-section"><div class="rx-section-title">℞ Prescripción</div><table class="rx-meds-table"><thead><tr style="background:${accent}1A;"><th class="rx-num">#</th><th>Medicamento</th><th>Dosis</th><th>Vía</th><th>Duración</th></tr></thead><tbody>${medsRows}</tbody></table></div>` : ''}
+    ${showMedications ? `<div class="rx-section"><div class="rx-section-title">Medicamentos o productos</div><table class="rx-meds-table"><thead><tr style="background:${accent}1A;"><th class="rx-num">#</th><th>Medicamento / Producto</th><th>Dosis</th><th>Vía</th><th>Duración</th></tr></thead><tbody>${medsRows}</tbody></table></div>` : ''}
     ${showIndications && data.indications ? `<div class="rx-section"><div class="rx-section-title">Indicaciones generales</div><div class="rx-section-body rx-indications">${esc(data.indications)}</div></div>` : ''}
     ${showSignature ? `<div class="rx-signature"><div class="rx-sig-line"></div><div class="rx-sig-name">${esc(podName)}</div><div class="rx-sig-meta">${podSpec} · Cédula: ${podCed}${podCert ? ` · Cert: ${podCert}` : ''}</div><div class="rx-sig-label">${esc(sigLabel)}</div></div>` : ''}
     ${showFooter ? `<div class="rx-footer"><div>${esc(clinic?.name || 'Clínica CENPOD')} · Receta de prueba</div><div>${new Date().toLocaleDateString('es-MX', { day: '2-digit', month: 'long', year: 'numeric' })}</div></div>` : ''}

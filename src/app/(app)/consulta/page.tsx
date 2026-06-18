@@ -793,7 +793,7 @@ function ConsultaForm({
                 <div className="flex items-center gap-2">
                   <Pill className="h-4 w-4" style={{ color: '#0a3143' }} />
                   <div>
-                    <p className="text-sm font-medium">Receta médica</p>
+                    <p className="text-sm font-medium">Receta</p>
                     <p className="text-[11px] text-muted-foreground">
                       {prescriptionId
                         ? 'Ya generaste una receta para esta consulta.'

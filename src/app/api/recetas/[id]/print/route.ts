@@ -219,7 +219,12 @@ export async function GET(_req: NextRequest, ctx: { params: Promise<{ id: string
   }
 
   const patientName = rx.patient ? `${rx.patient.firstName} ${rx.patient.lastName}` : '—'
-  const podName = rx.podologist?.name || '—'
+  // Doctor name: usar nombre fijo si está configurado, sino el del podólogo que recetó
+  const doctorNameMode = (design as any).doctorNameMode || 'podologist'
+  const doctorFixedName = (design as any).doctorFixedName || ''
+  const podName = doctorNameMode === 'fixed' && doctorFixedName
+    ? doctorFixedName
+    : (rx.podologist?.name || '—')
   const podCed = rx.podologist?.cedula || ''
   const podSpec = rx.podologist?.specialty || ''
   const podCert = rx.podologist?.certNumber || ''
@@ -261,7 +266,7 @@ export async function GET(_req: NextRequest, ctx: { params: Promise<{ id: string
     : ''
 
   const headerInner = `
-    <div class="rx-header-inner" style="text-align:${align};">
+    <div class="rx-header-inner rx-pos-${align}">
       ${logoHtml}
       <div class="rx-clinic-info">
         <div class="rx-clinic-name" style="color:${primary};">${esc(clinic?.name)}</div>
@@ -296,12 +301,12 @@ export async function GET(_req: NextRequest, ctx: { params: Promise<{ id: string
 
   const medsHtml = showMedications ? `
     <div class="rx-section">
-      <div class="rx-section-title" style="color:${primary};border-bottom-color:${withAlpha(primary, 0.18)};">℞ Prescripción</div>
+      <div class="rx-section-title" style="color:${primary};border-bottom-color:${withAlpha(primary, 0.18)};">Medicamentos o productos</div>
       <table class="rx-meds-table">
         <thead>
           <tr style="background:${withAlpha(accent, 0.10)};">
             <th class="rx-num">#</th>
-            <th>Medicamento</th>
+            <th>Medicamento / Producto</th>
             <th>Dosis</th>
             <th>Vía</th>
             <th>Duración</th>
@@ -428,11 +433,12 @@ export async function GET(_req: NextRequest, ctx: { params: Promise<{ id: string
     align-items: center;
     gap: 18px;
   }
-  .rx-header-inner[style*="text-align:center"] {
+  .rx-header-inner.rx-pos-center {
     flex-direction: column;
     text-align: center;
+    align-items: center;
   }
-  .rx-header-inner[style*="text-align:right"] {
+  .rx-header-inner.rx-pos-right {
     flex-direction: row-reverse;
     text-align: right;
   }
@@ -621,7 +627,7 @@ export async function GET(_req: NextRequest, ctx: { params: Promise<{ id: string
       box-shadow: none;
     }
     .rx-meta-grid { grid-template-columns: 1fr; }
-    .rx-header-inner { flex-direction: column !important; text-align: center !important; }
+    .rx-header-inner.rx-pos-center { flex-direction: column !important; text-align: center !important; align-items: center !important; }
   }
 </style>
 </head>
@@ -631,7 +637,7 @@ export async function GET(_req: NextRequest, ctx: { params: Promise<{ id: string
     ${showHeader ? `<div class="rx-header">${headerInner}</div>` : ''}
 
     <div class="rx-title-row">
-      <div class="rx-title">Receta Médica</div>
+      <div class="rx-title">Sugiero</div>
       <div class="rx-folio">Folio: ${esc(rx.id.slice(-8).toUpperCase())}</div>
     </div>
 
