@@ -151,6 +151,13 @@ export function ivaTypeToTaxType(ivaType: string): string {
   }
 }
 
+/** Devuelve el ivaType recomendado según el tipo de concepto. */
+export function ivaTypeForType(type: string): string {
+  if (type === 'MEDICAMENTO') return 'IVA0'
+  if (type === 'PRODUCTO') return 'IVA16'
+  return 'EXENTO' // SERVICIO por defecto (consulta médica)
+}
+
 /** Claves de producto SAT según el tipo de concepto. */
 export const PRODUCT_KEYS: Record<string, string> = {
   SERVICIO: '85121600', // Servicios de médicos (consulta)

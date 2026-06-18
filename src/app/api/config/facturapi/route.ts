@@ -203,10 +203,3 @@ export async function DELETE(req: NextRequest) {
 
   return ok({ ok: true })
 }
-
-// Necesario para poder recibir multipart/form-data en Next.js
-export const config = {
-  api: {
-    bodyParser: false,
-  },
-}
