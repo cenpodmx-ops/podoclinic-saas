@@ -1,8 +1,6 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
-// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
-// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+// Sistema CENPOD — Schema completo (18 módulos)
+// Compatible SQLite (dev) y PostgreSQL (prod Supabase).
+// El aislamiento multi-sucursal se maneja con clinic_id a nivel aplicación.
 
 generator client {
   provider = "prisma-client-js"
@@ -13,20 +11,648 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-model User {
-  id        String   @id @default(cuid())
-  email     String   @unique
-  name      String?
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+// ============================================================
+// ENTIDADES BASE
+// ============================================================
+
+model Clinic {
+  id          String   @id @default(cuid())
+  name        String
+  slug        String   @unique
+  address     String?
+  phone       String?
+  email       String?
+  logoUrl     String?
+  openingTime String? // "08:00"
+  closingTime String? // "20:00"
+  slotMinutes Int      @default(30)
+  isDistributor Boolean @default(false)
+  isMatrix      Boolean @default(false)
+  // Conexión inter-sucursal (activada con código de Matriz)
+  sharedDb     Boolean  @default(false)
+  // Datos fiscales
+  rfc         String?
+  razonSocial String?
+  regimenFiscal String?
+  // FacturAPI
+  facturapiToken String?
+  facturapiSeries String? // JSON string con series por tipo
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  users        User[]
+  podologists  Podologist[]
+  patients     Patient[]
+  appointments Appointment[]
+  services     Service[]
+  products     Product[]
+  invoices     Invoice[]
+  cashSessions CashSession[]
+  messages     RedMessage[]       @relation("RedMsgFrom")
+  receivedMsgs RedMessage[]       @relation("RedMsgTo")
+  notices      RedNotice[]
+  orders       Order[]            @relation("OrderFrom")
+  ordersTo     Order[]            @relation("OrderTo")
+  equipment    Equipment[]
+  leads        Lead[]
+  segmentMembers SegmentMembership[]
+  dailyOps     DailyOperation[]
+  appointmentsBlocked AppointmentBlock[]
+  config       ClinicConfig?
 }
 
-model Post {
-  id        String   @id @default(cuid())
-  title     String
-  content   String?
-  published Boolean  @default(false)
-  authorId  String
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+model User {
+  id            String    @id @default(cuid())
+  email         String    @unique
+  name          String
+  passwordHash  String
+  role          String    // SUPER | OWNER | RECEPTION | PODODOLOGIST
+  clinicId      String?
+  clinic        Clinic?   @relation(fields: [clinicId], references: [id], onDelete: SetNull)
+  podologistId  String?  @unique
+  podologist    Podologist? @relation(fields: [podologistId], references: [id], onDelete: SetNull)
+  active        Boolean   @default(true)
+  lastLogin     DateTime?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+}
+
+model Podologist {
+  id            String   @id @default(cuid())
+  clinicId      String
+  clinic        Clinic   @relation(fields: [clinicId], references: [id], onDelete: Cascade)
+  name          String
+  specialty     String?
+  cedula        String?
+  certNumber    String?
+  photoUrl      String?
+  phone         String?
+  email         String?
+  commissionPct Float    @default(0)
+  monthlyGoalConsults Int?
+  monthlyGoalRevenue  Float?
+  active        Boolean  @default(true)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  user          User?
+  appointments  Appointment[]
+  consultations Consultation[]
+  prescriptions Prescription[]
+  blocks        AppointmentBlock[]
+  evaluations   PodologistEvaluation[]
+}
+
+// ============================================================
+// PACIENTES Y EXPEDIENTES
+// ============================================================
+
+model Patient {
+  id              String   @id @default(cuid())
+  clinicId        String
+  clinic          Clinic   @relation(fields: [clinicId], references: [id], onDelete: Cascade)
+  expNumber       String   // número de expediente clínico
+  firstName       String
+  lastName        String
+  birthDate       DateTime?
+  sex             String? // M | F | O
+  curp            String?
+  rfc             String?
+  address         String?
+  phone           String?
+  email           String?
+  // Datos fiscales
+  razonSocial     String?
+  regimenFiscal   String?
+  cfdiUso         String?
+  emailFactura    String?
+  // Alertas de salud
+  isDiabetic      Boolean  @default(false)
+  allergies       String? // texto libre
+  currentMeds     String?
+  chronicConditions String?
+  riskLevel       String? // BAJO | MEDIO | ALTO
+  // Historia clínica inicial (texto)
+  antecedentsHereditary  String?
+  antecedentsPathologic  String?
+  antecedentsNonPathologic String?
+  physicalExploration    String?
+  clinicalSummary        String?
+  generalNotes           String?
+  // Meta
+  totalSpent      Float    @default(0)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  appointments    Appointment[]
+  consultations   Consultation[]
+  prescriptions   Prescription[]
+  invoices        Invoice[]
+  files           PatientFile[]
+  followUps       FollowUp[]
+  segmentMembers  SegmentMembership[]
+  leads           Lead[]
+
+  @@index([clinicId])
+  @@index([phone])
+}
+
+model PatientFile {
+  id          String   @id @default(cuid())
+  patientId   String
+  patient     Patient  @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  name        String
+  type        String   // BIOQUIMICO | RADIOGRAFIA | ESTUDIO | CONSENTIMIENTO | FOTO | OTRO
+  fileUrl     String
+  mimeType    String
+  sizeBytes   Int
+  createdAt   DateTime @default(now())
+}
+
+// ============================================================
+// MÓDULO 01 — AGENDA
+// ============================================================
+
+model Appointment {
+  id           String   @id @default(cuid())
+  clinicId     String
+  clinic       Clinic   @relation(fields: [clinicId], references: [id], onDelete: Cascade)
+  patientId    String
+  patient      Patient  @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  podologistId String?
+  podologist   Podologist? @relation(fields: [podologistId], references: [id], onDelete: SetNull)
+  date         DateTime // día de la cita (sin hora)
+  startTime    DateTime
+  endTime      DateTime
+  reason       String?
+  notes        String?
+  status       String   @default("PENDIENTE") // PENDIENTE | CONFIRMADA | EN_CONSULTA | FINALIZADA | CANCELADA | NO_ASISTIO | BLOQUEADA
+  source       String   @default("MANUAL") // MANUAL | WEB
+  serviceId    String?
+  serviceName  String?
+  price        Float?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  consultation Consultation?
+
+  @@index([clinicId, date])
+  @@index([podologistId, date])
+  @@index([patientId])
+}
+
+model AppointmentBlock {
+  id           String   @id @default(cuid())
+  clinicId     String
+  clinic       Clinic   @relation(fields: [clinicId], references: [id], onDelete: Cascade)
+  podologistId String?
+  podologist   Podologist? @relation(fields: [podologistId], references: [id], onDelete: Cascade)
+  date         DateTime
+  startTime    DateTime
+  endTime      DateTime
+  reason       String   // VACACIONES | CAPACITACION | INCAPACIDAD | OTRO
+  notes        String?
+  fullDay      Boolean  @default(false)
+  createdAt    DateTime @default(now())
+
+  @@index([clinicId, date])
+  @@index([podologistId, date])
+}
+
+// ============================================================
+// MÓDULO 02 — CONSULTA
+// ============================================================
+
+model Consultation {
+  id              String   @id @default(cuid())
+  clinicId        String
+  appointmentId   String   @unique
+  appointment     Appointment @relation(fields: [appointmentId], references: [id], onDelete: Cascade)
+  patientId       String
+  patient         Patient  @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  podologistId    String?
+  podologist      Podologist? @relation(fields: [podologistId], references: [id], onDelete: SetNull)
+  date            DateTime @default(now())
+  reason          String?
+  referredBy      String? // NADIE | PACIENTE | MEDICO | REDES | OTRO
+  diagnosis       String?
+  treatment       String?
+  notes           String?
+  // Cobro
+  consultPrice    Float    @default(0)
+  productsTotal   Float    @default(0)
+  discount        Float    @default(0)
+  total           Float    @default(0)
+  paymentMethod   String? // EFECTIVO | DEBITO | CREDITO | TRANSFERENCIA | OTRO
+  paid            Boolean  @default(false)
+  ticketPrinted   Boolean  @default(false)
+  // Items cobrados (JSON string)
+  itemsJson       String   // [{name, qty, price, type}]
+  followUpDays    Int?     // Seguimiento en X días
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  followUps       FollowUp[]
+
+  @@index([patientId])
+  @@index([clinicId])
+}
+
+// ============================================================
+// MÓDULO 05 — RECETAS
+// ============================================================
+
+model Prescription {
+  id           String   @id @default(cuid())
+  clinicId      String
+  patientId     String
+  patient       Patient  @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  podologistId  String?
+  podologist    Podologist? @relation(fields: [podologistId], references: [id], onDelete: SetNull)
+  date          DateTime @default(now())
+  diagnosis     String?
+  medicationsJson String // [{name, dose, via, duration}]
+  indications   String?
+  createdAt     DateTime @default(now())
+
+  @@index([patientId])
+}
+
+// ============================================================
+// MÓDULO 06 — INVENTARIO
+// ============================================================
+
+model Product {
+  id           String   @id @default(cuid())
+  clinicId     String
+  clinic       Clinic   @relation(fields: [clinicId], references: [id], onDelete: Cascade)
+  code         String?
+  name         String
+  description  String?
+  category     String   // MEDICAMENTO | PRODUCTO | MATERIAL | EQUIPO
+  costPrice    Float    @default(0)
+  salePrice    Float    @default(0)
+  ivaType      String   @default("EXENTO") // IVA16 | IVA0 | EXENTO
+  stock        Int      @default(0)
+  minStock     Int      @default(0)
+  supplier     String?
+  active       Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  movements    StockMovement[]
+  orderItems   OrderItem[]
+
+  @@index([clinicId])
+  @@index([name])
+}
+
+model StockMovement {
+  id          String   @id @default(cuid())
+  productId   String
+  product     Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  clinicId    String
+  type        String   // ENTRADA | SALIDA | AJUSTE | VENTA
+  quantity    Int
+  reason      String?
+  cost        Float?
+  supplier    String?
+  createdAt   DateTime @default(now())
+
+  @@index([productId])
+  @@index([clinicId])
+}
+
+// ============================================================
+// MÓDULO 09 — SERVICIOS
+// ============================================================
+
+model Service {
+  id              String   @id @default(cuid())
+  clinicId        String
+  clinic          Clinic   @relation(fields: [clinicId], references: [id], onDelete: Cascade)
+  name            String
+  description     String?
+  durationMin     Int      @default(30)
+  price           Float    @default(0)
+  ivaType         String   @default("EXENTO") // IVA16 | IVA0 | EXENTO
+  commissionPct   Float    @default(0)
+  active          Boolean  @default(true)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([clinicId])
+}
+
+// ============================================================
+// MÓDULO 04 — FACTURACIÓN
+// ============================================================
+
+model Invoice {
+  id            String   @id @default(cuid())
+  clinicId      String
+  clinic        Clinic   @relation(fields: [clinicId], references: [id], onDelete: Cascade)
+  patientId     String?
+  patient       Patient? @relation(fields: [patientId], references: [id], onDelete: SetNull)
+  consultationId String?
+  folio         String?
+  uuid          String? // UUID del SAT
+  date          DateTime @default(now())
+  // Items facturados (JSON)
+  itemsJson     String
+  subtotal      Float    @default(0)
+  iva           Float    @default(0)
+  total         Float    @default(0)
+  status        String   @default("PENDIENTE") // PENDIENTE | TIMBRADA | CANCELADA
+  pdfUrl        String?
+  xmlUrl        String?
+  paymentMethod String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@index([clinicId])
+  @@index([patientId])
+}
+
+// ============================================================
+// MÓDULO 07 — FINANZAS Y CAJA
+// ============================================================
+
+model CashSession {
+  id            String   @id @default(cuid())
+  clinicId      String
+  clinic        Clinic   @relation(fields: [clinicId], references: [id], onDelete: Cascade)
+  date          DateTime
+  openingFund   Float    @default(0)
+  closed        Boolean  @default(false)
+  closedAt      DateTime?
+  closedBy      String?
+  countedCash   Float?
+  expectedCash  Float?
+  difference    Float?
+  notes         String?
+  signatureData String?
+  createdAt     DateTime @default(now())
+
+  movements     CashMovement[]
+
+  @@index([clinicId, date])
+}
+
+model CashMovement {
+  id            String   @id @default(cuid())
+  cashSessionId String
+  cashSession   CashSession @relation(fields: [cashSessionId], references: [id], onDelete: Cascade)
+  clinicId      String
+  type          String   // INGRESO | EGRESO
+  source        String   // CONSULTA | MOSTRADOR | EFECTIVO_INICIAL | GASTO | OTRO
+  amount        Float
+  method        String?  // EFECTIVO | DEBITO | CREDITO | TRANSFERENCIA
+  description   String?
+  refId         String?  // ID de consulta/venta
+  createdAt     DateTime @default(now())
+
+  @@index([cashSessionId])
+  @@index([clinicId])
+}
+
+// ============================================================
+// MÓDULO 10 — RED CENPOD
+// ============================================================
+
+model RedMessage {
+  id          String   @id @default(cuid())
+  fromClinicId String?
+  fromClinic  Clinic?  @relation("RedMsgFrom", fields: [fromClinicId], references: [id], onDelete: SetNull)
+  toClinicId  String?
+  toClinic    Clinic?  @relation("RedMsgTo", fields: [toClinicId], references: [id], onDelete: SetNull)
+  subject     String
+  body        String
+  parentId    String?  // hilo
+  status      String   @default("ABIERTO") // ABIERTO | RESUELTO
+  readAt      DateTime?
+  createdAt   DateTime @default(now())
+
+  @@index([toClinicId])
+}
+
+model RedNotice {
+  id          String   @id @default(cuid())
+  fromClinicId String
+  fromClinic  Clinic   @relation(fields: [fromClinicId], references: [id], onDelete: Cascade)
+  toAllClinics Boolean @default(false)
+  type        String   @default("INFO") // INFO | URGENTE | CAPACITACION
+  title       String
+  body        String
+  createdAt   DateTime @default(now())
+  reads       NoticeRead[]
+
+  @@index([fromClinicId])
+}
+
+model NoticeRead {
+  id          String   @id @default(cuid())
+  noticeId    String
+  notice      RedNotice @relation(fields: [noticeId], references: [id], onDelete: Cascade)
+  userId      String
+  readAt      DateTime @default(now())
+}
+
+// Pedidos a distribuidora
+model Order {
+  id            String   @id @default(cuid())
+  fromClinicId  String
+  fromClinic    Clinic   @relation("OrderFrom", fields: [fromClinicId], references: [id], onDelete: Cascade)
+  toClinicId    String
+  toClinic      Clinic   @relation("OrderTo", fields: [toClinicId], references: [id], onDelete: Cascade)
+  urgency       String   @default("NORMAL") // NORMAL | URGENTE
+  observations  String?
+  status        String   @default("PENDIENTE") // PENDIENTE | ACEPTADO | PARCIAL | RECHAZADO | SURTIDO
+  rejectReason  String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  items         OrderItem[]
+
+  @@index([fromClinicId])
+  @@index([toClinicId])
+}
+
+model OrderItem {
+  id          String   @id @default(cuid())
+  orderId     String
+  order       Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  productId   String?
+  product     Product? @relation(fields: [productId], references: [id], onDelete: SetNull)
+  name        String
+  requestedQty Int
+  suppliedQty  Int     @default(0)
+}
+
+// ============================================================
+// MÓDULO 08 — CRM
+// ============================================================
+
+model Lead {
+  id          String   @id @default(cuid())
+  clinicId    String
+  clinic      Clinic   @relation(fields: [clinicId], references: [id], onDelete: Cascade)
+  name        String
+  phone       String?
+  email       String?
+  interest    String?
+  status      String   @default("NUEVO") // NUEVO | CONTACTADO | AGENDADO | PERDIDO
+  patientId   String?
+  patient     Patient? @relation(fields: [patientId], references: [id], onDelete: SetNull)
+  notes       String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([clinicId])
+}
+
+model SegmentMembership {
+  id          String   @id @default(cuid())
+  patientId   String
+  patient     Patient  @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  clinicId    String
+  clinic      Clinic   @relation(fields: [clinicId], references: [id], onDelete: Cascade)
+  segment     String   // INACTIVOS_30 | INACTIVOS_60 | INACTIVOS_90 | CUMPLEANOS_MES | DIABETICOS | NUEVOS_MES | RIESGO_ABANDONO
+  contacted   Boolean  @default(false)
+  createdAt   DateTime @default(now())
+
+  @@index([clinicId, segment])
+}
+
+// ============================================================
+// MÓDULO 14 — SEGUIMIENTO POST-CONSULTA
+// ============================================================
+
+model FollowUp {
+  id              String   @id @default(cuid())
+  patientId       String
+  patient         Patient  @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  consultationId  String?
+  consultation    Consultation? @relation(fields: [consultationId], references: [id], onDelete: SetNull)
+  clinicId        String
+  dueDate         DateTime
+  notes           String?
+  status          String   @default("PENDIENTE") // PENDIENTE | CONTACTADO | AGENDADO | VENCIDO
+  whatsappSent    Boolean  @default(false)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([clinicId, dueDate])
+  @@index([patientId])
+}
+
+// ============================================================
+// MÓDULO 15 — CIERRE Y APERTURA
+// ============================================================
+
+model DailyOperation {
+  id            String   @id @default(cuid())
+  clinicId      String
+  clinic        Clinic   @relation(fields: [clinicId], references: [id], onDelete: Cascade)
+  date          DateTime
+  type          String   // APERTURA | CIERRE
+  openingFund   Float?
+  closingCounted Float?
+  closingExpected Float?
+  difference    Float?
+  notes         String?
+  signatureData String?
+  summaryJson   String?
+  performedBy   String?
+  createdAt     DateTime @default(now())
+
+  @@index([clinicId, date])
+}
+
+// ============================================================
+// MÓDULO 16 — EVALUACIÓN DE PODÓLOGOS
+// ============================================================
+
+model PodologistEvaluation {
+  id              String   @id @default(cuid())
+  podologistId    String
+  podologist      Podologist @relation(fields: [podologistId], references: [id], onDelete: Cascade)
+  clinicId        String
+  period          String   // "2026-01"
+  consultsDone    Int      @default(0)
+  consultsCancelled Int    @default(0)
+  consultsNoShow  Int      @default(0)
+  revenue         Float    @default(0)
+  avgValue        Float    @default(0)
+  googleReviews   Int      @default(0)
+  goalConsults    Int?
+  goalRevenue     Float?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([podologistId, period])
+}
+
+// ============================================================
+// MÓDULO 17 — EQUIPOS Y MANTENIMIENTO
+// ============================================================
+
+model Equipment {
+  id              String   @id @default(cuid())
+  clinicId        String
+  clinic          Clinic   @relation(fields: [clinicId], references: [id], onDelete: Cascade)
+  name            String
+  brand           String?
+  model           String?
+  serialNumber    String?
+  acquisitionDate DateTime?
+  serviceProvider String?
+  lastCalibration DateTime?
+  nextMaintenance DateTime?
+  notes           String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  maintenances    Maintenance[]
+
+  @@index([clinicId])
+}
+
+model Maintenance {
+  id          String   @id @default(cuid())
+  equipmentId String
+  equipment   Equipment @relation(fields: [equipmentId], references: [id], onDelete: Cascade)
+  date        DateTime @default(now())
+  type        String   // CALIBRACION | MANTENIMIENTO | REPARACION
+  description String?
+  technician  String?
+  cost        Float    @default(0)
+  createdAt   DateTime @default(now())
+
+  @@index([equipmentId])
+}
+
+// ============================================================
+// MÓDULO 18 — CONFIGURACIÓN
+// ============================================================
+
+model ClinicConfig {
+  clinicId        String   @id
+  clinic          Clinic   @relation(fields: [clinicId], references: [id], onDelete: Cascade)
+  // Plantillas WhatsApp (JSON con variables)
+  tplConfirm      String?
+  tplReminder     String?
+  tplGoogleReview String?
+  tplBirthday     String?
+  tplInactive     String?
+  tplFollowUp     String?
+  // Diseño de receta (JSON)
+  prescriptionDesign String?
+  // Lista de diagnósticos predefinidos (JSON)
+  diagnosesList   String?
+  // Días festivos / descanso (JSON)
+  holidaysJson    String?
+  // Compartir BD con otras sucursales
+  sharedDbCode    String?
+  updatedAt       DateTime @updatedAt
 }

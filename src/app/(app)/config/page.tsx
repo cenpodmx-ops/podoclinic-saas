@@ -1,0 +1,606 @@
+'use client'
+
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { useState } from 'react'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import { Textarea } from '@/components/ui/textarea'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { Switch } from '@/components/ui/switch'
+import { Badge } from '@/components/ui/badge'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
+import { Skeleton } from '@/components/ui/skeleton'
+import { Save, Plus, Pencil, Building2, Users, MessageSquare, FileText, KeyRound } from 'lucide-react'
+import { toast } from 'sonner'
+import { fmtMoney } from '@/lib/format'
+
+const TPL_VARS = [
+  '{{nombre_paciente}}', '{{fecha}}', '{{hora}}', '{{podologo}}',
+  '{{clinica}}', '{{link_reserva}}',
+]
+
+export default function ConfigPage() {
+  return (
+    <div className="p-4 md:p-6 space-y-4 max-w-[1400px] mx-auto">
+      <div>
+        <h1 className="text-2xl font-bold">Configuración</h1>
+        <p className="text-sm text-muted-foreground">Personaliza el sistema para tu clínica</p>
+      </div>
+
+      <Tabs defaultValue="clinica">
+        <TabsList className="flex flex-wrap h-auto">
+          <TabsTrigger value="clinica" className="gap-1"><Building2 className="h-3.5 w-3.5" /> Clínica</TabsTrigger>
+          <TabsTrigger value="equipo" className="gap-1"><Users className="h-3.5 w-3.5" /> Equipo</TabsTrigger>
+          <TabsTrigger value="plantillas" className="gap-1"><MessageSquare className="h-3.5 w-3.5" /> Plantillas WhatsApp</TabsTrigger>
+          <TabsTrigger value="facturacion" className="gap-1"><KeyRound className="h-3.5 w-3.5" /> FacturAPI</TabsTrigger>
+          <TabsTrigger value="diagnosticos" className="gap-1"><FileText className="h-3.5 w-3.5" /> Diagnósticos</TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="clinica"><ClinicaTab /></TabsContent>
+        <TabsContent value="equipo"><EquipoTab /></TabsContent>
+        <TabsContent value="plantillas"><PlantillasTab /></TabsContent>
+        <TabsContent value="facturacion"><FacturacionTab /></TabsContent>
+        <TabsContent value="diagnosticos"><DiagnosticosTab /></TabsContent>
+      </Tabs>
+    </div>
+  )
+}
+
+function useConfig() {
+  return useQuery({
+    queryKey: ['config'],
+    queryFn: () => fetch('/api/config').then((r) => r.json()),
+  })
+}
+
+function ClinicaTab() {
+  const { data, isLoading } = useConfig()
+  const qc = useQueryClient()
+  const [form, setForm] = useState<any>(null)
+
+  // Cuando carga la data, inicializa el form
+  const clinic = data?.clinic
+  if (!isLoading && clinic && !form) {
+    setForm({
+      name: clinic.name || '',
+      address: clinic.address || '',
+      phone: clinic.phone || '',
+      email: clinic.email || '',
+      logoUrl: clinic.logoUrl || '',
+      openingTime: clinic.openingTime || '08:00',
+      closingTime: clinic.closingTime || '20:00',
+      slotMinutes: clinic.slotMinutes || 30,
+      rfc: clinic.rfc || '',
+      razonSocial: clinic.razonSocial || '',
+      regimenFiscal: clinic.regimenFiscal || '',
+    })
+  }
+
+  const save = useMutation({
+    mutationFn: (body: any) =>
+      fetch('/api/config/clinica', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      }).then((r) => r.json()),
+    onSuccess: () => {
+      toast.success('Datos de la clínica guardados')
+      qc.invalidateQueries({ queryKey: ['config'] })
+    },
+    onError: () => toast.error('Error al guardar'),
+  })
+
+  if (isLoading || !form) return <Skeleton className="h-96" />
+
+  return (
+    <Card className="shadow-sm">
+      <CardHeader>
+        <CardTitle className="text-base">Datos de la clínica</CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        <div className="grid md:grid-cols-2 gap-4">
+          <div className="space-y-1">
+            <Label>Nombre</Label>
+            <Input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />
+          </div>
+          <div className="space-y-1">
+            <Label>Teléfono</Label>
+            <Input value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} />
+          </div>
+        </div>
+        <div className="space-y-1">
+          <Label>Dirección</Label>
+          <Input value={form.address} onChange={(e) => setForm({ ...form, address: e.target.value })} />
+        </div>
+        <div className="grid md:grid-cols-2 gap-4">
+          <div className="space-y-1">
+            <Label>Email</Label>
+            <Input type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} />
+          </div>
+          <div className="space-y-1">
+            <Label>URL del logo</Label>
+            <Input value={form.logoUrl} onChange={(e) => setForm({ ...form, logoUrl: e.target.value })} placeholder="/logo-dark.png" />
+          </div>
+        </div>
+        <div className="grid md:grid-cols-3 gap-4">
+          <div className="space-y-1">
+            <Label>Apertura</Label>
+            <Input type="time" value={form.openingTime} onChange={(e) => setForm({ ...form, openingTime: e.target.value })} />
+          </div>
+          <div className="space-y-1">
+            <Label>Cierre</Label>
+            <Input type="time" value={form.closingTime} onChange={(e) => setForm({ ...form, closingTime: e.target.value })} />
+          </div>
+          <div className="space-y-1">
+            <Label>Slot de agenda (min)</Label>
+            <Select value={String(form.slotMinutes)} onValueChange={(v) => setForm({ ...form, slotMinutes: Number(v) })}>
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="15">15 min</SelectItem>
+                <SelectItem value="20">20 min</SelectItem>
+                <SelectItem value="30">30 min</SelectItem>
+                <SelectItem value="60">60 min</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
+
+        <div className="pt-4 border-t">
+          <h3 className="font-medium mb-3">Datos fiscales</h3>
+          <div className="grid md:grid-cols-3 gap-4">
+            <div className="space-y-1">
+              <Label>RFC</Label>
+              <Input value={form.rfc} onChange={(e) => setForm({ ...form, rfc: e.target.value })} />
+            </div>
+            <div className="space-y-1">
+              <Label>Razón social</Label>
+              <Input value={form.razonSocial} onChange={(e) => setForm({ ...form, razonSocial: e.target.value })} />
+            </div>
+            <div className="space-y-1">
+              <Label>Régimen fiscal</Label>
+              <Input value={form.regimenFiscal} onChange={(e) => setForm({ ...form, regimenFiscal: e.target.value })} />
+            </div>
+          </div>
+        </div>
+
+        <div className="flex justify-end">
+          <Button onClick={() => save.mutate(form)} disabled={save.isPending} style={{ backgroundColor: '#0a3143' }}>
+            <Save className="h-4 w-4 mr-1" /> {save.isPending ? 'Guardando...' : 'Guardar'}
+          </Button>
+        </div>
+      </CardContent>
+    </Card>
+  )
+}
+
+function EquipoTab() {
+  const qc = useQueryClient()
+  const [open, setOpen] = useState(false)
+  const [editing, setEditing] = useState<any>(null)
+
+  const { data, isLoading } = useQuery({
+    queryKey: ['podologos'],
+    queryFn: () => fetch('/api/podologos?includeInactive=1').then((r) => r.json()),
+  })
+
+  const save = useMutation({
+    mutationFn: async (body: any) => {
+      if (editing) {
+        const res = await fetch(`/api/podologos/${editing.id}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(body),
+        })
+        if (!res.ok) throw new Error('Error')
+        return res.json()
+      } else {
+        const res = await fetch('/api/podologos', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(body),
+        })
+        if (!res.ok) throw new Error('Error')
+        return res.json()
+      }
+    },
+    onSuccess: () => {
+      toast.success(editing ? 'Podólogo actualizado' : 'Podólogo creado')
+      qc.invalidateQueries({ queryKey: ['podologos'] })
+      setOpen(false)
+      setEditing(null)
+    },
+    onError: () => toast.error('Error al guardar'),
+  })
+
+  const deactivate = useMutation({
+    mutationFn: (id: string) => fetch(`/api/podologos/${id}`, { method: 'DELETE' }).then((r) => r.json()),
+    onSuccess: () => {
+      toast.success('Podólogo desactivado')
+      qc.invalidateQueries({ queryKey: ['podologos'] })
+    },
+  })
+
+  const rows: any[] = Array.isArray(data) ? data : (data?.rows || [])
+
+  return (
+    <Card className="shadow-sm">
+      <CardHeader className="flex flex-row items-center justify-between">
+        <CardTitle className="text-base">Equipo de podólogos</CardTitle>
+        <Button size="sm" onClick={() => { setEditing(null); setOpen(true) }} style={{ backgroundColor: '#0a3143' }}>
+          <Plus className="h-4 w-4 mr-1" /> Nuevo
+        </Button>
+      </CardHeader>
+      <CardContent className="p-0">
+        {isLoading ? (
+          <div className="p-4 space-y-2">{Array.from({ length: 3 }).map((_, i) => <Skeleton key={i} className="h-12" />)}</div>
+        ) : rows.length === 0 ? (
+          <div className="p-12 text-center text-muted-foreground">Sin podólogos registrados</div>
+        ) : (
+          <div className="overflow-x-auto">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Nombre</TableHead>
+                  <TableHead>Especialidad</TableHead>
+                  <TableHead>Cédula</TableHead>
+                  <TableHead>Teléfono</TableHead>
+                  <TableHead>Comisión</TableHead>
+                  <TableHead>Meta mensual</TableHead>
+                  <TableHead>Estado</TableHead>
+                  <TableHead className="text-right">Acciones</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {rows.map((p: any) => (
+                  <TableRow key={p.id}>
+                    <TableCell className="font-medium">{p.name}</TableCell>
+                    <TableCell className="text-sm">{p.specialty || '—'}</TableCell>
+                    <TableCell className="text-sm">{p.cedula || '—'}</TableCell>
+                    <TableCell className="text-sm">{p.phone || '—'}</TableCell>
+                    <TableCell><Badge variant="outline">{p.commissionPct}%</Badge></TableCell>
+                    <TableCell className="text-sm">
+                      {p.monthlyGoalConsults ? `${p.monthlyGoalConsults} citas` : '—'}
+                      {p.monthlyGoalRevenue ? ` / ${fmtMoney(p.monthlyGoalRevenue)}` : ''}
+                    </TableCell>
+                    <TableCell>
+                      {p.active ? <Badge className="bg-emerald-100 text-emerald-700">Activo</Badge> : <Badge variant="secondary">Inactivo</Badge>}
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <Button variant="ghost" size="icon" onClick={() => { setEditing(p); setOpen(true) }}>
+                        <Pencil className="h-4 w-4" />
+                      </Button>
+                      {p.active && (
+                        <Button variant="ghost" size="icon" className="text-red-600" onClick={() => deactivate.mutate(p.id)}>
+                          <Plus className="h-4 w-4 rotate-45" />
+                        </Button>
+                      )}
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
+        )}
+      </CardContent>
+
+      <PodologoDialog open={open} onOpenChange={setOpen} editing={editing} onSave={save.mutate} saving={save.isPending} />
+    </Card>
+  )
+}
+
+function PodologoDialog({ open, onOpenChange, editing, onSave, saving }: any) {
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent key={editing?.id || 'new'} className="max-w-lg max-h-[90vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle>{editing ? 'Editar podólogo' : 'Nuevo podólogo'}</DialogTitle>
+        </DialogHeader>
+        <form
+          onSubmit={(e) => {
+            e.preventDefault()
+            const fd = new FormData(e.currentTarget as any)
+            const body = Object.fromEntries(fd.entries()) as any
+            body.commissionPct = Number(body.commissionPct)
+            if (body.monthlyGoalConsults) body.monthlyGoalConsults = Number(body.monthlyGoalConsults)
+            if (body.monthlyGoalRevenue) body.monthlyGoalRevenue = Number(body.monthlyGoalRevenue)
+            onSave(body)
+          }}
+          className="space-y-3"
+        >
+          <div className="space-y-1">
+            <Label>Nombre completo *</Label>
+            <Input name="name" required defaultValue={editing?.name || ''} />
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-1">
+              <Label>Especialidad</Label>
+              <Input name="specialty" defaultValue={editing?.specialty || ''} />
+            </div>
+            <div className="space-y-1">
+              <Label>Cédula profesional</Label>
+              <Input name="cedula" defaultValue={editing?.cedula || ''} />
+            </div>
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-1">
+              <Label>Teléfono</Label>
+              <Input name="phone" defaultValue={editing?.phone || ''} />
+            </div>
+            <div className="space-y-1">
+              <Label>Email</Label>
+              <Input name="email" type="email" defaultValue={editing?.email || ''} />
+            </div>
+          </div>
+          <div className="grid grid-cols-3 gap-3">
+            <div className="space-y-1">
+              <Label>Comisión (%)</Label>
+              <Input name="commissionPct" type="number" min={0} max={100} step="0.1" defaultValue={editing?.commissionPct ?? 0} />
+            </div>
+            <div className="space-y-1">
+              <Label>Meta citas/mes</Label>
+              <Input name="monthlyGoalConsults" type="number" min={0} defaultValue={editing?.monthlyGoalConsults ?? ''} />
+            </div>
+            <div className="space-y-1">
+              <Label>Meta $/mes</Label>
+              <Input name="monthlyGoalRevenue" type="number" min={0} step="0.01" defaultValue={editing?.monthlyGoalRevenue ?? ''} />
+            </div>
+          </div>
+          {editing && (
+            <label className="flex items-center gap-2 text-sm">
+              <Switch name="active" defaultChecked={editing.active} />
+              Activo
+            </label>
+          )}
+          <DialogFooter>
+            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>Cancelar</Button>
+            <Button type="submit" disabled={saving} style={{ backgroundColor: '#0a3143' }}>
+              {saving ? 'Guardando...' : 'Guardar'}
+            </Button>
+          </DialogFooter>
+        </form>
+      </DialogContent>
+    </Dialog>
+  )
+}
+
+function PlantillasTab() {
+  const { data, isLoading } = useConfig()
+  const qc = useQueryClient()
+  const [form, setForm] = useState<any>(null)
+
+  const cfg = data?.config
+  if (!isLoading && cfg && !form) {
+    setForm({
+      tplConfirm: cfg.tplConfirm || '',
+      tplReminder: cfg.tplReminder || '',
+      tplGoogleReview: cfg.tplGoogleReview || '',
+      tplBirthday: cfg.tplBirthday || '',
+      tplInactive: cfg.tplInactive || '',
+      tplFollowUp: cfg.tplFollowUp || '',
+    })
+  }
+
+  const save = useMutation({
+    mutationFn: (body: any) =>
+      fetch('/api/config/plantillas', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      }).then((r) => r.json()),
+    onSuccess: () => {
+      toast.success('Plantillas guardadas')
+      qc.invalidateQueries({ queryKey: ['config'] })
+    },
+  })
+
+  if (isLoading || !form) return <Skeleton className="h-96" />
+
+  const fields = [
+    { key: 'tplConfirm', label: 'Confirmación de cita' },
+    { key: 'tplReminder', label: 'Recordatorio (24h antes)' },
+    { key: 'tplGoogleReview', label: 'Reseña Google (post-consulta)' },
+    { key: 'tplBirthday', label: 'Cumpleaños' },
+    { key: 'tplInactive', label: 'Paciente inactivo' },
+    { key: 'tplFollowUp', label: 'Seguimiento post-consulta' },
+  ]
+
+  return (
+    <Card className="shadow-sm">
+      <CardHeader>
+        <CardTitle className="text-base">Plantillas de mensajes WhatsApp</CardTitle>
+        <p className="text-xs text-muted-foreground">
+          Estas plantillas se usan en los botones de WhatsApp (wa.me) del sistema. Variables disponibles:
+          {' '}{TPL_VARS.map((v) => <code key={v} className="bg-muted px-1 rounded text-[10px] mx-0.5">{v}</code>)}
+        </p>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        {fields.map((f) => (
+          <div key={f.key} className="space-y-1">
+            <Label>{f.label}</Label>
+            <Textarea
+              rows={3}
+              value={form[f.key]}
+              onChange={(e) => setForm({ ...form, [f.key]: e.target.value })}
+              placeholder="Escribe el mensaje..."
+            />
+            <div className="flex flex-wrap gap-1">
+              {TPL_VARS.map((v) => (
+                <button
+                  key={v}
+                  type="button"
+                  onClick={() => setForm({ ...form, [f.key]: (form[f.key] || '') + ' ' + v })}
+                  className="text-[10px] px-1.5 py-0.5 rounded border hover:bg-muted"
+                >
+                  {v}
+                </button>
+              ))}
+            </div>
+          </div>
+        ))}
+        <div className="flex justify-end">
+          <Button onClick={() => save.mutate(form)} disabled={save.isPending} style={{ backgroundColor: '#0a3143' }}>
+            <Save className="h-4 w-4 mr-1" /> {save.isPending ? 'Guardando...' : 'Guardar plantillas'}
+          </Button>
+        </div>
+      </CardContent>
+    </Card>
+  )
+}
+
+function FacturacionTab() {
+  const { data, isLoading } = useConfig()
+  const qc = useQueryClient()
+  const [token, setToken] = useState<string | null>(null)
+
+  const clinic = data?.clinic
+  if (!isLoading && clinic && token === null) {
+    setToken(clinic.facturapiToken || '')
+  }
+
+  const save = useMutation({
+    mutationFn: (body: any) =>
+      fetch('/api/config/clinica', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      }).then((r) => r.json()),
+    onSuccess: () => {
+      toast.success('Token guardado. La facturación estará activa.')
+      qc.invalidateQueries({ queryKey: ['config'] })
+    },
+  })
+
+  if (isLoading || token === null) return <Skeleton className="h-64" />
+
+  return (
+    <Card className="shadow-sm">
+      <CardHeader>
+        <CardTitle className="text-base flex items-center gap-2"><KeyRound className="h-4 w-4" /> Integración con FacturAPI</CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        <div className="rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
+          <p className="font-medium mb-1">Configuración pendiente</p>
+          <p>
+            Para activar la emisión de CFDI 4.0 necesitas una cuenta en{' '}
+            <a href="https://facturapi.io" target="_blank" rel="noreferrer" className="underline">facturapi.io</a>{' '}
+            y pegar aquí tu <strong>API Key (secret)</strong>. Mientras tanto, el módulo de Facturación funciona en
+            modo simulación: genera el payload pero no timbra ante el SAT.
+          </p>
+        </div>
+        <div className="space-y-1">
+          <Label>FacturAPI API Key (secret)</Label>
+          <Input
+            type="password"
+            value={token}
+            onChange={(e) => setToken(e.target.value)}
+            placeholder="fk_live_..."
+          />
+          <p className="text-xs text-muted-foreground">Guárdalo en un lugar seguro. No se comparte con nadie.</p>
+        </div>
+        <div className="rounded-lg border p-4 bg-muted/30 text-sm">
+          <p className="font-medium mb-2">Estado actual</p>
+          {token ? (
+            <Badge className="bg-emerald-100 text-emerald-700">Token configurado ✓</Badge>
+          ) : (
+            <Badge variant="secondary">Sin configurar — modo simulación</Badge>
+          )}
+        </div>
+        <div className="flex justify-end">
+          <Button onClick={() => save.mutate({ facturapiToken: token })} disabled={save.isPending} style={{ backgroundColor: '#0a3143' }}>
+            <Save className="h-4 w-4 mr-1" /> {save.isPending ? 'Guardando...' : 'Guardar token'}
+          </Button>
+        </div>
+      </CardContent>
+    </Card>
+  )
+}
+
+function DiagnosticosTab() {
+  const { data, isLoading } = useConfig()
+  const qc = useQueryClient()
+  const [list, setList] = useState<string[] | null>(null)
+  const [newItem, setNewItem] = useState('')
+
+  const cfg = data?.config
+  if (!isLoading && cfg && list === null) {
+    try {
+      setList(JSON.parse(cfg.diagnosesList || '[]'))
+    } catch {
+      setList([])
+    }
+  }
+
+  const save = useMutation({
+    mutationFn: (body: any) =>
+      fetch('/api/config/plantillas', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      }).then((r) => r.json()),
+    onSuccess: () => {
+      toast.success('Lista guardada')
+      qc.invalidateQueries({ queryKey: ['config'] })
+    },
+  })
+
+  if (isLoading || list === null) return <Skeleton className="h-64" />
+
+  return (
+    <Card className="shadow-sm">
+      <CardHeader>
+        <CardTitle className="text-base">Lista de diagnósticos predefinidos</CardTitle>
+        <p className="text-xs text-muted-foreground">Aparecen como opciones rápidas al registrar una consulta</p>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        <div className="flex gap-2">
+          <Input
+            value={newItem}
+            onChange={(e) => setNewItem(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' && newItem.trim()) {
+                e.preventDefault()
+                setList([...list, newItem.trim()])
+                setNewItem('')
+              }
+            }}
+            placeholder="Ej. Onicomicosis"
+          />
+          <Button
+            variant="outline"
+            onClick={() => {
+              if (newItem.trim()) {
+                setList([...list, newItem.trim()])
+                setNewItem('')
+              }
+            }}
+          >
+            <Plus className="h-4 w-4" />
+          </Button>
+        </div>
+        <div className="flex flex-wrap gap-2">
+          {list.map((d, i) => (
+            <Badge key={i} variant="secondary" className="text-sm py-1.5 pr-1">
+              {d}
+              <button
+                onClick={() => setList(list.filter((_, idx) => idx !== i))}
+                className="ml-1 hover:text-red-600"
+              >
+                ×
+              </button>
+            </Badge>
+          ))}
+          {list.length === 0 && <p className="text-sm text-muted-foreground">Sin diagnósticos. Agrega arriba.</p>}
+        </div>
+        <div className="flex justify-end">
+          <Button onClick={() => save.mutate({ diagnosesList: list })} disabled={save.isPending} style={{ backgroundColor: '#0a3143' }}>
+            <Save className="h-4 w-4 mr-1" /> Guardar lista
+          </Button>
+        </div>
+      </CardContent>
+    </Card>
+  )
+}

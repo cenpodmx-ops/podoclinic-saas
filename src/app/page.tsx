@@ -1,31 +1,12 @@
-'use client'
+import { redirect } from 'next/navigation'
+import { getServerSession } from 'next-auth'
+import { authOptions } from '@/lib/auth'
 
-export default function Home() {
-  return (
-    <div style={{
-      display: 'flex',
-      flexDirection: 'column',
-      alignItems: 'center',
-      justifyContent: 'center',
-      minHeight: '100vh',
-      gap: '2rem',
-      padding: '1rem'
-    }}>
-      <div style={{
-        position: 'relative',
-        width: '6rem',
-        height: '6rem'
-      }}>
-        <img
-          src="/logo.svg"
-          alt="Z.ai Logo"
-          style={{
-            width: '100%',
-            height: '100%',
-            objectFit: 'contain'
-          }}
-        />
-      </div>
-    </div>
-  )
+export default async function RootPage() {
+  const session = await getServerSession(authOptions)
+  if (session) {
+    if (session.user.role === 'PODOLOGIST') redirect('/mi-agenda')
+    redirect('/dashboard')
+  }
+  redirect('/login')
 }

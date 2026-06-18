@@ -43,73 +43,75 @@
   --radius-xl: calc(var(--radius) + 4px);
 }
 
+/* CENPOD brand: blanco + azul #0a3143 */
 :root {
   --radius: 0.625rem;
   --background: oklch(1 0 0);
-  --foreground: oklch(0.145 0 0);
+  --foreground: oklch(0.20 0.04 245);
   --card: oklch(1 0 0);
-  --card-foreground: oklch(0.145 0 0);
+  --card-foreground: oklch(0.20 0.04 245);
   --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.145 0 0);
-  --primary: oklch(0.205 0 0);
-  --primary-foreground: oklch(0.985 0 0);
-  --secondary: oklch(0.97 0 0);
-  --secondary-foreground: oklch(0.205 0 0);
-  --muted: oklch(0.97 0 0);
-  --muted-foreground: oklch(0.556 0 0);
-  --accent: oklch(0.97 0 0);
-  --accent-foreground: oklch(0.205 0 0);
+  --popover-foreground: oklch(0.20 0.04 245);
+  /* Azul CENPOD #0a3143 -> approx oklch(0.28 0.06 245) */
+  --primary: oklch(0.28 0.06 245);
+  --primary-foreground: oklch(0.99 0 0);
+  --secondary: oklch(0.96 0.01 240);
+  --secondary-foreground: oklch(0.28 0.06 245);
+  --muted: oklch(0.96 0.01 240);
+  --muted-foreground: oklch(0.50 0.03 245);
+  --accent: oklch(0.93 0.03 240);
+  --accent-foreground: oklch(0.28 0.06 245);
   --destructive: oklch(0.577 0.245 27.325);
-  --border: oklch(0.922 0 0);
-  --input: oklch(0.922 0 0);
-  --ring: oklch(0.708 0 0);
-  --chart-1: oklch(0.646 0.222 41.116);
-  --chart-2: oklch(0.6 0.118 184.704);
-  --chart-3: oklch(0.398 0.07 227.392);
-  --chart-4: oklch(0.828 0.189 84.429);
-  --chart-5: oklch(0.769 0.188 70.08);
-  --sidebar: oklch(0.985 0 0);
-  --sidebar-foreground: oklch(0.145 0 0);
-  --sidebar-primary: oklch(0.205 0 0);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.97 0 0);
-  --sidebar-accent-foreground: oklch(0.205 0 0);
-  --sidebar-border: oklch(0.922 0 0);
-  --sidebar-ring: oklch(0.708 0 0);
+  --border: oklch(0.90 0.01 240);
+  --input: oklch(0.90 0.01 240);
+  --ring: oklch(0.28 0.06 245);
+  --chart-1: oklch(0.28 0.06 245);
+  --chart-2: oklch(0.55 0.13 200);
+  --chart-3: oklch(0.70 0.15 165);
+  --chart-4: oklch(0.75 0.18 85);
+  --chart-5: oklch(0.62 0.22 25);
+  --sidebar: oklch(0.28 0.06 245);
+  --sidebar-foreground: oklch(0.97 0.01 240);
+  --sidebar-primary: oklch(0.97 0 0);
+  --sidebar-primary-foreground: oklch(0.28 0.06 245);
+  --sidebar-accent: oklch(0.34 0.06 245);
+  --sidebar-accent-foreground: oklch(0.97 0.01 240);
+  --sidebar-border: oklch(0.36 0.05 245);
+  --sidebar-ring: oklch(0.55 0.10 240);
 }
 
 .dark {
-  --background: oklch(0.145 0 0);
-  --foreground: oklch(0.985 0 0);
-  --card: oklch(0.205 0 0);
-  --card-foreground: oklch(0.985 0 0);
-  --popover: oklch(0.205 0 0);
-  --popover-foreground: oklch(0.985 0 0);
-  --primary: oklch(0.922 0 0);
-  --primary-foreground: oklch(0.205 0 0);
-  --secondary: oklch(0.269 0 0);
-  --secondary-foreground: oklch(0.985 0 0);
-  --muted: oklch(0.269 0 0);
-  --muted-foreground: oklch(0.708 0 0);
-  --accent: oklch(0.269 0 0);
-  --accent-foreground: oklch(0.985 0 0);
+  --background: oklch(0.18 0.03 245);
+  --foreground: oklch(0.97 0 0);
+  --card: oklch(0.22 0.04 245);
+  --card-foreground: oklch(0.97 0 0);
+  --popover: oklch(0.22 0.04 245);
+  --popover-foreground: oklch(0.97 0 0);
+  --primary: oklch(0.70 0.10 240);
+  --primary-foreground: oklch(0.18 0.03 245);
+  --secondary: oklch(0.30 0.04 245);
+  --secondary-foreground: oklch(0.97 0 0);
+  --muted: oklch(0.30 0.04 245);
+  --muted-foreground: oklch(0.75 0.02 240);
+  --accent: oklch(0.34 0.05 245);
+  --accent-foreground: oklch(0.97 0 0);
   --destructive: oklch(0.704 0.191 22.216);
   --border: oklch(1 0 0 / 10%);
   --input: oklch(1 0 0 / 15%);
-  --ring: oklch(0.556 0 0);
-  --chart-1: oklch(0.488 0.243 264.376);
-  --chart-2: oklch(0.696 0.17 162.48);
-  --chart-3: oklch(0.769 0.188 70.08);
-  --chart-4: oklch(0.627 0.265 303.9);
-  --chart-5: oklch(0.645 0.246 16.439);
-  --sidebar: oklch(0.205 0 0);
-  --sidebar-foreground: oklch(0.985 0 0);
-  --sidebar-primary: oklch(0.488 0.243 264.376);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.269 0 0);
-  --sidebar-accent-foreground: oklch(0.985 0 0);
+  --ring: oklch(0.55 0.10 240);
+  --chart-1: oklch(0.70 0.10 240);
+  --chart-2: oklch(0.65 0.15 200);
+  --chart-3: oklch(0.70 0.15 165);
+  --chart-4: oklch(0.75 0.18 85);
+  --chart-5: oklch(0.62 0.22 25);
+  --sidebar: oklch(0.15 0.03 245);
+  --sidebar-foreground: oklch(0.95 0 0);
+  --sidebar-primary: oklch(0.70 0.10 240);
+  --sidebar-primary-foreground: oklch(0.18 0.03 245);
+  --sidebar-accent: oklch(0.28 0.05 245);
+  --sidebar-accent-foreground: oklch(0.97 0 0);
   --sidebar-border: oklch(1 0 0 / 10%);
-  --sidebar-ring: oklch(0.556 0 0);
+  --sidebar-ring: oklch(0.55 0.10 240);
 }
 
 @layer base {
@@ -119,4 +121,88 @@
   body {
     @apply bg-background text-foreground;
   }
+}
+
+/* Scrollbar CENPOD */
+::-webkit-scrollbar { width: 8px; height: 8px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: oklch(0.75 0.03 240); border-radius: 4px; }
+::-webkit-scrollbar-thumb:hover { background: oklch(0.60 0.05 245); }
+
+/* Estatus de agenda (Módulo 01) */
+.appt-pendiente { background-color: oklch(0.90 0.05 85); border-left: 3px solid oklch(0.75 0.18 85); }
+.appt-confirmada { background-color: oklch(0.92 0.05 165); border-left: 3px solid oklch(0.65 0.15 165); }
+.appt-en-consulta { background-color: oklch(0.85 0.08 245); border-left: 3px solid oklch(0.50 0.12 245); color: white; }
+.appt-finalizada { background-color: oklch(0.92 0.04 240); border-left: 3px solid oklch(0.55 0.06 240); }
+.appt-cancelada { background-color: oklch(0.92 0.02 25); border-left: 3px solid oklch(0.60 0.18 25); text-decoration: line-through; opacity: 0.6; }
+.appt-no-asistio { background-color: oklch(0.92 0.06 25); border-left: 3px solid oklch(0.55 0.22 25); }
+.appt-bloqueada { background-color: oklch(0.30 0 0); border-left: 3px solid oklch(0.18 0 0); color: oklch(0.95 0 0); }
+
+/* ===== Ticket de consulta (impresión) ===== */
+.ticket-print {
+  font-family: 'Courier New', ui-monospace, monospace;
+  color: #111;
+  width: 280px;
+  padding: 12px 8px;
+  background: #fff;
+  font-size: 12px;
+  line-height: 1.35;
+}
+.ticket-print .ticket-header {
+  text-align: center;
+  border-bottom: 1px dashed #999;
+  padding-bottom: 6px;
+  margin-bottom: 6px;
+}
+.ticket-print .ticket-header img {
+  max-height: 48px;
+  margin: 0 auto 4px;
+}
+.ticket-print .ticket-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+}
+.ticket-print table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 6px 0;
+  font-size: 11px;
+}
+.ticket-print table th,
+.ticket-print table td {
+  padding: 2px 0;
+  text-align: left;
+  vertical-align: top;
+}
+.ticket-print table th {
+  border-bottom: 1px dashed #999;
+  font-weight: 700;
+}
+.ticket-print .ticket-totals {
+  border-top: 1px dashed #999;
+  padding-top: 4px;
+  margin-top: 4px;
+}
+.ticket-print .ticket-footer {
+  text-align: center;
+  margin-top: 8px;
+  border-top: 1px dashed #999;
+  padding-top: 6px;
+  font-size: 11px;
+}
+
+@media print {
+  body * { visibility: hidden !important; }
+  .ticket-print,
+  .ticket-print * { visibility: visible !important; }
+  .ticket-print {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 80mm;
+    margin: 0;
+    padding: 4mm;
+  }
+  @page { size: 80mm auto; margin: 0; }
 }
