@@ -163,8 +163,8 @@ export function determinarImpuestos(tipo: string) {
   if (t === '0' || t === 'iva0') {
     return [{ type: 'IVA' as const, rate: 0 }]
   }
-  // Exento
-  return [{ type: 'IVA' as const, factor: 'Exento' as const }]
+  // Exento — FacturAPI requiere rate: 0 + factor: 'Exento'
+  return [{ type: 'IVA' as const, rate: 0, factor: 'Exento' as const }]
 }
 
 /** Map de ivaType del sistema → tipo para determinarImpuestos. */
