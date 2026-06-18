@@ -47,14 +47,38 @@ function buildSlots(opening: string, closing: string, slotMin: number) {
   return slots
 }
 
-function minutesOf(d: string): number {
+/** Extrae los minutos desde medianoche de un ISO string UTC, SIN convertir a timezone local.
+ *  Ej: "2026-06-19T10:00:00.000Z" → 600 (10:00) */
+function minutesOf(d: string | Date): number {
+  const s = typeof d === 'string' ? d : d.toISOString()
+  // Extraer la parte de tiempo HH:MM:SS del ISO string
+  const match = s.match(/T(\d{2}):(\d{2}):(\d{2})/)
+  if (match) {
+    return Number(match[1]) * 60 + Number(match[2])
+  }
+  // Fallback: usar Date pero en UTC
   const date = new Date(d)
-  return date.getHours() * 60 + date.getMinutes()
+  return date.getUTCHours() * 60 + date.getUTCMinutes()
 }
 
-function fmtTimeShort(d: string): string {
+/** Formatea una hora ISO UTC como "HH:MM" sin convertir a timezone local. */
+function fmtTimeShort(d: string | Date): string {
+  const s = typeof d === 'string' ? d : d.toISOString()
+  const match = s.match(/T(\d{2}):(\d{2})/)
+  if (match) {
+    return `${match[1]}:${match[2]}`
+  }
   const date = new Date(d)
-  return `${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`
+  return `${String(date.getUTCHours()).padStart(2, '0')}:${String(date.getUTCMinutes()).padStart(2, '0')}`
+}
+
+/** Verifica si un slot (en minutos desde medianoche) choca con un bloqueo. */
+function slotOverlapsBlock(slotMinutes: number, blocks: BlockItem[]): boolean {
+  return blocks.some((b) => {
+    const bStart = minutesOf(b.startTime)
+    const bEnd = minutesOf(b.endTime)
+    return slotMinutes >= bStart && slotMinutes < bEnd
+  })
 }
 
 function AppointmentCard({
@@ -138,7 +162,7 @@ export function AgendaGrid({
   const gridStart = slots.length > 0 ? slots[0].minutes : 480
   const totalSlots = slots.length
 
-  const baseDate = new Date(date + 'T00:00:00')
+  const baseDate = new Date(date + 'T00:00:00.000Z')
 
   if (isLoading) {
     return (
@@ -200,21 +224,30 @@ export function AgendaGrid({
             {columns.map((p) => {
               const appts = (data?.appointments || []).filter((a) => a.podologist?.id === p.id)
               const blocks = (data?.blocks || []).filter((b) => b.podologistId === p.id)
+              const hasFullDayBlock = blocks.some((b) => b.fullDay)
               return (
                 <div
                   key={p.id}
                   className="flex-1 min-w-[180px] border-l relative"
                   style={{ height: totalSlots * SLOT_HEIGHT }}
                 >
-                  {/* Slot grid (clickable) */}
-                  {slots.map((s) => (
-                    <button
-                      key={s.time}
-                      onClick={() => onSlotClick(p.id, s.time)}
-                      className="block w-full border-b hover:bg-accent/40 transition-colors text-left"
-                      style={{ height: SLOT_HEIGHT }}
-                    />
-                  ))}
+                  {/* Slot grid (clickable solo si no hay bloqueo que lo cubra) */}
+                  {slots.map((s) => {
+                    const blocked = hasFullDayBlock || slotOverlapsBlock(s.minutes, blocks)
+                    return (
+                      <button
+                        key={s.time}
+                        onClick={() => { if (!blocked) onSlotClick(p.id, s.time) }}
+                        disabled={blocked}
+                        className={`block w-full border-b transition-colors text-left ${
+                          blocked
+                            ? 'bg-neutral-200/60 cursor-not-allowed'
+                            : 'hover:bg-accent/40'
+                        }`}
+                        style={{ height: SLOT_HEIGHT }}
+                      />
+                    )
+                  })}
                   {/* Blocks first (so they appear under appts) */}
                   {blocks.map((b) => (
                     <BlockCard key={b.id} block={b} gridStart={gridStart} onClick={() => onBlockClick(b)} />
@@ -271,20 +304,29 @@ export function AgendaGrid({
           {days.map((d) => {
             const dayAppts = (data?.appointments || []).filter((a) => isSameDay(new Date(a.date), d))
             const dayBlocks = (data?.blocks || []).filter((b) => isSameDay(new Date(b.date), d))
+            const hasFullDayBlock = dayBlocks.some((b) => b.fullDay)
             return (
               <div
                 key={d.toISOString()}
                 className="flex-1 border-l relative"
                 style={{ height: totalSlots * SLOT_HEIGHT }}
               >
-                {slots.map((s) => (
-                  <button
-                    key={s.time}
-                    onClick={() => onSlotClick('', s.time)}
-                    className="block w-full border-b hover:bg-accent/40 transition-colors"
-                    style={{ height: SLOT_HEIGHT }}
-                  />
-                ))}
+                {slots.map((s) => {
+                  const blocked = hasFullDayBlock || slotOverlapsBlock(s.minutes, dayBlocks)
+                  return (
+                    <button
+                      key={s.time}
+                      onClick={() => { if (!blocked) onSlotClick('', s.time) }}
+                      disabled={blocked}
+                      className={`block w-full border-b transition-colors ${
+                        blocked
+                          ? 'bg-neutral-200/60 cursor-not-allowed'
+                          : 'hover:bg-accent/40'
+                      }`}
+                      style={{ height: SLOT_HEIGHT }}
+                    />
+                  )
+                })}
                 {dayBlocks.map((b) => (
                   <BlockCard key={b.id} block={b} gridStart={gridStart} onClick={() => onBlockClick(b)} />
                 ))}
