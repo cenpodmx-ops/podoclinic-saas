@@ -3,21 +3,29 @@ import { db } from '@/lib/db'
 import { requireSession, ok, bad } from '@/lib/api'
 import path from 'path'
 import { mkdir, writeFile } from 'fs/promises'
+import { uploadToSupabase } from '@/lib/supabase-storage'
 
 // ============================================================
-// MÓDULO 18 — CONFIGURACIÓN / logo
-// POST (multipart) → sube un logo para la clínica y lo guarda en
-//                   /public/uploads/clinics/{clinicId}/logo.png.
-//                   Actualiza clinic.logoUrl y devuelve la URL.
+// CONFIGURACIÓN / logo
+// POST (multipart) → sube un logo para la clínica.
+// En Vercel (producción): usa Supabase Storage.
+// En local (dev): guarda en /public/uploads/clinics/{clinicId}/
 // ============================================================
 
 const ALLOWED_EXT = ['png', 'jpg', 'jpeg', 'webp', 'svg']
 const MAX_SIZE = 5 * 1024 * 1024 // 5MB
 
+const MIME_MAP: Record<string, string> = {
+  png: 'image/png',
+  jpg: 'image/jpeg',
+  jpeg: 'image/jpeg',
+  webp: 'image/webp',
+  svg: 'image/svg+xml',
+}
+
 export async function POST(req: NextRequest) {
   const { user, response } = await requireSession()
   if (response) return response
-  // Solo OWNER y SUPER pueden cambiar el logo
   if (user!.role !== 'SUPER' && user!.role !== 'OWNER') return bad('Sin permisos', 403)
 
   const clinicId = user!.clinicId
@@ -35,24 +43,43 @@ export async function POST(req: NextRequest) {
     return bad(`Extensión .${ext} no permitida. Use: ${ALLOWED_EXT.join(', ')}`)
   }
 
-  // Usamos siempre .png como nombre final para cache-busting simple en el frontend,
-  // pero respetamos la extensión original si es webp/svg/jpg.
   const storedName = `logo.${ext}`
-  const relDir = `/uploads/clinics/${clinicId}`
-  const absDir = path.join(process.cwd(), 'public', relDir)
-  await mkdir(absDir, { recursive: true })
-
-  const relPath = `${relDir}/${storedName}`
-  const absPath = path.join(absDir, storedName)
-
+  const mimeType = MIME_MAP[ext] || 'image/png'
   const arrayBuf = await file.arrayBuffer()
-  await writeFile(absPath, Buffer.from(arrayBuf))
+  const buffer = Buffer.from(arrayBuf)
+
+  // Cache-buster: append timestamp para que el navegador no cachee el logo viejo
+  const cacheBust = Date.now()
+  let logoUrl: string
+
+  // Intentar Supabase Storage primero (para Vercel/producción)
+  const supabaseUrl = await uploadToSupabase(clinicId, storedName, buffer, mimeType)
+  if (supabaseUrl) {
+    logoUrl = `${supabaseUrl}?t=${cacheBust}`
+  } else {
+    // Fallback: guardar en /public (solo funciona en dev, no en Vercel)
+    try {
+      const relDir = `/uploads/clinics/${clinicId}`
+      const absDir = path.join(process.cwd(), 'public', relDir)
+      await mkdir(absDir, { recursive: true })
+      const relPath = `${relDir}/${storedName}`
+      const absPath = path.join(absDir, storedName)
+      await writeFile(absPath, buffer)
+      logoUrl = `${relPath}?t=${cacheBust}`
+    } catch (e: any) {
+      console.error('[LOGO UPLOAD] filesystem fallback failed:', e?.message)
+      return bad(
+        'No se pudo subir el logo. Si estás en producción, configura Supabase Storage (crea un bucket público llamado "clinics").',
+        500,
+      )
+    }
+  }
 
   // Actualizar clinic.logoUrl
   await db.clinic.update({
     where: { id: clinicId },
-    data: { logoUrl: relPath },
+    data: { logoUrl },
   })
 
-  return ok({ url: relPath })
+  return ok({ url: logoUrl })
 }
