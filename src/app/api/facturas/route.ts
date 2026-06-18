@@ -3,12 +3,11 @@ import { db } from '@/lib/db'
 import { requireSession, ok, bad, effectiveClinic } from '@/lib/api'
 import { startOfMonth, endOfMonth, parseISO } from 'date-fns'
 import {
-  createFacturapiInvoice,
-  getFacturapiPdfUrl,
-  getFacturapiXmlUrl,
-  toFacturapiItem,
+  createCustomer,
+  createInvoice,
+  ivaTypeToTaxType,
+  PRODUCT_KEYS,
   ivaTypeForType,
-  type FacturapiInvoiceBody,
 } from '@/lib/facturapi'
 import type { InvoiceItem, InvoiceStatus, IvaType, ItemType, ManualInvoiceItemInput } from '@/lib/invoice-types'
 
@@ -17,7 +16,7 @@ import type { InvoiceItem, InvoiceStatus, IvaType, ItemType, ManualInvoiceItemIn
 // GET  ?page=1&limit=20&from=&to=&patientId=&status=&all=1
 //      → { data: InvoiceRow[], total, facturapiConfigured }
 // POST body { consultationId } | { patientId, items, paymentMethod, useCfdi }
-//      → genera la factura (timbrada si hay token, simulada si no)
+//      → genera la factura (timbrada si hay API key, simulada si no)
 // ============================================================
 
 const VALID_STATUS: InvoiceStatus[] = ['PENDIENTE', 'TIMBRADA', 'CANCELADA']
@@ -49,24 +48,28 @@ export async function GET(req: NextRequest) {
   }
 
   // Filtro de status
-  const status = sp.get('status')
-  if (status && VALID_STATUS.includes(status as InvoiceStatus)) {
-    where.status = status
+  const statusFilter = sp.get('status')
+  if (statusFilter && VALID_STATUS.includes(statusFilter as InvoiceStatus)) {
+    where.status = statusFilter
   }
 
-  // Filtro por mes/año (YYYY-MM)
-  const month = sp.get('month') // YYYY-MM
-  if (month && /^\d{4}-\d{2}$/.test(month)) {
-    const base = parseISO(`${month}-01`)
-    where.date = { gte: startOfMonth(base), lte: endOfMonth(base) }
+  // Filtro de mes/año
+  const month = sp.get('month')
+  if (month) {
+    const [y, m] = month.split('-').map(Number)
+    if (y && m) {
+      const s = new Date(y, m - 1, 1)
+      const e = endOfMonth(s)
+      where.date = { gte: s, lte: e }
+    }
   }
 
   const [rows, total, clinic] = await Promise.all([
     db.invoice.findMany({
       where,
-      orderBy: { date: 'desc' },
       skip,
       take: limit,
+      orderBy: { date: 'desc' },
       include: {
         patient: { select: { id: true, firstName: true, lastName: true, expNumber: true } },
         clinic: { select: { id: true, name: true } },
@@ -84,19 +87,15 @@ export async function GET(req: NextRequest) {
       folio: r.folio,
       uuid: r.uuid,
       date: r.date,
-      patientId: r.patientId,
-      patientName: r.patient ? `${r.patient.firstName} ${r.patient.lastName}` : '—',
-      expNumber: r.patient?.expNumber ?? null,
-      total: r.total,
+      patient: r.patient,
+      clinic: r.clinic,
       subtotal: r.subtotal,
       iva: r.iva,
-      status: r.status as InvoiceStatus,
+      total: r.total,
+      status: r.status,
       paymentMethod: r.paymentMethod,
       pdfUrl: r.pdfUrl,
       xmlUrl: r.xmlUrl,
-      clinicId: r.clinicId,
-      clinicName: r.clinic?.name,
-      consultationId: r.consultationId,
     })),
     total,
     page,
@@ -199,90 +198,53 @@ export async function POST(req: NextRequest) {
   // ── Resolver clínica + API key de FacturAPI de la sucursal
   const clinic = await db.clinic.findUnique({ where: { id: clinicId } })
   if (!clinic) return bad('Clínica no encontrada', 404)
-  // Cada sucursal tiene su propia API key (clinic.facturapiToken).
-  // Las facturas se emiten directamente a nombre de la organización dueña de esa key.
   const apiKey = clinic.facturapiToken?.trim() || ''
   const isSimulation = !apiKey
 
-  // ── Series (opcional)
-  let series: string | undefined
-  if (clinic.facturapiSeries) {
-    try {
-      const parsed = JSON.parse(clinic.facturapiSeries) as Record<string, string>
-      series = parsed.ingreso || parsed.I || parsed.default || undefined
-    } catch {}
-  }
-
-  // ── FacturAPI call (si hay API key + orgId)
+  // ── FacturAPI call (si hay API key)
   let folio: string | null = null
   let uuid: string | null = null
-  let pdfUrl: string | null = null
-  let xmlUrl: string | null = null
+  let facturapiId: string | null = null
   let status: InvoiceStatus = 'PENDIENTE'
 
   if (!isSimulation) {
-    const facturapiItems = items.map(toFacturapiItem)
-    const payload: FacturapiInvoiceBody = {
-      customer: {
+    try {
+      // 1. Crear cliente (paciente) en FacturAPI
+      const customer = await createCustomer(apiKey, {
         legal_name: razonSocial,
         tax_id: rfc,
-        tax_system: patient.regimenFiscal || undefined,
+        // Default '616' (Sin obligaciones fiscales) si el paciente no tiene régimen.
+        // FacturAPI valida el régimen contra el RFC en el SAT.
+        tax_system: patient.regimenFiscal || '616',
         email: emailFactura,
-      },
-      items: facturapiItems,
-      payment_form: paymentForm || '01',
-      use_cfdi: useCfdi || 'G03',
-      type: 'I',
-      ...(series ? { series } : {}),
-    }
+      })
 
-    let faResp
-    try {
-      faResp = await createFacturapiInvoice(apiKey, payload)
+      // 2. Construir items para FacturAPI
+      const faItems = items.map((it) => ({
+        description: it.name,
+        quantity: it.qty,
+        price: it.price,
+        product_key: PRODUCT_KEYS[it.type] || PRODUCT_KEYS.PRODUCTO,
+        taxes_type: ivaTypeToTaxType(it.ivaType),
+      }))
+
+      // 3. Crear la factura
+      const faResp: any = await createInvoice(apiKey, {
+        customerId: customer.id,
+        items: faItems,
+        payment_form: paymentForm || '01',
+        use_cfdi: useCfdi || 'G03',
+      })
+
+      folio = faResp.series
+        ? `${faResp.series}-${String(faResp.folio_number).padStart(6, '0')}`
+        : String(faResp.folio_number || '')
+      uuid = faResp.uuid || null
+      facturapiId = faResp.id || null
+      status = 'TIMBRADA'
     } catch (e: any) {
+      console.error('[FACTURAS] error timbrando:', e)
       return bad(e?.message || 'Error al timbrar con FacturAPI', 502)
-    }
-
-    folio = faResp.series
-      ? `${faResp.series}-${String(faResp.folio_number).padStart(6, '0')}`
-      : String(faResp.folio_number)
-    uuid = faResp.uuid || null
-    status = 'TIMBRADA'
-
-    // URLs firmadas para PDF y XML
-    const [pdf, xml] = await Promise.all([
-      getFacturapiPdfUrl(token!, faResp.id),
-      getFacturapiXmlUrl(token!, faResp.id),
-    ])
-    pdfUrl = pdf || faResp.pdf_url || null
-    xmlUrl = xml || faResp.xml_url || null
-
-    // Guardar el ID interno de FacturAPI para futuras cancelaciones
-    // (lo metemos en el campo uuid como prefijo; no es lo ideal pero
-    // permite recuperar el ID para cancelar. Alternativa: agregar campo.)
-    // Mejor: guardamos el ID en el campo uuid temporal y lo actualizamos
-    // con el UUID SAT abajo. Para cancelación, usaremos el campo pdfUrl/xmlUrl
-    // para derivar el ID si lo necesitamos — pero es más simple agregar
-    // un campo extra. Por ahora, guardamos el ID en la posición final del uuid
-    // separado por '|' si es necesario. Para no tocar el schema, guardamos
-    // el FacturAPI ID en el folio como metadata adicional:
-    // folio = "A-000001#fk_internal_id"
-    // No, esto rompe el folio visible.
-    //
-    // Solución práctica: guardamos el FacturAPI ID en el campo uuid temporal
-    // y luego lo reemplazamos por el UUID SAT. Para cancelación, podemos
-    // buscar la factura en FacturAPI por UUID SAT usando su endpoint.
-    // → GET /api/v1/invoices?uuid=<sat_uuid> devuelve el registro interno.
-    //
-    // Para simplificar, guardamos el ID interno en el campo xmlUrl como
-    // prefijo "fa:<id>|" — pero eso rompe el XML público.
-    //
-    // Mejor: usar el campo uuid con formato "sat_uuid|fa_id" y parsear al
-    // cancelar. Aceptable.
-    if (uuid) {
-      uuid = `${uuid}|${faResp.id}`
-    } else {
-      uuid = `|${faResp.id}`
     }
   }
 
@@ -293,14 +255,14 @@ export async function POST(req: NextRequest) {
       patientId,
       consultationId,
       folio,
-      uuid,
+      uuid: facturapiId ? `${uuid || ''}|${facturapiId}` : uuid,
       itemsJson: JSON.stringify(items),
       subtotal: round2(subtotal),
       iva: round2(iva),
       total: round2(total),
       status,
-      pdfUrl,
-      xmlUrl,
+      pdfUrl: facturapiId ? `/api/facturas/${null}/pdf?faId=${facturapiId}` : null,
+      xmlUrl: facturapiId ? `/api/facturas/${null}/xml?faId=${facturapiId}` : null,
       paymentMethod: paymentMethod || paymentForm,
     },
     include: {

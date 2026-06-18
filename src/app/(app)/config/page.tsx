@@ -14,7 +14,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Skeleton } from '@/components/ui/skeleton'
-import { Save, Plus, Pencil, Building2, Users, MessageSquare, FileText, KeyRound, UserCog, Eye, EyeOff } from 'lucide-react'
+import { Save, Plus, Pencil, Building2, Users, MessageSquare, FileText, KeyRound, UserCog } from 'lucide-react'
 import { toast } from 'sonner'
 import { fmtMoney } from '@/lib/format'
 
@@ -455,46 +455,40 @@ function PlantillasTab() {
 
 function FacturacionTab() {
   const qc = useQueryClient()
-  const [apiKey, setApiKey] = useState('')
-  const [showKey, setShowKey] = useState(false)
+  const [loading, setLoading] = useState(false)
+  const [mensaje, setMensaje] = useState<{ tipo: 'exito' | 'error'; texto: string } | null>(null)
 
   const { data: faStatus, isLoading } = useQuery({
     queryKey: ['facturapi-status'],
     queryFn: () => fetch('/api/config/facturapi').then((r) => r.json()),
   })
 
-  const saveMutation = useMutation({
-    mutationFn: (key: string) =>
-      fetch('/api/config/facturapi', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ apiKey: key }),
-      }).then(async (r) => {
-        const j = await r.json()
-        if (!r.ok) throw new Error(j?.error || 'Error al guardar')
-        return j
-      }),
-    onSuccess: () => {
-      toast.success('API key guardada y validada. La facturación está activa.')
-      setApiKey('')
+  async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault()
+    setLoading(true)
+    setMensaje(null)
+    const formData = new FormData(e.currentTarget)
+    try {
+      const res = await fetch('/api/config/facturapi', { method: 'POST', body: formData })
+      const j = await res.json()
+      if (!res.ok) throw new Error(j?.error || 'Error')
+      setMensaje({ tipo: 'exito', texto: j.message || 'Configuración guardada correctamente.' })
       qc.invalidateQueries({ queryKey: ['facturapi-status'] })
       qc.invalidateQueries({ queryKey: ['config'] })
-    },
-    onError: (e: any) => toast.error(e.message || 'Error'),
-  })
-
-  const deleteMutation = useMutation({
-    mutationFn: () =>
-      fetch('/api/config/facturapi', { method: 'DELETE' }).then((r) => r.json()),
-    onSuccess: () => {
-      toast.success('API key eliminada. Vuelves a modo simulación.')
-      qc.invalidateQueries({ queryKey: ['facturapi-status'] })
-    },
-  })
+      // Limpiar el form
+      ;(e.target as HTMLFormElement).reset()
+    } catch (err: any) {
+      setMensaje({ tipo: 'error', texto: err.message || 'Error' })
+    } finally {
+      setLoading(false)
+    }
+  }
 
   if (isLoading) return <Skeleton className="h-64" />
 
   const configured = faStatus?.configured
+  const hasCert = faStatus?.hasCertificate
+  const org = faStatus?.organization
   const clinic = faStatus?.clinic
 
   return (
@@ -504,103 +498,169 @@ function FacturacionTab() {
           <KeyRound className="h-4 w-4" /> Facturación con FacturAPI (CFDI 4.0)
         </CardTitle>
         <p className="text-xs text-muted-foreground mt-1">
-          Cada sucursal configura su propia cuenta de FacturAPI. Las facturas se emiten a nombre de la organización dueña de la API key.
+          Cada sucursal configura sus datos fiscales y sellos digitales (CSD). Todo se gestiona desde aquí, sin tocar el panel de FacturAPI.
         </p>
       </CardHeader>
       <CardContent className="space-y-5">
         {/* Estado actual */}
-        <div className="rounded-lg border p-4">
-          <div className="flex items-center justify-between gap-2 flex-wrap mb-2">
+        <div className="rounded-lg border p-4 space-y-2">
+          <div className="flex items-center justify-between gap-2 flex-wrap">
             <p className="font-medium text-sm">Estado de esta sucursal</p>
-            {configured ? (
-              <Badge className="bg-emerald-100 text-emerald-700">API Key configurada ✓</Badge>
-            ) : (
-              <Badge variant="secondary">Sin configurar — modo simulación</Badge>
-            )}
+            <div className="flex gap-2">
+              {configured ? (
+                <Badge className="bg-emerald-100 text-emerald-700">Organización creada ✓</Badge>
+              ) : (
+                <Badge variant="secondary">Sin configurar</Badge>
+              )}
+              {hasCert ? (
+                <Badge className="bg-emerald-100 text-emerald-700">CSD cargados ✓</Badge>
+              ) : (
+                <Badge variant="secondary">Sin CSD</Badge>
+              )}
+            </div>
           </div>
-          {configured && clinic && (
-            <div className="text-xs text-muted-foreground mt-2 pt-2 border-t border-dashed">
-              <p><strong>Datos fiscales de la clínica (tab Clínica):</strong></p>
+          {org && (
+            <div className="text-xs text-muted-foreground space-y-0.5 pt-2 border-t border-dashed">
+              <p><strong>Organización:</strong> {org.legal_name || org.name}</p>
+              <p><strong>RFC emisor:</strong> {org.tax_id || '—'}</p>
+              <p><strong>Régimen:</strong> {org.tax_system || '—'}</p>
+              {org.pending_steps && org.pending_steps.length > 0 && (
+                <p className="text-amber-700">
+                  <strong>Pendiente:</strong> {org.pending_steps.map((s: any) => s.description).join(', ')}
+                </p>
+              )}
+            </div>
+          )}
+          {clinic && (
+            <div className="text-xs text-muted-foreground pt-1">
               <p>RFC: {clinic.rfc || '—'} · Razón social: {clinic.razonSocial || '—'} · Régimen: {clinic.regimenFiscal || '—'}</p>
-              <p className="mt-1 text-muted-foreground/70">Los datos del emisor en las facturas se toman de tu organización en FacturAPI.</p>
+            </div>
+          )}
+          {configured && hasCert && (
+            <div className="rounded-md bg-emerald-50 border border-emerald-200 p-3 text-xs text-emerald-800">
+              <p className="font-medium">¡Configuración activa!</p>
+              <p>Ya puedes facturar. Los CSD están cargados. Usa el formulario de abajo solo si necesitas actualizar.</p>
             </div>
           )}
           {!configured && (
-            <p className="text-xs text-amber-700 mt-2">
-              Pega abajo tu API key secreta de FacturAPI (la encuentras en tu panel → Configuración → API Keys).
-              Mientras no la configures, las facturas se generan en modo simulación (no timbran ante el SAT).
+            <p className="text-xs text-amber-700">
+              Completa el formulario de abajo con tus datos fiscales y sube tus Sellos Digitales (CSD) para activar la facturación.
             </p>
           )}
         </div>
 
-        {/* Form para subir/actualizar la API key */}
-        <div className="space-y-3">
+        {/* Mensaje de feedback */}
+        {mensaje && (
+          <div className={`p-3 rounded text-sm ${mensaje.tipo === 'exito' ? 'bg-emerald-100 text-emerald-700 border border-emerald-200' : 'bg-red-100 text-red-700 border border-red-200'}`}>
+            {mensaje.texto}
+          </div>
+        )}
+
+        {/* Formulario */}
+        <form onSubmit={handleSubmit} className="space-y-4">
           <h3 className="text-sm font-medium">
-            {configured ? 'Actualizar API key' : 'Configurar API key de FacturAPI'}
+            {configured ? 'Actualizar datos fiscales y/o sellos' : 'Datos fiscales de la sucursal'}
           </h3>
-          <div className="space-y-1">
-            <Label className="text-xs">API key secreta (sk_test_... o sk_live_...)</Label>
-            <div className="relative">
+
+          {/* Datos fiscales */}
+          <div className="grid md:grid-cols-3 gap-3">
+            <div className="space-y-1">
+              <Label className="text-xs">Razón social *</Label>
               <Input
-                type={showKey ? 'text' : 'password'}
-                value={apiKey}
-                onChange={(e) => setApiKey(e.target.value)}
-                placeholder="sk_test_abc123..."
-                className="pr-10 font-mono"
+                name="razon_social"
+                required
+                defaultValue={clinic?.razonSocial || org?.legal_name || ''}
+                placeholder="Ej. Grupo CENPOD Clínica 1"
               />
-              <button
-                type="button"
-                onClick={() => setShowKey((s) => !s)}
-                className="absolute right-2 top-1/2 -translate-y-1/2 p-1 text-muted-foreground hover:text-foreground"
-                tabIndex={-1}
-              >
-                {showKey ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-              </button>
             </div>
-            <p className="text-xs text-muted-foreground">
-              La key se valida contra FacturAPI antes de guardarse. Se almacena encriptada en la base de datos.
-            </p>
+            <div className="space-y-1">
+              <Label className="text-xs">Régimen fiscal *</Label>
+              <Select name="regimen_fiscal" defaultValue={clinic?.regimenFiscal || org?.tax_system || '612'}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="601">601 · General de Ley Personas Morales</SelectItem>
+                  <SelectItem value="612">612 · Personas Físicas con Actividades Empresariales</SelectItem>
+                  <SelectItem value="626">626 · Régimen Simplificado de Confianza (RESICO)</SelectItem>
+                  <SelectItem value="603">603 · Personas Morales con Fines no Lucrativos</SelectItem>
+                  <SelectItem value="608">608 · Demás ingresos</SelectItem>
+                  <SelectItem value="616">616 · Sin obligaciones fiscales</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1">
+              <Label className="text-xs">Código postal fiscal *</Label>
+              <Input
+                name="cp"
+                required
+                maxLength={5}
+                placeholder="83000"
+              />
+            </div>
           </div>
 
-          <div className="flex justify-end gap-2">
-            {configured && (
-              <Button
-                variant="outline"
-                onClick={() => {
-                  if (confirm('¿Eliminar la API key? Volverás a modo simulación.')) {
-                    deleteMutation.mutate()
-                  }
-                }}
-                disabled={deleteMutation.isPending}
-                className="text-red-600 hover:text-red-700"
-              >
-                Eliminar API key
-              </Button>
-            )}
-            <Button
-              onClick={() => saveMutation.mutate(apiKey)}
-              disabled={saveMutation.isPending || !apiKey.trim()}
-              style={{ backgroundColor: '#0a3143' }}
-            >
+          {/* CSD */}
+          <div className="rounded-lg border border-dashed border-gray-300 bg-muted/30 p-4 space-y-3">
+            <p className="text-xs font-bold text-muted-foreground">
+              Sellos Digitales (CSD) {configured && hasCert && '— solo subir si actualizas'}
+            </p>
+            <div className="grid md:grid-cols-2 gap-3">
+              <div className="space-y-1">
+                <Label className="text-xs">Certificado (.cer) {!configured && '*'}</Label>
+                <Input
+                  name="cer_file"
+                  type="file"
+                  accept=".cer"
+                  required={!configured}
+                  className="text-sm"
+                />
+              </div>
+              <div className="space-y-1">
+                <Label className="text-xs">Llave privada (.key) {!configured && '*'}</Label>
+                <Input
+                  name="key_file"
+                  type="file"
+                  accept=".key"
+                  required={!configured}
+                  className="text-sm"
+                />
+              </div>
+            </div>
+            <div className="space-y-1">
+              <Label className="text-xs">
+                Contraseña de los sellos {!configured && '*'}
+                {configured && ' (solo si actualizas archivos)'}
+              </Label>
+              <Input
+                name="password"
+                type="password"
+                required={!configured}
+                placeholder="••••••••"
+              />
+            </div>
+          </div>
+
+          {/* Submit */}
+          <div className="flex justify-end">
+            <Button type="submit" disabled={loading} style={{ backgroundColor: '#0a3143' }}>
               <Save className="h-4 w-4 mr-1" />
-              {saveMutation.isPending
-                ? 'Validando...'
+              {loading
+                ? 'Configurando...'
                 : configured
-                  ? 'Actualizar'
-                  : 'Guardar y validar'}
+                  ? 'Actualizar datos fiscales'
+                  : 'Guardar configuración'}
             </Button>
           </div>
-        </div>
+        </form>
 
         {/* Instrucciones */}
         <div className="rounded-lg border border-blue-200 bg-blue-50 p-4 text-xs text-blue-900 space-y-2">
-          <p className="font-medium">¿Cómo obtengo mi API key?</p>
+          <p className="font-medium">¿De dónde obtengo mis CSD?</p>
           <ol className="list-decimal list-inside space-y-1">
-            <li>Crea una cuenta en <a href="https://facturapi.io" target="_blank" rel="noreferrer" className="underline">facturapi.io</a> (es gratis para probar).</li>
-            <li>En tu panel, ve a <strong>Configuración → Organización</strong> y captura tus datos fiscales (RFC, razón social, régimen, dirección).</li>
-            <li>Ve a <strong>Configuración → API Keys</strong> y copia tu <strong>Secret Key</strong> (empieza con <code>sk_test_</code> para pruebas o <code>sk_live_</code> para producción).</li>
-            <li>Pégala aquí y dale "Guardar y validar".</li>
-            <li>Para que las facturas timbren ante el SAT: sube tu <strong>Certificado de Sello Digital (CSD)</strong> en tu panel de FacturAPI.</li>
+            <li>Entra al <strong>SAT</strong> con tu RFC y contraseña (sat.gob.mx).</li>
+            <li>Ve a <strong>Otros trámites → Certificados de Sello Digital</strong> y descarga el .cer y .key.</li>
+            <li>La contraseña es la que creaste al generar los sellos en el SAT.</li>
+            <li>Sube ambos archivos aquí junto con la contraseña.</li>
+            <li>El sistema crea automáticamente tu organización en FacturAPI y registra los sellos.</li>
           </ol>
         </div>
       </CardContent>
