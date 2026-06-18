@@ -862,3 +862,26 @@ Stage Summary:
 - Encabezado institucional en cada vista del expediente.
 - Alertas clínicas inteligentes (25 reglas de la sección 25).
 - SignaturePad reutilizado en procedimientos, consentimientos y referencias.
+
+---
+Task ID: SUPABASE
+Agent: main
+Task: Migración de SQLite a Supabase PostgreSQL
+
+Work Log:
+- Creada cuenta Supabase (project: lvmillaexhmehrjoouca)
+- Actualizado prisma/schema.prisma: provider sqlite → postgresql + directUrl
+- Actualizado .env con credenciales Supabase (session pooler puerto 5432)
+- Password URL-encoded (! → %21) para compatibilidad con Prisma
+- prisma db push exitoso: todas las tablas creadas en Supabase (25.71s)
+- Instalado dotenv y añadido import 'dotenv/config' al seed
+- Añadido config prisma.seed al package.json
+- Seed exitoso: 3 clínicas + distribuidora + matriz, 4 usuarios, 3 podólogos, 7 servicios, 6 pacientes, 7 citas, 8 productos, 2 equipos
+- Reiniciado dev server + mini-service Red CENPOD
+- Verificado con Agent Browser: login + dashboard (6 citas, 6 pacientes) + agenda (6 citas) — todo desde Supabase
+
+Stage Summary:
+- Base de datos 100% en Supabase PostgreSQL.
+- Listo para deploy a Vercel.
+- Nota: el primer request es lento (~10s) por cold start + conexión remota; subsiguientes son rápidos.
+- Variables de entorno necesarias para Vercel: DATABASE_URL, DIRECT_URL, NEXTAUTH_SECRET, NEXTAUTH_URL, SUPABASE_URL, SUPABASE_ANON_KEY

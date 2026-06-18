@@ -1,5 +1,5 @@
-// Sistema CENPOD — Schema completo (18 módulos)
-// Compatible SQLite (dev) y PostgreSQL (prod Supabase).
+// Sistema CENPOD — Schema completo (18 módulos + expediente NOM-004)
+// Base de datos: Supabase (PostgreSQL)
 // El aislamiento multi-sucursal se maneja con clinic_id a nivel aplicación.
 
 generator client {
@@ -7,8 +7,9 @@ generator client {
 }
 
 datasource db {
-  provider = "sqlite"
-  url      = env("DATABASE_URL")
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
 }
 
 // ============================================================
