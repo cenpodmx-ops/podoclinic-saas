@@ -543,7 +543,21 @@
     padding: 0;
     min-height: auto;
   }
-  @page { size: A4; margin: 14mm 12mm 16mm; }
+  /* ===== AGENDA: permitir imprimir la vista de impresión ===== */
+  .print-agenda,
+  .print-agenda * { visibility: visible !important; }
+  .print-agenda {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+    padding: 0 !important;
+  }
+  /* Ocultar sidebar, topbar y bottom nav al imprimir */
+  aside, header, nav { display: none !important; }
+  /* El contenedor principal ocupa todo el ancho */
+  .min-h-screen { display: block !important; }
+  .flex-1 { width: 100% !important; overflow: visible !important; }
 }
 
 /* ===== VISTA DE IMPRESIÓN DE LA AGENDA ===== */
