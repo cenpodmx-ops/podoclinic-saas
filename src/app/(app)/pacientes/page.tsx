@@ -142,9 +142,8 @@ export default function PacientesPage() {
   if (diabetic) params.set('diabetic', diabetic)
   if (risk) params.set('riskLevel', risk)
   if (sinCitaReciente) params.set('sinCitaReciente', '1')
-  if (isSuper) {
-    if (clinicId) params.set('clinicId', clinicId)
-    else params.set('all', '1')
+  if (isSuper && clinicId) {
+    params.set('clinicId', clinicId)
   }
 
   const { data, isLoading, isFetching } = useQuery({

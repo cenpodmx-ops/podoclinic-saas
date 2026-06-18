@@ -65,7 +65,6 @@ export default function AgendaPage() {
     view,
   })
   if (podologistId && podologistId !== 'all') queryParams.set('podologistId', podologistId)
-  if (user?.role === 'SUPER') queryParams.set('all', '1')
 
   const { data, isLoading } = useQuery({
     queryKey: ['citas', date, podologistId, view, user?.role],

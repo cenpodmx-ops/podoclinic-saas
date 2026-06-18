@@ -33,9 +33,10 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { MODULES, GROUP_LABELS, MOBILE_NAV_IDS, type ModuleDef } from '@/lib/modules'
-import { ROLES } from '@/lib/session'
+import { ROLES } from '@/lib/roles'
 import { cn } from '@/lib/utils'
 import { RedProvider, useRed } from '@/components/cenpod/red-provider'
+import { ClinicSwitcher } from '@/components/cenpod/clinic-switcher'
 
 function SidebarLink({ m, active, collapsed }: { m: ModuleDef; active: boolean; collapsed: boolean }) {
   const Icon = m.icon
@@ -109,11 +110,7 @@ function TopBar({ onOpenMenu }: { onOpenMenu: () => void }) {
         <Menu className="h-5 w-5" />
       </Button>
 
-      <div className="hidden md:flex items-center gap-2 text-sm">
-        <Building2 className="h-4 w-4 text-muted-foreground" />
-        <span className="font-medium">{u?.clinicName || 'CENPOD'}</span>
-        {u?.role === 'SUPER' && <Badge variant="secondary" className="ml-1">Matriz</Badge>}
-      </div>
+      <ClinicSwitcher />
 
       <div className="ml-auto flex items-center gap-1">
         <Button variant="ghost" size="icon" onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}>
@@ -229,14 +226,18 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           )}
         >
           <div
-            className="flex items-center justify-center gap-2 px-4 py-4 border-b border-sidebar-border"
+            className="flex flex-col items-center justify-center gap-0 px-4 py-5 border-b border-sidebar-border text-white"
             style={{ backgroundColor: '#0a3143' }}
           >
-            {!collapsed && (
-              <img src="/logo-white.png" alt="CENPOD" className="h-16 w-auto" />
-            )}
-            {collapsed && (
-              <img src="/logo-white.png" alt="CENPOD" className="h-10 w-auto" />
+            {!collapsed ? (
+              <>
+                <span className="text-2xl font-extrabold tracking-[0.15em] leading-none">CENPOD</span>
+                <span className="text-[9px] font-medium tracking-[0.2em] mt-1 text-white/70 text-center">
+                  CENTRO PODOLÓGICO
+                </span>
+              </>
+            ) : (
+              <span className="text-lg font-extrabold tracking-wider leading-none">CP</span>
             )}
           </div>
           <div className="flex-1 overflow-y-auto">
@@ -259,10 +260,15 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         <Sheet open={mobileOpen} onOpenChange={setMobileOpen}>
           <SheetContent side="left" className="w-72 p-0 bg-sidebar text-sidebar-foreground">
             <div
-              className="flex items-center justify-between gap-2 px-4 py-4 border-b border-sidebar-border"
+              className="flex items-center justify-between gap-2 px-4 py-5 border-b border-sidebar-border text-white"
               style={{ backgroundColor: '#0a3143' }}
             >
-              <img src="/logo-white.png" alt="CENPOD" className="h-14 w-auto" />
+              <div className="flex flex-col">
+                <span className="text-xl font-extrabold tracking-[0.15em] leading-none">CENPOD</span>
+                <span className="text-[8px] font-medium tracking-[0.2em] mt-1 text-white/70">
+                  CENTRO PODOLÓGICO
+                </span>
+              </div>
               <Button
                 variant="ghost"
                 size="icon"

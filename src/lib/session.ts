@@ -1,22 +1,46 @@
+// MÓDULO SERVER-ONLY — importa next/headers y db.
+// Los componentes cliente deben importar de @/lib/roles en su lugar.
+
+import 'server-only'
 import { getServerSession } from 'next-auth'
+import { cookies } from 'next/headers'
 import { authOptions } from '@/lib/auth'
 import { db } from '@/lib/db'
+import { ACTIVE_CLINIC_COOKIE, type SessionUser } from '@/lib/roles'
 
-export type SessionUser = {
-  id: string
-  name: string
-  email: string
-  role: string
-  clinicId: string
-  clinicName: string
-  clinicSlug: string
-  podologistId?: string
-}
+// Reexportar para compatibilidad con imports existentes
+export { ACTIVE_CLINIC_COOKIE, ROLES, canAccessFinance, canManageAgenda, canSeeAllClinics, isPodologist } from '@/lib/roles'
+export type { SessionUser, Role } from '@/lib/roles'
 
 export async function getSession(): Promise<SessionUser | null> {
   const s = await getServerSession(authOptions)
   if (!s?.user) return null
-  return s.user as unknown as SessionUser
+  const user = s.user as unknown as SessionUser
+
+  // SUPER: override clinicId con la sucursal activa (cookie).
+  // Esto permite que el Súper Dueño "entre" a cada clínica y vea
+  // su dashboard, agenda, pacientes, etc. como si operara esa sucursal.
+  if (user.role === 'SUPER') {
+    try {
+      const cookieStore = await cookies()
+      const activeClinicId = cookieStore.get(ACTIVE_CLINIC_COOKIE)?.value
+      if (activeClinicId) {
+        const clinic = await db.clinic.findUnique({
+          where: { id: activeClinicId },
+          select: { id: true, name: true, slug: true },
+        })
+        if (clinic) {
+          user.clinicId = clinic.id
+          user.clinicName = clinic.name
+          user.clinicSlug = clinic.slug
+        }
+      }
+    } catch {
+      // cookies() puede fallar en algunos contextos — ignorar
+    }
+  }
+
+  return user
 }
 
 /** Devuelve el clinicId efectivo: el del usuario o, si es SUPER y pide todas, undefined. */
@@ -31,27 +55,4 @@ export async function getEffectiveClinicId(viewAll = false): Promise<string | un
 export function clinicFilter(user: SessionUser, allowSuper = true) {
   if (allowSuper && user.role === 'SUPER') return {} as Record<string, string>
   return { clinicId: user.clinicId }
-}
-
-export const ROLES = {
-  SUPER: 'Súper Dueño',
-  OWNER: 'Dueño de Clínica',
-  RECEPTION: 'Recepción',
-  PODOLOGIST: 'Podólogo',
-} as const
-
-export function canAccessFinance(user: SessionUser | null) {
-  return !!user && (user.role === 'SUPER' || user.role === 'OWNER')
-}
-
-export function canManageAgenda(user: SessionUser | null) {
-  return !!user && (user.role === 'SUPER' || user.role === 'OWNER' || user.role === 'RECEPTION')
-}
-
-export function canSeeAllClinics(user: SessionUser | null) {
-  return !!user && user.role === 'SUPER'
-}
-
-export function isPodologist(user: SessionUser | null) {
-  return !!user && user.role === 'PODOLOGIST'
 }
