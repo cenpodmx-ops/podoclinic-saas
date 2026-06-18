@@ -1,0 +1,1033 @@
+     1→'use client'
+     2→
+     3→import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+     4→import { useState } from 'react'
+     5→import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+     6→import { Button } from '@/components/ui/button'
+     7→import { Input } from '@/components/ui/input'
+     8→import { Label } from '@/components/ui/label'
+     9→import { Textarea } from '@/components/ui/textarea'
+    10→import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+    11→import { Switch } from '@/components/ui/switch'
+    12→import { Badge } from '@/components/ui/badge'
+    13→import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+    14→import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
+    15→import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
+    16→import { Skeleton } from '@/components/ui/skeleton'
+    17→import { Save, Plus, Pencil, Building2, Users, MessageSquare, FileText, KeyRound, UserCog } from 'lucide-react'
+    18→import { toast } from 'sonner'
+    19→import { fmtMoney } from '@/lib/format'
+    20→
+    21→const TPL_VARS = [
+    22→  '{{nombre_paciente}}', '{{fecha}}', '{{hora}}', '{{podologo}}',
+    23→  '{{clinica}}', '{{link_reserva}}',
+    24→]
+    25→
+    26→export default function ConfigPage() {
+    27→  return (
+    28→    <div className="p-4 md:p-6 space-y-4 max-w-[1400px] mx-auto">
+    29→      <div>
+    30→        <h1 className="text-2xl font-bold">Configuración</h1>
+    31→        <p className="text-sm text-muted-foreground">Personaliza el sistema para tu clínica</p>
+    32→      </div>
+    33→
+    34→      <Tabs defaultValue="clinica">
+    35→        <TabsList className="flex flex-wrap h-auto">
+    36→          <TabsTrigger value="clinica" className="gap-1"><Building2 className="h-3.5 w-3.5" /> Clínica</TabsTrigger>
+    37→          <TabsTrigger value="equipo" className="gap-1"><Users className="h-3.5 w-3.5" /> Equipo</TabsTrigger>
+    38→          <TabsTrigger value="plantillas" className="gap-1"><MessageSquare className="h-3.5 w-3.5" /> Plantillas WhatsApp</TabsTrigger>
+    39→          <TabsTrigger value="facturacion" className="gap-1"><KeyRound className="h-3.5 w-3.5" /> FacturAPI</TabsTrigger>
+    40→          <TabsTrigger value="diagnosticos" className="gap-1"><FileText className="h-3.5 w-3.5" /> Diagnósticos</TabsTrigger>
+    41→          <TabsTrigger value="usuarios" className="gap-1"><UserCog className="h-3.5 w-3.5" /> Usuarios</TabsTrigger>
+    42→        </TabsList>
+    43→
+    44→        <TabsContent value="clinica"><ClinicaTab /></TabsContent>
+    45→        <TabsContent value="equipo"><EquipoTab /></TabsContent>
+    46→        <TabsContent value="plantillas"><PlantillasTab /></TabsContent>
+    47→        <TabsContent value="facturacion"><FacturacionTab /></TabsContent>
+    48→        <TabsContent value="diagnosticos"><DiagnosticosTab /></TabsContent>
+    49→        <TabsContent value="usuarios"><UsuariosTab /></TabsContent>
+    50→      </Tabs>
+    51→    </div>
+    52→  )
+    53→}
+    54→
+    55→function useConfig() {
+    56→  return useQuery({
+    57→    queryKey: ['config'],
+    58→    queryFn: () => fetch('/api/config').then((r) => r.json()),
+    59→  })
+    60→}
+    61→
+    62→function ClinicaTab() {
+    63→  const { data, isLoading } = useConfig()
+    64→  const qc = useQueryClient()
+    65→  const [form, setForm] = useState<any>(null)
+    66→
+    67→  // Cuando carga la data, inicializa el form
+    68→  const clinic = data?.clinic
+    69→  if (!isLoading && clinic && !form) {
+    70→    setForm({
+    71→      name: clinic.name || '',
+    72→      address: clinic.address || '',
+    73→      phone: clinic.phone || '',
+    74→      email: clinic.email || '',
+    75→      logoUrl: clinic.logoUrl || '',
+    76→      openingTime: clinic.openingTime || '08:00',
+    77→      closingTime: clinic.closingTime || '20:00',
+    78→      slotMinutes: clinic.slotMinutes || 30,
+    79→      rfc: clinic.rfc || '',
+    80→      razonSocial: clinic.razonSocial || '',
+    81→      regimenFiscal: clinic.regimenFiscal || '',
+    82→    })
+    83→  }
+    84→
+    85→  const save = useMutation({
+    86→    mutationFn: (body: any) =>
+    87→      fetch('/api/config/clinica', {
+    88→        method: 'PATCH',
+    89→        headers: { 'Content-Type': 'application/json' },
+    90→        body: JSON.stringify(body),
+    91→      }).then((r) => r.json()),
+    92→    onSuccess: () => {
+    93→      toast.success('Datos de la clínica guardados')
+    94→      qc.invalidateQueries({ queryKey: ['config'] })
+    95→    },
+    96→    onError: () => toast.error('Error al guardar'),
+    97→  })
+    98→
+    99→  if (isLoading || !form) return <Skeleton className="h-96" />
+   100→
+   101→  return (
+   102→    <Card className="shadow-sm">
+   103→      <CardHeader>
+   104→        <CardTitle className="text-base">Datos de la clínica</CardTitle>
+   105→      </CardHeader>
+   106→      <CardContent className="space-y-4">
+   107→        <div className="grid md:grid-cols-2 gap-4">
+   108→          <div className="space-y-1">
+   109→            <Label>Nombre</Label>
+   110→            <Input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />
+   111→          </div>
+   112→          <div className="space-y-1">
+   113→            <Label>Teléfono</Label>
+   114→            <Input value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} />
+   115→          </div>
+   116→        </div>
+   117→        <div className="space-y-1">
+   118→          <Label>Dirección</Label>
+   119→          <Input value={form.address} onChange={(e) => setForm({ ...form, address: e.target.value })} />
+   120→        </div>
+   121→        <div className="grid md:grid-cols-2 gap-4">
+   122→          <div className="space-y-1">
+   123→            <Label>Email</Label>
+   124→            <Input type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} />
+   125→          </div>
+   126→          <div className="space-y-1">
+   127→            <Label>URL del logo</Label>
+   128→            <Input value={form.logoUrl} onChange={(e) => setForm({ ...form, logoUrl: e.target.value })} placeholder="/logo-dark.png" />
+   129→          </div>
+   130→        </div>
+   131→        <div className="grid md:grid-cols-3 gap-4">
+   132→          <div className="space-y-1">
+   133→            <Label>Apertura</Label>
+   134→            <Input type="time" value={form.openingTime} onChange={(e) => setForm({ ...form, openingTime: e.target.value })} />
+   135→          </div>
+   136→          <div className="space-y-1">
+   137→            <Label>Cierre</Label>
+   138→            <Input type="time" value={form.closingTime} onChange={(e) => setForm({ ...form, closingTime: e.target.value })} />
+   139→          </div>
+   140→          <div className="space-y-1">
+   141→            <Label>Slot de agenda (min)</Label>
+   142→            <Select value={String(form.slotMinutes)} onValueChange={(v) => setForm({ ...form, slotMinutes: Number(v) })}>
+   143→              <SelectTrigger><SelectValue /></SelectTrigger>
+   144→              <SelectContent>
+   145→                <SelectItem value="15">15 min</SelectItem>
+   146→                <SelectItem value="20">20 min</SelectItem>
+   147→                <SelectItem value="30">30 min</SelectItem>
+   148→                <SelectItem value="60">60 min</SelectItem>
+   149→              </SelectContent>
+   150→            </Select>
+   151→          </div>
+   152→        </div>
+   153→
+   154→        <div className="pt-4 border-t">
+   155→          <h3 className="font-medium mb-3">Datos fiscales</h3>
+   156→          <div className="grid md:grid-cols-3 gap-4">
+   157→            <div className="space-y-1">
+   158→              <Label>RFC</Label>
+   159→              <Input value={form.rfc} onChange={(e) => setForm({ ...form, rfc: e.target.value })} />
+   160→            </div>
+   161→            <div className="space-y-1">
+   162→              <Label>Razón social</Label>
+   163→              <Input value={form.razonSocial} onChange={(e) => setForm({ ...form, razonSocial: e.target.value })} />
+   164→            </div>
+   165→            <div className="space-y-1">
+   166→              <Label>Régimen fiscal</Label>
+   167→              <Input value={form.regimenFiscal} onChange={(e) => setForm({ ...form, regimenFiscal: e.target.value })} />
+   168→            </div>
+   169→          </div>
+   170→        </div>
+   171→
+   172→        <div className="flex justify-end">
+   173→          <Button onClick={() => save.mutate(form)} disabled={save.isPending} style={{ backgroundColor: '#0a3143' }}>
+   174→            <Save className="h-4 w-4 mr-1" /> {save.isPending ? 'Guardando...' : 'Guardar'}
+   175→          </Button>
+   176→        </div>
+   177→      </CardContent>
+   178→    </Card>
+   179→  )
+   180→}
+   181→
+   182→function EquipoTab() {
+   183→  const qc = useQueryClient()
+   184→  const [open, setOpen] = useState(false)
+   185→  const [editing, setEditing] = useState<any>(null)
+   186→
+   187→  const { data, isLoading } = useQuery({
+   188→    queryKey: ['podologos'],
+   189→    queryFn: () => fetch('/api/podologos?includeInactive=1').then((r) => r.json()),
+   190→  })
+   191→
+   192→  const save = useMutation({
+   193→    mutationFn: async (body: any) => {
+   194→      if (editing) {
+   195→        const res = await fetch(`/api/podologos/${editing.id}`, {
+   196→          method: 'PATCH',
+   197→          headers: { 'Content-Type': 'application/json' },
+   198→          body: JSON.stringify(body),
+   199→        })
+   200→        if (!res.ok) throw new Error('Error')
+   201→        return res.json()
+   202→      } else {
+   203→        const res = await fetch('/api/podologos', {
+   204→          method: 'POST',
+   205→          headers: { 'Content-Type': 'application/json' },
+   206→          body: JSON.stringify(body),
+   207→        })
+   208→        if (!res.ok) throw new Error('Error')
+   209→        return res.json()
+   210→      }
+   211→    },
+   212→    onSuccess: () => {
+   213→      toast.success(editing ? 'Podólogo actualizado' : 'Podólogo creado')
+   214→      qc.invalidateQueries({ queryKey: ['podologos'] })
+   215→      setOpen(false)
+   216→      setEditing(null)
+   217→    },
+   218→    onError: () => toast.error('Error al guardar'),
+   219→  })
+   220→
+   221→  const deactivate = useMutation({
+   222→    mutationFn: (id: string) => fetch(`/api/podologos/${id}`, { method: 'DELETE' }).then((r) => r.json()),
+   223→    onSuccess: () => {
+   224→      toast.success('Podólogo desactivado')
+   225→      qc.invalidateQueries({ queryKey: ['podologos'] })
+   226→    },
+   227→  })
+   228→
+   229→  const rows: any[] = Array.isArray(data) ? data : (data?.rows || [])
+   230→
+   231→  return (
+   232→    <Card className="shadow-sm">
+   233→      <CardHeader className="flex flex-row items-center justify-between">
+   234→        <CardTitle className="text-base">Equipo de podólogos</CardTitle>
+   235→        <Button size="sm" onClick={() => { setEditing(null); setOpen(true) }} style={{ backgroundColor: '#0a3143' }}>
+   236→          <Plus className="h-4 w-4 mr-1" /> Nuevo
+   237→        </Button>
+   238→      </CardHeader>
+   239→      <CardContent className="p-0">
+   240→        {isLoading ? (
+   241→          <div className="p-4 space-y-2">{Array.from({ length: 3 }).map((_, i) => <Skeleton key={i} className="h-12" />)}</div>
+   242→        ) : rows.length === 0 ? (
+   243→          <div className="p-12 text-center text-muted-foreground">Sin podólogos registrados</div>
+   244→        ) : (
+   245→          <div className="overflow-x-auto">
+   246→            <Table>
+   247→              <TableHeader>
+   248→                <TableRow>
+   249→                  <TableHead>Nombre</TableHead>
+   250→                  <TableHead>Especialidad</TableHead>
+   251→                  <TableHead>Cédula</TableHead>
+   252→                  <TableHead>Teléfono</TableHead>
+   253→                  <TableHead>Comisión</TableHead>
+   254→                  <TableHead>Meta mensual</TableHead>
+   255→                  <TableHead>Estado</TableHead>
+   256→                  <TableHead className="text-right">Acciones</TableHead>
+   257→                </TableRow>
+   258→              </TableHeader>
+   259→              <TableBody>
+   260→                {rows.map((p: any) => (
+   261→                  <TableRow key={p.id}>
+   262→                    <TableCell className="font-medium">{p.name}</TableCell>
+   263→                    <TableCell className="text-sm">{p.specialty || '—'}</TableCell>
+   264→                    <TableCell className="text-sm">{p.cedula || '—'}</TableCell>
+   265→                    <TableCell className="text-sm">{p.phone || '—'}</TableCell>
+   266→                    <TableCell><Badge variant="outline">{p.commissionPct}%</Badge></TableCell>
+   267→                    <TableCell className="text-sm">
+   268→                      {p.monthlyGoalConsults ? `${p.monthlyGoalConsults} citas` : '—'}
+   269→                      {p.monthlyGoalRevenue ? ` / ${fmtMoney(p.monthlyGoalRevenue)}` : ''}
+   270→                    </TableCell>
+   271→                    <TableCell>
+   272→                      {p.active ? <Badge className="bg-emerald-100 text-emerald-700">Activo</Badge> : <Badge variant="secondary">Inactivo</Badge>}
+   273→                    </TableCell>
+   274→                    <TableCell className="text-right">
+   275→                      <Button variant="ghost" size="icon" onClick={() => { setEditing(p); setOpen(true) }}>
+   276→                        <Pencil className="h-4 w-4" />
+   277→                      </Button>
+   278→                      {p.active && (
+   279→                        <Button variant="ghost" size="icon" className="text-red-600" onClick={() => deactivate.mutate(p.id)}>
+   280→                          <Plus className="h-4 w-4 rotate-45" />
+   281→                        </Button>
+   282→                      )}
+   283→                    </TableCell>
+   284→                  </TableRow>
+   285→                ))}
+   286→              </TableBody>
+   287→            </Table>
+   288→          </div>
+   289→        )}
+   290→      </CardContent>
+   291→
+   292→      <PodologoDialog open={open} onOpenChange={setOpen} editing={editing} onSave={save.mutate} saving={save.isPending} />
+   293→    </Card>
+   294→  )
+   295→}
+   296→
+   297→function PodologoDialog({ open, onOpenChange, editing, onSave, saving }: any) {
+   298→  return (
+   299→    <Dialog open={open} onOpenChange={onOpenChange}>
+   300→      <DialogContent key={editing?.id || 'new'} className="max-w-lg max-h-[90vh] overflow-y-auto">
+   301→        <DialogHeader>
+   302→          <DialogTitle>{editing ? 'Editar podólogo' : 'Nuevo podólogo'}</DialogTitle>
+   303→        </DialogHeader>
+   304→        <form
+   305→          onSubmit={(e) => {
+   306→            e.preventDefault()
+   307→            const fd = new FormData(e.currentTarget as any)
+   308→            const body = Object.fromEntries(fd.entries()) as any
+   309→            body.commissionPct = Number(body.commissionPct)
+   310→            if (body.monthlyGoalConsults) body.monthlyGoalConsults = Number(body.monthlyGoalConsults)
+   311→            if (body.monthlyGoalRevenue) body.monthlyGoalRevenue = Number(body.monthlyGoalRevenue)
+   312→            onSave(body)
+   313→          }}
+   314→          className="space-y-3"
+   315→        >
+   316→          <div className="space-y-1">
+   317→            <Label>Nombre completo *</Label>
+   318→            <Input name="name" required defaultValue={editing?.name || ''} />
+   319→          </div>
+   320→          <div className="grid grid-cols-2 gap-3">
+   321→            <div className="space-y-1">
+   322→              <Label>Especialidad</Label>
+   323→              <Input name="specialty" defaultValue={editing?.specialty || ''} />
+   324→            </div>
+   325→            <div className="space-y-1">
+   326→              <Label>Cédula profesional</Label>
+   327→              <Input name="cedula" defaultValue={editing?.cedula || ''} />
+   328→            </div>
+   329→          </div>
+   330→          <div className="grid grid-cols-2 gap-3">
+   331→            <div className="space-y-1">
+   332→              <Label>Teléfono</Label>
+   333→              <Input name="phone" defaultValue={editing?.phone || ''} />
+   334→            </div>
+   335→            <div className="space-y-1">
+   336→              <Label>Email</Label>
+   337→              <Input name="email" type="email" defaultValue={editing?.email || ''} />
+   338→            </div>
+   339→          </div>
+   340→          <div className="grid grid-cols-3 gap-3">
+   341→            <div className="space-y-1">
+   342→              <Label>Comisión (%)</Label>
+   343→              <Input name="commissionPct" type="number" min={0} max={100} step="0.1" defaultValue={editing?.commissionPct ?? 0} />
+   344→            </div>
+   345→            <div className="space-y-1">
+   346→              <Label>Meta citas/mes</Label>
+   347→              <Input name="monthlyGoalConsults" type="number" min={0} defaultValue={editing?.monthlyGoalConsults ?? ''} />
+   348→            </div>
+   349→            <div className="space-y-1">
+   350→              <Label>Meta $/mes</Label>
+   351→              <Input name="monthlyGoalRevenue" type="number" min={0} step="0.01" defaultValue={editing?.monthlyGoalRevenue ?? ''} />
+   352→            </div>
+   353→          </div>
+   354→          {editing && (
+   355→            <label className="flex items-center gap-2 text-sm">
+   356→              <Switch name="active" defaultChecked={editing.active} />
+   357→              Activo
+   358→            </label>
+   359→          )}
+   360→          <DialogFooter>
+   361→            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>Cancelar</Button>
+   362→            <Button type="submit" disabled={saving} style={{ backgroundColor: '#0a3143' }}>
+   363→              {saving ? 'Guardando...' : 'Guardar'}
+   364→            </Button>
+   365→          </DialogFooter>
+   366→        </form>
+   367→      </DialogContent>
+   368→    </Dialog>
+   369→  )
+   370→}
+   371→
+   372→function PlantillasTab() {
+   373→  const { data, isLoading } = useConfig()
+   374→  const qc = useQueryClient()
+   375→  const [form, setForm] = useState<any>(null)
+   376→
+   377→  const cfg = data?.config
+   378→  if (!isLoading && cfg && !form) {
+   379→    setForm({
+   380→      tplConfirm: cfg.tplConfirm || '',
+   381→      tplReminder: cfg.tplReminder || '',
+   382→      tplGoogleReview: cfg.tplGoogleReview || '',
+   383→      tplBirthday: cfg.tplBirthday || '',
+   384→      tplInactive: cfg.tplInactive || '',
+   385→      tplFollowUp: cfg.tplFollowUp || '',
+   386→    })
+   387→  }
+   388→
+   389→  const save = useMutation({
+   390→    mutationFn: (body: any) =>
+   391→      fetch('/api/config/plantillas', {
+   392→        method: 'PATCH',
+   393→        headers: { 'Content-Type': 'application/json' },
+   394→        body: JSON.stringify(body),
+   395→      }).then((r) => r.json()),
+   396→    onSuccess: () => {
+   397→      toast.success('Plantillas guardadas')
+   398→      qc.invalidateQueries({ queryKey: ['config'] })
+   399→    },
+   400→  })
+   401→
+   402→  if (isLoading || !form) return <Skeleton className="h-96" />
+   403→
+   404→  const fields = [
+   405→    { key: 'tplConfirm', label: 'Confirmación de cita' },
+   406→    { key: 'tplReminder', label: 'Recordatorio (24h antes)' },
+   407→    { key: 'tplGoogleReview', label: 'Reseña Google (post-consulta)' },
+   408→    { key: 'tplBirthday', label: 'Cumpleaños' },
+   409→    { key: 'tplInactive', label: 'Paciente inactivo' },
+   410→    { key: 'tplFollowUp', label: 'Seguimiento post-consulta' },
+   411→  ]
+   412→
+   413→  return (
+   414→    <Card className="shadow-sm">
+   415→      <CardHeader>
+   416→        <CardTitle className="text-base">Plantillas de mensajes WhatsApp</CardTitle>
+   417→        <p className="text-xs text-muted-foreground">
+   418→          Estas plantillas se usan en los botones de WhatsApp (wa.me) del sistema. Variables disponibles:
+   419→          {' '}{TPL_VARS.map((v) => <code key={v} className="bg-muted px-1 rounded text-[10px] mx-0.5">{v}</code>)}
+   420→        </p>
+   421→      </CardHeader>
+   422→      <CardContent className="space-y-4">
+   423→        {fields.map((f) => (
+   424→          <div key={f.key} className="space-y-1">
+   425→            <Label>{f.label}</Label>
+   426→            <Textarea
+   427→              rows={3}
+   428→              value={form[f.key]}
+   429→              onChange={(e) => setForm({ ...form, [f.key]: e.target.value })}
+   430→              placeholder="Escribe el mensaje..."
+   431→            />
+   432→            <div className="flex flex-wrap gap-1">
+   433→              {TPL_VARS.map((v) => (
+   434→                <button
+   435→                  key={v}
+   436→                  type="button"
+   437→                  onClick={() => setForm({ ...form, [f.key]: (form[f.key] || '') + ' ' + v })}
+   438→                  className="text-[10px] px-1.5 py-0.5 rounded border hover:bg-muted"
+   439→                >
+   440→                  {v}
+   441→                </button>
+   442→              ))}
+   443→            </div>
+   444→          </div>
+   445→        ))}
+   446→        <div className="flex justify-end">
+   447→          <Button onClick={() => save.mutate(form)} disabled={save.isPending} style={{ backgroundColor: '#0a3143' }}>
+   448→            <Save className="h-4 w-4 mr-1" /> {save.isPending ? 'Guardando...' : 'Guardar plantillas'}
+   449→          </Button>
+   450→        </div>
+   451→      </CardContent>
+   452→    </Card>
+   453→  )
+   454→}
+   455→
+   456→function FacturacionTab() {
+   457→  const qc = useQueryClient()
+   458→  const [loading, setLoading] = useState(false)
+   459→  const [mensaje, setMensaje] = useState<{ tipo: 'exito' | 'error'; texto: string } | null>(null)
+   460→
+   461→  const { data: faStatus, isLoading } = useQuery({
+   462→    queryKey: ['facturapi-status'],
+   463→    queryFn: () => fetch('/api/config/facturapi').then((r) => r.json()),
+   464→  })
+   465→
+   466→  async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
+   467→    e.preventDefault()
+   468→    setLoading(true)
+   469→    setMensaje(null)
+   470→    const formData = new FormData(e.currentTarget)
+   471→    try {
+   472→      const res = await fetch('/api/config/facturapi', { method: 'POST', body: formData })
+   473→      const j = await res.json()
+   474→      if (!res.ok) throw new Error(j?.error || 'Error')
+   475→      setMensaje({ tipo: 'exito', texto: j.message || 'Configuración guardada correctamente.' })
+   476→      qc.invalidateQueries({ queryKey: ['facturapi-status'] })
+   477→      qc.invalidateQueries({ queryKey: ['config'] })
+   478→      // Limpiar el form
+   479→      ;(e.target as HTMLFormElement).reset()
+   480→    } catch (err: any) {
+   481→      setMensaje({ tipo: 'error', texto: err.message || 'Error' })
+   482→    } finally {
+   483→      setLoading(false)
+   484→    }
+   485→  }
+   486→
+   487→  if (isLoading) return <Skeleton className="h-64" />
+   488→
+   489→  const configured = faStatus?.configured
+   490→  const hasCert = faStatus?.hasCertificate
+   491→  const org = faStatus?.organization
+   492→  const clinic = faStatus?.clinic
+   493→
+   494→  return (
+   495→    <Card className="shadow-sm">
+   496→      <CardHeader>
+   497→        <CardTitle className="text-base flex items-center gap-2">
+   498→          <KeyRound className="h-4 w-4" /> Facturación con FacturAPI (CFDI 4.0)
+   499→        </CardTitle>
+   500→        <p className="text-xs text-muted-foreground mt-1">
+   501→          Cada sucursal configura sus datos fiscales y sellos digitales (CSD). Todo se gestiona desde aquí, sin tocar el panel de FacturAPI.
+   502→        </p>
+   503→      </CardHeader>
+   504→      <CardContent className="space-y-5">
+   505→        {/* Estado actual */}
+   506→        <div className="rounded-lg border p-4 space-y-2">
+   507→          <div className="flex items-center justify-between gap-2 flex-wrap">
+   508→            <p className="font-medium text-sm">Estado de esta sucursal</p>
+   509→            <div className="flex gap-2">
+   510→              {configured ? (
+   511→                <Badge className="bg-emerald-100 text-emerald-700">Organización creada ✓</Badge>
+   512→              ) : (
+   513→                <Badge variant="secondary">Sin configurar</Badge>
+   514→              )}
+   515→              {hasCert ? (
+   516→                <Badge className="bg-emerald-100 text-emerald-700">CSD cargados ✓</Badge>
+   517→              ) : (
+   518→                <Badge variant="secondary">Sin CSD</Badge>
+   519→              )}
+   520→            </div>
+   521→          </div>
+   522→          {org && (
+   523→            <div className="text-xs text-muted-foreground space-y-0.5 pt-2 border-t border-dashed">
+   524→              <p><strong>Organización:</strong> {org.legal_name || org.name}</p>
+   525→              <p><strong>RFC emisor:</strong> {org.tax_id || '—'}</p>
+   526→              <p><strong>Régimen:</strong> {org.tax_system || '—'}</p>
+   527→              {org.pending_steps && org.pending_steps.length > 0 && (
+   528→                <p className="text-amber-700">
+   529→                  <strong>Pendiente:</strong> {org.pending_steps.map((s: any) => s.description).join(', ')}
+   530→                </p>
+   531→              )}
+   532→            </div>
+   533→          )}
+   534→          {clinic && (
+   535→            <div className="text-xs text-muted-foreground pt-1">
+   536→              <p>RFC: {clinic.rfc || '—'} · Razón social: {clinic.razonSocial || '—'} · Régimen: {clinic.regimenFiscal || '—'}</p>
+   537→            </div>
+   538→          )}
+   539→          {configured && hasCert && (
+   540→            <div className="rounded-md bg-emerald-50 border border-emerald-200 p-3 text-xs text-emerald-800">
+   541→              <p className="font-medium">¡Configuración activa!</p>
+   542→              <p>Ya puedes facturar. Los CSD están cargados. Usa el formulario de abajo solo si necesitas actualizar.</p>
+   543→            </div>
+   544→          )}
+   545→          {!configured && (
+   546→            <p className="text-xs text-amber-700">
+   547→              Completa el formulario de abajo con tus datos fiscales y sube tus Sellos Digitales (CSD) para activar la facturación.
+   548→            </p>
+   549→          )}
+   550→        </div>
+   551→
+   552→        {/* Mensaje de feedback */}
+   553→        {mensaje && (
+   554→          <div className={`p-3 rounded text-sm ${mensaje.tipo === 'exito' ? 'bg-emerald-100 text-emerald-700 border border-emerald-200' : 'bg-red-100 text-red-700 border border-red-200'}`}>
+   555→            {mensaje.texto}
+   556→          </div>
+   557→        )}
+   558→
+   559→        {/* Formulario */}
+   560→        <form onSubmit={handleSubmit} className="space-y-4">
+   561→          <h3 className="text-sm font-medium">
+   562→            {configured ? 'Actualizar datos fiscales y/o sellos' : 'Datos fiscales de la sucursal'}
+   563→          </h3>
+   564→
+   565→          {/* Datos fiscales */}
+   566→          <div className="grid md:grid-cols-3 gap-3">
+   567→            <div className="space-y-1">
+   568→              <Label className="text-xs">Razón social *</Label>
+   569→              <Input
+   570→                name="razon_social"
+   571→                required
+   572→                defaultValue={clinic?.razonSocial || org?.legal_name || ''}
+   573→                placeholder="Ej. Grupo CENPOD Clínica 1"
+   574→              />
+   575→            </div>
+   576→            <div className="space-y-1">
+   577→              <Label className="text-xs">Régimen fiscal *</Label>
+   578→              <Select name="regimen_fiscal" defaultValue={clinic?.regimenFiscal || org?.tax_system || '612'}>
+   579→                <SelectTrigger><SelectValue /></SelectTrigger>
+   580→                <SelectContent>
+   581→                  <SelectItem value="601">601 · General de Ley Personas Morales</SelectItem>
+   582→                  <SelectItem value="612">612 · Personas Físicas con Actividades Empresariales</SelectItem>
+   583→                  <SelectItem value="626">626 · Régimen Simplificado de Confianza (RESICO)</SelectItem>
+   584→                  <SelectItem value="603">603 · Personas Morales con Fines no Lucrativos</SelectItem>
+   585→                  <SelectItem value="608">608 · Demás ingresos</SelectItem>
+   586→                  <SelectItem value="616">616 · Sin obligaciones fiscales</SelectItem>
+   587→                </SelectContent>
+   588→              </Select>
+   589→            </div>
+   590→            <div className="space-y-1">
+   591→              <Label className="text-xs">Código postal fiscal *</Label>
+   592→              <Input
+   593→                name="cp"
+   594→                required
+   595→                maxLength={5}
+   596→                placeholder="83000"
+   597→              />
+   598→            </div>
+   599→          </div>
+   600→
+   601→          {/* CSD */}
+   602→          <div className="rounded-lg border border-dashed border-gray-300 bg-muted/30 p-4 space-y-3">
+   603→            <p className="text-xs font-bold text-muted-foreground">
+   604→              Sellos Digitales (CSD) {configured && hasCert && '— solo subir si actualizas'}
+   605→            </p>
+   606→            <div className="grid md:grid-cols-2 gap-3">
+   607→              <div className="space-y-1">
+   608→                <Label className="text-xs">Certificado (.cer) {!configured && '*'}</Label>
+   609→                <Input
+   610→                  name="cer_file"
+   611→                  type="file"
+   612→                  accept=".cer"
+   613→                  required={!configured}
+   614→                  className="text-sm"
+   615→                />
+   616→              </div>
+   617→              <div className="space-y-1">
+   618→                <Label className="text-xs">Llave privada (.key) {!configured && '*'}</Label>
+   619→                <Input
+   620→                  name="key_file"
+   621→                  type="file"
+   622→                  accept=".key"
+   623→                  required={!configured}
+   624→                  className="text-sm"
+   625→                />
+   626→              </div>
+   627→            </div>
+   628→            <div className="space-y-1">
+   629→              <Label className="text-xs">
+   630→                Contraseña de los sellos {!configured && '*'}
+   631→                {configured && ' (solo si actualizas archivos)'}
+   632→              </Label>
+   633→              <Input
+   634→                name="password"
+   635→                type="password"
+   636→                required={!configured}
+   637→                placeholder="••••••••"
+   638→              />
+   639→            </div>
+   640→          </div>
+   641→
+   642→          {/* Submit */}
+   643→          <div className="flex justify-end">
+   644→            <Button type="submit" disabled={loading} style={{ backgroundColor: '#0a3143' }}>
+   645→              <Save className="h-4 w-4 mr-1" />
+   646→              {loading
+   647→                ? 'Configurando...'
+   648→                : configured
+   649→                  ? 'Actualizar datos fiscales'
+   650→                  : 'Guardar configuración'}
+   651→            </Button>
+   652→          </div>
+   653→        </form>
+   654→
+   655→        {/* Instrucciones */}
+   656→        <div className="rounded-lg border border-blue-200 bg-blue-50 p-4 text-xs text-blue-900 space-y-2">
+   657→          <p className="font-medium">¿De dónde obtengo mis CSD?</p>
+   658→          <ol className="list-decimal list-inside space-y-1">
+   659→            <li>Entra al <strong>SAT</strong> con tu RFC y contraseña (sat.gob.mx).</li>
+   660→            <li>Ve a <strong>Otros trámites → Certificados de Sello Digital</strong> y descarga el .cer y .key.</li>
+   661→            <li>La contraseña es la que creaste al generar los sellos en el SAT.</li>
+   662→            <li>Sube ambos archivos aquí junto con la contraseña.</li>
+   663→            <li>El sistema crea automáticamente tu organización en FacturAPI y registra los sellos.</li>
+   664→          </ol>
+   665→        </div>
+   666→      </CardContent>
+   667→    </Card>
+   668→  )
+   669→}
+   670→
+   671→function DiagnosticosTab() {
+   672→  const { data, isLoading } = useConfig()
+   673→  const qc = useQueryClient()
+   674→  const [list, setList] = useState<string[] | null>(null)
+   675→  const [newItem, setNewItem] = useState('')
+   676→
+   677→  const cfg = data?.config
+   678→  if (!isLoading && cfg && list === null) {
+   679→    try {
+   680→      setList(JSON.parse(cfg.diagnosesList || '[]'))
+   681→    } catch {
+   682→      setList([])
+   683→    }
+   684→  }
+   685→
+   686→  const save = useMutation({
+   687→    mutationFn: (body: any) =>
+   688→      fetch('/api/config/plantillas', {
+   689→        method: 'PATCH',
+   690→        headers: { 'Content-Type': 'application/json' },
+   691→        body: JSON.stringify(body),
+   692→      }).then((r) => r.json()),
+   693→    onSuccess: () => {
+   694→      toast.success('Lista guardada')
+   695→      qc.invalidateQueries({ queryKey: ['config'] })
+   696→    },
+   697→  })
+   698→
+   699→  if (isLoading || list === null) return <Skeleton className="h-64" />
+   700→
+   701→  return (
+   702→    <Card className="shadow-sm">
+   703→      <CardHeader>
+   704→        <CardTitle className="text-base">Lista de diagnósticos predefinidos</CardTitle>
+   705→        <p className="text-xs text-muted-foreground">Aparecen como opciones rápidas al registrar una consulta</p>
+   706→      </CardHeader>
+   707→      <CardContent className="space-y-4">
+   708→        <div className="flex gap-2">
+   709→          <Input
+   710→            value={newItem}
+   711→            onChange={(e) => setNewItem(e.target.value)}
+   712→            onKeyDown={(e) => {
+   713→              if (e.key === 'Enter' && newItem.trim()) {
+   714→                e.preventDefault()
+   715→                setList([...list, newItem.trim()])
+   716→                setNewItem('')
+   717→              }
+   718→            }}
+   719→            placeholder="Ej. Onicomicosis"
+   720→          />
+   721→          <Button
+   722→            variant="outline"
+   723→            onClick={() => {
+   724→              if (newItem.trim()) {
+   725→                setList([...list, newItem.trim()])
+   726→                setNewItem('')
+   727→              }
+   728→            }}
+   729→          >
+   730→            <Plus className="h-4 w-4" />
+   731→          </Button>
+   732→        </div>
+   733→        <div className="flex flex-wrap gap-2">
+   734→          {list.map((d, i) => (
+   735→            <Badge key={i} variant="secondary" className="text-sm py-1.5 pr-1">
+   736→              {d}
+   737→              <button
+   738→                onClick={() => setList(list.filter((_, idx) => idx !== i))}
+   739→                className="ml-1 hover:text-red-600"
+   740→              >
+   741→                ×
+   742→              </button>
+   743→            </Badge>
+   744→          ))}
+   745→          {list.length === 0 && <p className="text-sm text-muted-foreground">Sin diagnósticos. Agrega arriba.</p>}
+   746→        </div>
+   747→        <div className="flex justify-end">
+   748→          <Button onClick={() => save.mutate({ diagnosesList: list })} disabled={save.isPending} style={{ backgroundColor: '#0a3143' }}>
+   749→            <Save className="h-4 w-4 mr-1" /> Guardar lista
+   750→          </Button>
+   751→        </div>
+   752→      </CardContent>
+   753→    </Card>
+   754→  )
+   755→}
+   756→
+   757→// ============================================================
+   758→// TAB: USUARIOS — Gestión de accesos al sistema
+   759→// ============================================================
+   760→
+   761→const ROLES_OPTIONS = [
+   762→  { value: 'SUPER', label: 'Súper Dueño', desc: 'Acceso total a todas las clínicas' },
+   763→  { value: 'OWNER', label: 'Dueño de Clínica', desc: 'Acceso total a su clínica' },
+   764→  { value: 'RECEPTION', label: 'Recepción', desc: 'Agenda, pacientes, caja' },
+   765→  { value: 'PODOLOGIST', label: 'Podólogo', desc: 'Solo su agenda del día' },
+   766→] as const
+   767→
+   768→function UsuariosTab() {
+   769→  const qc = useQueryClient()
+   770→  const [open, setOpen] = useState(false)
+   771→  const [editing, setEditing] = useState<any>(null)
+   772→
+   773→  const { data, isLoading } = useQuery({
+   774→    queryKey: ['usuarios'],
+   775→    queryFn: () => fetch('/api/usuarios').then((r) => r.json()),
+   776→  })
+   777→  const usuarios: any[] = data?.data || []
+   778→
+   779→  const { data: podologosData } = useQuery({
+   780→    queryKey: ['podologos', 'all'],
+   781→    queryFn: () => fetch('/api/podologos?includeInactive=1').then((r) => r.json()),
+   782→  })
+   783→  const podologos: any[] = Array.isArray(podologosData) ? podologosData : []
+   784→
+   785→  const { data: clinicasData } = useQuery({
+   786→    queryKey: ['clinicas-list'],
+   787→    queryFn: () => fetch('/api/clinicas').then((r) => r.json()),
+   788→  })
+   789→  const clinicas: any[] = clinicasData?.data || []
+   790→
+   791→  const saveMutation = useMutation({
+   792→    mutationFn: async (body: any) => {
+   793→      if (editing) {
+   794→        const res = await fetch(`/api/usuarios/${editing.id}`, {
+   795→          method: 'PATCH',
+   796→          headers: { 'Content-Type': 'application/json' },
+   797→          body: JSON.stringify(body),
+   798→        })
+   799→        if (!res.ok) {
+   800→          const e = await res.json()
+   801→          throw new Error(e.error || 'Error al actualizar')
+   802→        }
+   803→        return res.json()
+   804→      } else {
+   805→        const res = await fetch('/api/usuarios', {
+   806→          method: 'POST',
+   807→          headers: { 'Content-Type': 'application/json' },
+   808→          body: JSON.stringify(body),
+   809→        })
+   810→        if (!res.ok) {
+   811→          const e = await res.json()
+   812→          throw new Error(e.error || 'Error al crear')
+   813→        }
+   814→        return res.json()
+   815→      }
+   816→    },
+   817→    onSuccess: () => {
+   818→      toast.success(editing ? 'Usuario actualizado' : 'Usuario creado')
+   819→      qc.invalidateQueries({ queryKey: ['usuarios'] })
+   820→      setOpen(false)
+   821→      setEditing(null)
+   822→    },
+   823→    onError: (e: any) => toast.error(e.message || 'Error'),
+   824→  })
+   825→
+   826→  const deactivateMutation = useMutation({
+   827→    mutationFn: (id: string) => fetch(`/api/usuarios/${id}`, { method: 'DELETE' }).then((r) => r.json()),
+   828→    onSuccess: () => {
+   829→      toast.success('Usuario desactivado')
+   830→      qc.invalidateQueries({ queryKey: ['usuarios'] })
+   831→    },
+   832→    onError: (e: any) => toast.error(e.message),
+   833→  })
+   834→
+   835→  const roleLabel = (r: string) => ROLES_OPTIONS.find((o) => o.value === r)?.label || r
+   836→  const roleBadge = (r: string) => {
+   837→    if (r === 'SUPER') return <Badge className="bg-purple-100 text-purple-800">Súper Dueño</Badge>
+   838→    if (r === 'OWNER') return <Badge className="bg-blue-100 text-blue-800">Dueño</Badge>
+   839→    if (r === 'RECEPTION') return <Badge className="bg-emerald-100 text-emerald-800">Recepción</Badge>
+   840→    if (r === 'PODOLOGIST') return <Badge className="bg-amber-100 text-amber-800">Podólogo</Badge>
+   841→    return <Badge variant="secondary">{r}</Badge>
+   842→  }
+   843→
+   844→  return (
+   845→    <Card className="shadow-sm">
+   846→      <CardHeader className="flex flex-row items-center justify-between">
+   847→        <div>
+   848→          <CardTitle className="text-base">Usuarios del sistema</CardTitle>
+   849→          <p className="text-xs text-muted-foreground mt-1">
+   850→            Gestiona quién puede entrar al sistema y con qué permisos. Las contraseñas se guardan encriptadas (bcrypt).
+   851→          </p>
+   852→        </div>
+   853→        <Button size="sm" onClick={() => { setEditing(null); setOpen(true) }} style={{ backgroundColor: '#0a3143' }}>
+   854→          <Plus className="h-4 w-4 mr-1" /> Nuevo usuario
+   855→        </Button>
+   856→      </CardHeader>
+   857→      <CardContent className="p-0">
+   858→        {isLoading ? (
+   859→          <div className="p-4 space-y-2">{Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="h-12" />)}</div>
+   860→        ) : usuarios.length === 0 ? (
+   861→          <div className="p-12 text-center text-muted-foreground">Sin usuarios registrados</div>
+   862→        ) : (
+   863→          <div className="overflow-x-auto">
+   864→            <Table>
+   865→              <TableHeader>
+   866→                <TableRow>
+   867→                  <TableHead>Nombre</TableHead>
+   868→                  <TableHead>Correo</TableHead>
+   869→                  <TableHead>Rol</TableHead>
+   870→                  <TableHead>Clínica</TableHead>
+   871→                  <TableHead>Podólogo vinculado</TableHead>
+   872→                  <TableHead>Último acceso</TableHead>
+   873→                  <TableHead>Estado</TableHead>
+   874→                  <TableHead className="text-right">Acciones</TableHead>
+   875→                </TableRow>
+   876→              </TableHeader>
+   877→              <TableBody>
+   878→                {usuarios.map((u: any) => (
+   879→                  <TableRow key={u.id}>
+   880→                    <TableCell className="font-medium">{u.name}</TableCell>
+   881→                    <TableCell className="text-sm">{u.email}</TableCell>
+   882→                    <TableCell>{roleBadge(u.role)}</TableCell>
+   883→                    <TableCell className="text-sm">{u.clinic?.name || '—'}</TableCell>
+   884→                    <TableCell className="text-sm">{u.podologist?.name || '—'}</TableCell>
+   885→                    <TableCell className="text-xs text-muted-foreground">
+   886→                      {u.lastLogin ? new Date(u.lastLogin).toLocaleDateString('es-MX', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : 'Nunca'}
+   887→                    </TableCell>
+   888→                    <TableCell>
+   889→                      {u.active ? <Badge className="bg-emerald-100 text-emerald-700">Activo</Badge> : <Badge variant="secondary">Inactivo</Badge>}
+   890→                    </TableCell>
+   891→                    <TableCell className="text-right">
+   892→                      <Button variant="ghost" size="icon" onClick={() => { setEditing(u); setOpen(true) }}>
+   893→                        <Pencil className="h-4 w-4" />
+   894→                      </Button>
+   895→                      {u.active && (
+   896→                        <Button variant="ghost" size="icon" className="text-red-600" onClick={() => deactivateMutation.mutate(u.id)}>
+   897→                          <Plus className="h-4 w-4 rotate-45" />
+   898→                        </Button>
+   899→                      )}
+   900→                    </TableCell>
+   901→                  </TableRow>
+   902→                ))}
+   903→              </TableBody>
+   904→            </Table>
+   905→          </div>
+   906→        )}
+   907→      </CardContent>
+   908→
+   909→      <UsuarioDialog
+   910→        open={open}
+   911→        onOpenChange={setOpen}
+   912→        editing={editing}
+   913→        clinicas={clinicas}
+   914→        podologos={podologos}
+   915→        onSave={saveMutation.mutate}
+   916→        saving={saveMutation.isPending}
+   917→      />
+   918→    </Card>
+   919→  )
+   920→}
+   921→
+   922→function UsuarioDialog({
+   923→  open, onOpenChange, editing, clinicas, podologos, onSave, saving,
+   924→}: any) {
+   925→  const isSuper = editing?.role === 'SUPER' || (!editing && false)
+   926→  return (
+   927→    <Dialog open={open} onOpenChange={onOpenChange}>
+   928→      <DialogContent key={editing?.id || 'new'} className="max-w-lg max-h-[90vh] overflow-y-auto">
+   929→        <DialogHeader>
+   930→          <DialogTitle>{editing ? 'Editar usuario' : 'Nuevo usuario'}</DialogTitle>
+   931→        </DialogHeader>
+   932→        <form
+   933→          onSubmit={(e) => {
+   934→            e.preventDefault()
+   935→            const fd = new FormData(e.currentTarget as any)
+   936→            const body: any = {
+   937→              name: fd.get('name'),
+   938→              email: fd.get('email'),
+   939→              role: fd.get('role'),
+   940→              clinicId: fd.get('clinicId') || undefined,
+   941→              podologistId: fd.get('podologistId') || undefined,
+   942→              // Al crear: siempre activo. Al editar: respeta el switch.
+   943→              active: editing ? fd.get('active') === 'on' : true,
+   944→            }
+   945→            const password = fd.get('password')
+   946→            if (password) body.password = password
+   947→            onSave(body)
+   948→          }}
+   949→          className="space-y-3"
+   950→        >
+   951→          <div className="space-y-1">
+   952→            <Label>Nombre completo *</Label>
+   953→            <Input name="name" required defaultValue={editing?.name || ''} />
+   954→          </div>
+   955→          <div className="space-y-1">
+   956→            <Label>Correo electrónico *</Label>
+   957→            <Input name="email" type="email" required defaultValue={editing?.email || ''} />
+   958→          </div>
+   959→          <div className="grid grid-cols-2 gap-3">
+   960→            <div className="space-y-1">
+   961→              <Label>{editing ? 'Nueva contraseña (dejar vacío para no cambiar)' : 'Contraseña *'}</Label>
+   962→              <Input name="password" type="password" minLength={editing ? 0 : 6} required={!editing} placeholder={editing ? '••••••' : 'Mínimo 6 caracteres'} />
+   963→            </div>
+   964→            <div className="space-y-1">
+   965→              <Label>Rol *</Label>
+   966→              <Select name="role" defaultValue={editing?.role || 'RECEPTION'}>
+   967→                <SelectTrigger><SelectValue /></SelectTrigger>
+   968→                <SelectContent>
+   969→                  {ROLES_OPTIONS.map((r) => (
+   970→                    <SelectItem key={r.value} value={r.value}>
+   971→                      <div>
+   972→                        <div className="font-medium">{r.label}</div>
+   973→                        <div className="text-[10px] text-muted-foreground">{r.desc}</div>
+   974→                      </div>
+   975→                    </SelectItem>
+   976→                  ))}
+   977→                </SelectContent>
+   978→              </Select>
+   979→            </div>
+   980→          </div>
+   981→
+   982→          <div className="space-y-1">
+   983→            <Label>Clínica *</Label>
+   984→            <Select name="clinicId" defaultValue={editing?.clinicId || ''}>
+   985→              <SelectTrigger><SelectValue placeholder="Selecciona una clínica" /></SelectTrigger>
+   986→              <SelectContent>
+   987→                {clinicas.map((c: any) => (
+   988→                  <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
+   989→                ))}
+   990→              </SelectContent>
+   991→            </Select>
+   992→          </div>
+   993→
+   994→          {/* Podólogo vinculado — solo si rol es PODOLOGIST */}
+   995→          <div className="space-y-1">
+   996→            <Label>Podólogo vinculado (solo si rol = Podólogo)</Label>
+   997→            <Select name="podologistId" defaultValue={editing?.podologistId || ''}>
+   998→              <SelectTrigger><SelectValue placeholder="— Ninguno —" /></SelectTrigger>
+   999→              <SelectContent>
+  1000→                {podologos.map((p: any) => (
+  1001→                  <SelectItem key={p.id} value={p.id}>{p.name}{p.specialty ? ` · ${p.specialty}` : ''}</SelectItem>
+  1002→                ))}
+  1003→              </SelectContent>
+  1004→            </Select>
+  1005→            <p className="text-[10px] text-muted-foreground">
+  1006→              Si eliges rol Podólogo, debes vincularlo a un podólogo existente (créalo antes en la pestaña Equipo).
+  1007→            </p>
+  1008→          </div>
+  1009→
+  1010→          {editing && (
+  1011→            <label className="flex items-center gap-2 text-sm">
+  1012→              <Switch name="active" defaultChecked={editing.active} />
+  1013→              Activo
+  1014→            </label>
+  1015→          )}
+  1016→
+  1017→          <div className="rounded-md bg-muted/50 p-3 text-xs text-muted-foreground">
+  1018→            <strong>Recordatorio:</strong> Las contraseñas se encriptan automáticamente con bcrypt.
+  1019→            {editing ? ' Si dejas el campo de contraseña vacío, se conserva la actual.' : ''}
+  1020→          </div>
+  1021→
+  1022→          <DialogFooter>
+  1023→            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>Cancelar</Button>
+  1024→            <Button type="submit" disabled={saving} style={{ backgroundColor: '#0a3143' }}>
+  1025→              {saving ? 'Guardando...' : 'Guardar'}
+  1026→            </Button>
+  1027→          </DialogFooter>
+  1028→        </form>
+  1029→      </DialogContent>
+  1030→    </Dialog>
+  1031→  )
+  1032→}
+  1033→

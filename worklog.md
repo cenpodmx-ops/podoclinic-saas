@@ -908,3 +908,50 @@ Stage Summary:
 - El Dueño puede crear usuarios RECEPTION/PODOLOGIST en su propia clínica.
 - Las contraseñas se encriptan automáticamente con bcrypt.
 - No más necesidad de tocar Supabase directamente para crear accesos.
+
+---
+Task ID: RX1
+Agent: Recetas improvements
+
+Work Log:
+- Leí el worklog completo, los archivos clave de /recetas (prescription-form-dialog, prescription-view-dialog, medication-editor, patient-searcher, _lib/types), /consulta (page.tsx, _lib/types.ts), /config (page.tsx), /api/recetas/[id]/print/route.ts, /api/config/plantillas/route.ts, /api/config/route.ts, /api/pacientes/[id]/archivos/route.ts (como referencia para upload), prisma/schema.prisma (ClinicConfig.prescriptionDesign, Clinic.logoUrl), middleware.ts (que permite /uploads sin auth), src/lib/api.ts, src/lib/db.ts, src/lib/session.ts, src/components/cenpod/prescription-print.tsx y src/components/ui/{slider,switch}.tsx.
+- Verifiqué el contexto previo: el módulo de recetas (Task B4) ya existía con GET/POST /api/recetas, GET/DELETE /api/recetas/[id], GET /api/recetas/[id]/print (HTML standalone). El módulo de consulta (Task 5-C) ya tenía un flujo de 3 pasos con el botón "Generar receta" en la vista de éxito que enlazaba a /recetas?paciente=...&consulta=...
+- Improvement 1 — Receta DURING consulta (no después del pago):
+  * Extendí PrescriptionFormDialog con props opcionales initialPatient, initialPodologistId, initialDiagnosis, lockPatient. Cuando se abre con estos props, inicializa una sola vez el estado (paciente, podólogo, diagnóstico). lockPatient=true reemplaza el PatientSearcher con una tarjeta informativa que muestra al paciente de la consulta en curso.
+  * Añadí en ConsultaPage (page-level) el estado `prescriptionId`, `recetaDialogOpen`, `viewRecetaId`, `viewRecetaOpen`. Renderizo el PrescriptionFormDialog y PrescriptionViewDialog a nivel de página para que estén disponibles desde cualquier fase (form, saved-unpaid, finalized, success).
+  * En ConsultaForm step 1 (Datos clínicos), añadí después del campo Diagnóstico una sección "Receta médica" con botón "Generar receta". Al crearla, se guarda el ID en `prescriptionId` (state de la página) y se muestra un badge "Receta creada" + botones "Ver receta" (abre PrescriptionViewDialog) e "Imprimir" (abre /api/recetas/[id]/print?print=1).
+  * Convertí el helper `toPatientLite(PatientSummary)` para mapear PatientSummary (de consulta) a PatientLite (de recetas) ya que los tipos son compatibles pero no idénticos.
+  * En SavedUnpaidView, FinalizedView y SuccessView, reemplacé el Link a /recetas por un Button que abre el dialog de receta en modo "view" si ya existe (prescriptionId set), o "new" si no. El label cambia dinámicamente: "Ver receta" / "Generar receta".
+  * El PrescriptionViewDialog se configura con canDelete={false} desde la consulta para evitar borrar recetas por accidente desde ese contexto.
+- Improvement 2 — Editor visual de diseño de recetas con preview en vivo:
+  * Extendí el tipo PrescriptionDesign en /api/recetas/[id]/print/route.ts con TODOS los campos nuevos solicitados: textColor, backgroundColor, lineHeight, margins, logoSize, logoOpacity, watermarkEnabled, watermarkOpacity, watermarkPosition, showPatientInfo, showDoctorInfo, showDiagnosis, showMedications, showIndications, showSignature, fontFamilyCategory, paperSize 'MediaCarta'. DEFAULT_DESIGN actualizado con defaults limpios (#0a3143 primario, #111 texto, #ffffff fondo, 13px fuente, 1.5 lineHeight, 16mm márgenes, 78px logo, watermark deshabilitado por defecto).
+  * Reescribí la generación del HTML de impresión para respetar TODOS los campos: @page CSS dinámico según paperSize (Letter=216x279mm, A4=210x297mm, MediaCarta=140x216mm); colores aplicados a primary/accent/text/background con withAlpha() para transparencias (tabla, meta-grid, watermark); márgenes dinámicos en padding y @page; logo con max-height = logoSize px y opacity = logoOpacity/100; watermark como div absoluto (center/top-right/bottom-right) con opacity independiente; toggles para showHeader/Footer/RxSymbol/PatientInfo/DoctorInfo/Diagnosis/Medications/Indications/Signature; fontFamily resuelto desde fontFamilyCategory (serif/sans-serif/system); lineHeight aplicado a body y secciones; signatureLabel en la línea de firma.
+  * Creé src/components/cenpod/prescription-preview.tsx — PrescriptionLivePreview: componente React que renderiza en vivo la receta con el diseño actual. Usa inline styles para que todo sea dinámico, con factor de escala 0.42 (mm→pantalla) para mostrar el documento completo en un panel reducido. Incluye watermark, header, meta-grid condicional (paciente/doctor), diagnóstico, símbolo ℞, tabla de medicamentos, indicaciones, firma, footer — todos toggleables. Datos de ejemplo (paciente María González, podólogo Dr. Méndez, 3 medicamentos de muestra) para que el preview siempre muestre algo.
+  * Creé src/components/cenpod/prescription-editor.tsx — PrescriptionEditor: editor visual completo con grid de 2 columnas (controles a la izquierda, preview sticky a la derecha). Controles organizados en 4 cards:
+    - "Papel y logo": upload de logo (POST /api/config/logo multipart), fuente del logo (auto/subido/none), posición (left/center/right), tamaño (40-200px slider), opacidad (10-100% slider), watermark toggle + opacidad (5-30% slider) + posición (center/top-right/bottom-right), tamaño de papel (MediaCarta/Carta/A4 select), márgenes (10-40mm slider).
+    - "Colores": primary (afecta también accent por defecto), accent, text, background. Color picker con <input type="color"> + campo hex. Botón "Restablecer colores CENPOD".
+    - "Tipografía": familia (serif/sans-serif/system select), tamaño (10-18px slider), interlineado (1.2-2.0 slider).
+    - "Layout": 9 toggles (Switch) para header/footer/℞/patient-info/doctor-info/diagnosis/medications/indications/signature + input de texto para signatureLabel con placeholder "Cédula profesional".
+  * Acciones: "Restablecer" (vuelve a DEFAULT_DESIGN), "Imprimir prueba" (abre una ventana nueva con HTML inline generado por buildTestPrintHtml que replica el HTML del endpoint de print pero con datos de ejemplo + el diseño actual, y llama window.print()), "Guardar diseño" (PATCH /api/config/plantillas con prescriptionDesign JSON-stringified).
+  * Añadí tab "Recetas" en /config (entre Plantillas WhatsApp y FacturAPI) con icono Pill. RecetasTab renderiza el PrescriptionEditor dentro de un Card.
+  * POST /api/config/logo (multipart): acepta file (png/jpg/jpeg/webp/svg, max 5MB), lo guarda en /public/uploads/clinics/{clinicId}/logo.{ext}, actualiza clinic.logoUrl, devuelve { url }. Solo OWNER/SUPER. Reutilicé el patrón de /api/pacientes/[id]/archivos (mkdir recursive, writeFile con Buffer.from(arrayBuffer)).
+- Pruebas end-to-end (curl con cookies de dueno@cenpod.com):
+  * GET /api/config → 200, clinic + config con prescriptionDesign:null
+  * GET /api/recetas?limit=1 → 200, 1 receta existente
+  * GET /api/recetas/[id]/print → 200, HTML standalone (8.9KB) con @page A4, font-family Times, primaryColor #0a3143
+  * PATCH /api/config/plantillas con prescriptionDesign={"paperSize":"Letter","primaryColor":"#1a4d6d","fontSize":14,"watermarkEnabled":true,"watermarkOpacity":15} → 200 (ClinicConfig upsert)
+  * GET /api/recetas/[id]/print (con diseño guardado) → 200, HTML ahora con @page Letter, width 216mm, color #1a4d6d, font-size 14px, watermark CSS presente
+  * POST /api/config/logo (multipart, 1x1 PNG) → 200 {"url":"/uploads/clinics/{clinicId}/logo.png"}, archivo físico creado en /public/uploads/clinics/{clinicId}/logo.png (71 bytes), clinic.logoUrl actualizado en DB
+  * GET /api/config → 200, clinic.logoUrl ahora refleja /uploads/clinics/{clinicId}/logo.png
+  * GET /config → 200 (67KB), HTML contiene "Recetas" en TabsList y en card title
+  * GET /consulta → 200 (59KB), compile exitoso
+  * Limpié el logo de prueba y reseteé clinic.logoUrl a null y prescriptionDesign a null para dejar el sistema limpio.
+- `bun run lint` → 0 errores, 0 warnings. `bunx tsc --noEmit` → 0 errores en mis archivos (errores pre-existentes en skills/, examples/, red/_components, lib/facturapi.ts NO son míos). Dev log: todas las rutas devuelven 200/201, sin errores de runtime, sin warnings de compilación.
+
+Stage Summary:
+- Improvement 1 (Receta durante consulta): PrescriptionFormDialog extendido con initialPatient/PodologistId/Diagnosis + lockPatient. ConsultaPage añade estado `prescriptionId` y renderiza PrescriptionFormDialog + PrescriptionViewDialog a nivel de página. ConsultaForm step 1 ahora tiene una sección "Receta médica" con botón Generar/Ver/Imprimir después del campo Diagnóstico. SavedUnpaidView, FinalizedView y SuccessView ahora abren el dialog de receta en modo "view" si ya existe una, o "new" si no (en vez de navegar a /recetas).
+- Improvement 2 (Editor visual): tipo PrescriptionDesign extendido con 17 campos nuevos. HTML de impresión reescrito para respetar paperSize (MediaCarta/Carta/A4), colores (primary/accent/text/background con alpha), tipografía (familia/categoría/tamaño/interlineado), layout (9 toggles), márgenes, logo (tamaño/opacity/posición), watermark (toggle/opacity/posición), signatureLabel. Dos componentes nuevos: PrescriptionLivePreview (preview React en vivo con datos de ejemplo) y PrescriptionEditor (editor visual con 4 cards de controles + preview sticky + acciones Guardar/Imprimir prueba/Restablecer). Nueva pestaña "Recetas" en /config.
+- API nueva: POST /api/config/logo (multipart, guarda logo en /public/uploads/clinics/{clinicId}/logo.{ext} + actualiza clinic.logoUrl).
+- API extendida: PATCH /api/config/plantillas ya aceptaba prescriptionDesign (no requirió cambios).
+- API extendida: GET /api/recetas/[id]/print respeta TODOS los campos del diseño (paperSize, colores, tipografía, toggles, márgenes, logo, watermark, signatureLabel).
+- Sin errores de lint/TS en mis archivos. Sin errores de runtime en dev.log. Funcionalidad existente (recetas list, receta detail, consulta flow) NO rota — solo extendida.

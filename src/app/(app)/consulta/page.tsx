@@ -22,6 +22,7 @@ import {
   Clock,
   CircleDollarSign,
   ClipboardCheck,
+  Pill,
 } from 'lucide-react'
 import { format, addDays, format as fmtDateFn } from 'date-fns'
 
@@ -59,10 +60,31 @@ import {
   type ConfigResponse,
   type ServiceItem,
   type AppointmentListItem,
+  type PatientSummary,
 } from './_lib/types'
 import { fmtMoney, fmtDateTime, METHOD_LABELS, STATUS_LABELS, STATUS_COLORS } from '@/lib/format'
+import { PrescriptionFormDialog } from '../recetas/_components/prescription-form-dialog'
+import { PrescriptionViewDialog } from '../recetas/_components/prescription-view-dialog'
+import type { PatientLite } from '../recetas/_lib/types'
+import { openPrintWindow } from '../recetas/_components/prescription-form-dialog'
 
 type Phase = 'loading' | 'list' | 'confirm-start' | 'form' | 'finalized' | 'saved-unpaid' | 'success'
+
+// Convierte PatientSummary (de la consulta) a PatientLite (que usa el dialog de receta)
+function toPatientLite(p: PatientSummary): PatientLite {
+  return {
+    id: p.id,
+    firstName: p.firstName,
+    lastName: p.lastName,
+    expNumber: p.expNumber,
+    phone: p.phone ?? null,
+    birthDate: p.birthDate ? (typeof p.birthDate === 'string' ? p.birthDate : (p.birthDate as Date).toISOString()) : null,
+    sex: p.sex ?? null,
+    isDiabetic: p.isDiabetic,
+    allergies: p.allergies ?? null,
+    riskLevel: p.riskLevel ?? null,
+  }
+}
 
 export default function ConsultaPage() {
   const params = useSearchParams()
@@ -76,6 +98,12 @@ export default function ConsultaPage() {
   // Override de fase: cuando el usuario inicia/cobra/continúa, se setea
   // manualmente y toma prioridad sobre la derivación automática.
   const [manualPhase, setManualPhase] = useState<Phase | null>(null)
+
+  // Receta durante la consulta
+  const [prescriptionId, setPrescriptionId] = useState<string | null>(null)
+  const [recetaDialogOpen, setRecetaDialogOpen] = useState(false)
+  const [viewRecetaId, setViewRecetaId] = useState<string | null>(null)
+  const [viewRecetaOpen, setViewRecetaOpen] = useState(false)
 
   // ── Query principal: trae la cita + paciente + consulta existente (si la hay)
   const consultaQ = useQuery<ConsultaApiResponse>({
@@ -206,6 +234,12 @@ export default function ConsultaPage() {
           data={consultaQ.data}
           config={configQ.data}
           services={servicesQ.data?.rows || []}
+          prescriptionId={prescriptionId}
+          onOpenReceta={() => setRecetaDialogOpen(true)}
+          onViewReceta={(id) => {
+            setViewRecetaId(id)
+            setViewRecetaOpen(true)
+          }}
           onSuccess={(id, paid) => {
             setSavedConsultationId(id)
             qc.invalidateQueries({ queryKey: ['consulta-context', citaId] })
@@ -226,6 +260,15 @@ export default function ConsultaPage() {
           data={consultaQ.data}
           config={configQ.data}
           consultationId={savedConsultationId}
+          prescriptionId={prescriptionId}
+          onOpenReceta={() => {
+            if (prescriptionId) {
+              setViewRecetaId(prescriptionId)
+              setViewRecetaOpen(true)
+            } else {
+              setRecetaDialogOpen(true)
+            }
+          }}
           onContinue={() => setManualPhase('form')}
           onTicket={() => setShowTicket(true)}
         />
@@ -235,6 +278,15 @@ export default function ConsultaPage() {
         <FinalizedView
           data={consultaQ.data}
           config={configQ.data}
+          prescriptionId={prescriptionId}
+          onOpenReceta={() => {
+            if (prescriptionId) {
+              setViewRecetaId(prescriptionId)
+              setViewRecetaOpen(true)
+            } else {
+              setRecetaDialogOpen(true)
+            }
+          }}
           onTicket={() => setShowTicket(true)}
         />
       )}
@@ -243,9 +295,46 @@ export default function ConsultaPage() {
         <SuccessView
           data={consultaQ.data}
           config={configQ.data}
+          prescriptionId={prescriptionId}
+          onOpenReceta={() => {
+            if (prescriptionId) {
+              setViewRecetaId(prescriptionId)
+              setViewRecetaOpen(true)
+            } else {
+              setRecetaDialogOpen(true)
+            }
+          }}
           onTicket={() => setShowTicket(true)}
         />
       )}
+
+      {/* Modal de receta nueva (durante consulta o post-cobro si no existe) */}
+      {consultaQ.data && (
+        <PrescriptionFormDialog
+          open={recetaDialogOpen}
+          onOpenChange={setRecetaDialogOpen}
+          initialPatient={toPatientLite(consultaQ.data.patient)}
+          initialPodologistId={consultaQ.data.podologist?.id || null}
+          initialDiagnosis={null}
+          lockPatient={true}
+          onCreated={(rx) => {
+            setPrescriptionId(rx.id)
+            qc.invalidateQueries({ queryKey: ['recetas'] })
+          }}
+        />
+      )}
+
+      {/* Modal de ver receta existente */}
+      <PrescriptionViewDialog
+        rxId={viewRecetaId}
+        open={viewRecetaOpen}
+        onOpenChange={setViewRecetaOpen}
+        canDelete={false}
+        onDeleted={() => {
+          setPrescriptionId(null)
+          qc.invalidateQueries({ queryKey: ['recetas'] })
+        }}
+      />
 
       {/* Modal de ticket */}
       {showTicket && consultaQ.data && (
@@ -472,6 +561,9 @@ function ConsultaForm({
   data,
   config,
   services,
+  prescriptionId,
+  onOpenReceta,
+  onViewReceta,
   onSuccess,
   onCancel,
 }: {
@@ -479,6 +571,9 @@ function ConsultaForm({
   data: ConsultaApiResponse
   config: ConfigResponse | undefined
   services: ServiceItem[]
+  prescriptionId: string | null
+  onOpenReceta: () => void
+  onViewReceta: (id: string) => void
   onSuccess: (id: string, paid: boolean) => void
   onCancel: () => void
 }) {
@@ -689,6 +784,39 @@ function ConsultaForm({
                   ))}
                 </div>
               )}
+            </div>
+
+            {/* Sección de receta DURING consulta — al saber qué medicamentos
+                necesita el paciente, podemos cobrarlos juntos en el paso 2. */}
+            <div className="rounded-md border border-primary/30 bg-primary/5 p-3 space-y-2">
+              <div className="flex items-start justify-between gap-2 flex-wrap">
+                <div className="flex items-center gap-2">
+                  <Pill className="h-4 w-4" style={{ color: '#0a3143' }} />
+                  <div>
+                    <p className="text-sm font-medium">Receta médica</p>
+                    <p className="text-[11px] text-muted-foreground">
+                      {prescriptionId
+                        ? 'Ya generaste una receta para esta consulta.'
+                        : 'Genera la receta ahora para saber qué medicamentos cobrar.'}
+                    </p>
+                  </div>
+                </div>
+                {prescriptionId ? (
+                  <div className="flex flex-wrap gap-2">
+                    <Badge className="bg-emerald-100 text-emerald-700 text-xs">Receta creada</Badge>
+                    <Button size="sm" variant="outline" onClick={() => onViewReceta(prescriptionId)}>
+                      <FileText className="h-3.5 w-3.5" /> Ver receta
+                    </Button>
+                    <Button size="sm" variant="outline" onClick={() => openPrintWindow(prescriptionId)}>
+                      <Printer className="h-3.5 w-3.5" /> Imprimir
+                    </Button>
+                  </div>
+                ) : (
+                  <Button size="sm" onClick={onOpenReceta} style={{ backgroundColor: '#0a3143' }}>
+                    <Pill className="h-3.5 w-3.5" /> Generar receta
+                  </Button>
+                )}
+              </div>
             </div>
 
             <div>
@@ -1019,12 +1147,16 @@ function SavedUnpaidView({
   data,
   config,
   consultationId,
+  prescriptionId,
+  onOpenReceta,
   onContinue,
   onTicket,
 }: {
   data: ConsultaApiResponse
   config: ConfigResponse | undefined
   consultationId: string | null
+  prescriptionId: string | null
+  onOpenReceta: () => void
   onContinue: () => void
   onTicket: () => void
 }) {
@@ -1061,6 +1193,10 @@ function SavedUnpaidView({
             <Button variant="outline" asChild className="sm:flex-1">
               <Link href="/agenda">Volver a agenda</Link>
             </Button>
+            <Button variant="outline" onClick={onOpenReceta} className="sm:flex-1">
+              <FileText className="h-4 w-4 mr-1" />
+              {prescriptionId ? 'Ver receta' : 'Generar receta'}
+            </Button>
             <Button variant="outline" onClick={onTicket} className="sm:flex-1">
               <Printer className="h-4 w-4 mr-1" /> Ver ticket
             </Button>
@@ -1080,10 +1216,14 @@ function SavedUnpaidView({
 function FinalizedView({
   data,
   config,
+  prescriptionId,
+  onOpenReceta,
   onTicket,
 }: {
   data: ConsultaApiResponse
   config: ConfigResponse | undefined
+  prescriptionId: string | null
+  onOpenReceta: () => void
   onTicket: () => void
 }) {
   const { patient, podologist, consultation } = data
@@ -1128,10 +1268,9 @@ function FinalizedView({
             <Button variant="outline" asChild className="sm:flex-1">
               <Link href="/agenda">Volver a agenda</Link>
             </Button>
-            <Button variant="outline" asChild className="sm:flex-1">
-              <Link href={`/recetas?paciente=${patient.id}&consulta=${consultation.id}`}>
-                <FileText className="h-4 w-4 mr-1" /> Generar receta
-              </Link>
+            <Button variant="outline" onClick={onOpenReceta} className="sm:flex-1">
+              <FileText className="h-4 w-4 mr-1" />
+              {prescriptionId ? 'Ver receta' : 'Generar receta'}
             </Button>
             <Button onClick={onTicket} className="sm:flex-1" style={{ backgroundColor: '#0a3143' }}>
               <Printer className="h-4 w-4 mr-1" /> Ver ticket
@@ -1149,10 +1288,14 @@ function FinalizedView({
 function SuccessView({
   data,
   config,
+  prescriptionId,
+  onOpenReceta,
   onTicket,
 }: {
   data: ConsultaApiResponse
   config: ConfigResponse | undefined
+  prescriptionId: string | null
+  onOpenReceta: () => void
   onTicket: () => void
 }) {
   const { patient, consultation } = data
@@ -1192,10 +1335,9 @@ function SuccessView({
             <Button variant="outline" asChild className="sm:flex-1">
               <Link href="/agenda">Volver a agenda</Link>
             </Button>
-            <Button variant="outline" asChild className="sm:flex-1">
-              <Link href={`/recetas?paciente=${patient.id}&consulta=${consultation?.id || ''}`}>
-                <FileText className="h-4 w-4 mr-1" /> Generar receta
-              </Link>
+            <Button variant="outline" onClick={onOpenReceta} className="sm:flex-1">
+              <FileText className="h-4 w-4 mr-1" />
+              {prescriptionId ? 'Ver receta' : 'Generar receta'}
             </Button>
             <Button onClick={onTicket} className="sm:flex-1" style={{ backgroundColor: '#0a3143' }}>
               <Printer className="h-4 w-4 mr-1" /> Imprimir ticket

@@ -14,9 +14,10 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Skeleton } from '@/components/ui/skeleton'
-import { Save, Plus, Pencil, Building2, Users, MessageSquare, FileText, KeyRound, UserCog } from 'lucide-react'
+import { Save, Plus, Pencil, Building2, Users, MessageSquare, FileText, KeyRound, UserCog, Pill } from 'lucide-react'
 import { toast } from 'sonner'
 import { fmtMoney } from '@/lib/format'
+import { PrescriptionEditor } from '@/components/cenpod/prescription-editor'
 
 const TPL_VARS = [
   '{{nombre_paciente}}', '{{fecha}}', '{{hora}}', '{{podologo}}',
@@ -36,6 +37,7 @@ export default function ConfigPage() {
           <TabsTrigger value="clinica" className="gap-1"><Building2 className="h-3.5 w-3.5" /> Clínica</TabsTrigger>
           <TabsTrigger value="equipo" className="gap-1"><Users className="h-3.5 w-3.5" /> Equipo</TabsTrigger>
           <TabsTrigger value="plantillas" className="gap-1"><MessageSquare className="h-3.5 w-3.5" /> Plantillas WhatsApp</TabsTrigger>
+          <TabsTrigger value="recetas" className="gap-1"><Pill className="h-3.5 w-3.5" /> Recetas</TabsTrigger>
           <TabsTrigger value="facturacion" className="gap-1"><KeyRound className="h-3.5 w-3.5" /> FacturAPI</TabsTrigger>
           <TabsTrigger value="diagnosticos" className="gap-1"><FileText className="h-3.5 w-3.5" /> Diagnósticos</TabsTrigger>
           <TabsTrigger value="usuarios" className="gap-1"><UserCog className="h-3.5 w-3.5" /> Usuarios</TabsTrigger>
@@ -44,6 +46,7 @@ export default function ConfigPage() {
         <TabsContent value="clinica"><ClinicaTab /></TabsContent>
         <TabsContent value="equipo"><EquipoTab /></TabsContent>
         <TabsContent value="plantillas"><PlantillasTab /></TabsContent>
+        <TabsContent value="recetas"><RecetasTab /></TabsContent>
         <TabsContent value="facturacion"><FacturacionTab /></TabsContent>
         <TabsContent value="diagnosticos"><DiagnosticosTab /></TabsContent>
         <TabsContent value="usuarios"><UsuariosTab /></TabsContent>
@@ -663,6 +666,24 @@ function FacturacionTab() {
             <li>El sistema crea automáticamente tu organización en FacturAPI y registra los sellos.</li>
           </ol>
         </div>
+      </CardContent>
+    </Card>
+  )
+}
+
+function RecetasTab() {
+  return (
+    <Card className="shadow-sm">
+      <CardHeader>
+        <CardTitle className="text-base flex items-center gap-2">
+          <Pill className="h-4 w-4" /> Diseño de recetas
+        </CardTitle>
+        <p className="text-xs text-muted-foreground">
+          Personaliza cómo se ven las recetas médicas al imprimirlas. Los cambios se reflejan en vivo en la vista previa y se aplican a todas las recetas de esta clínica.
+        </p>
+      </CardHeader>
+      <CardContent>
+        <PrescriptionEditor />
       </CardContent>
     </Card>
   )

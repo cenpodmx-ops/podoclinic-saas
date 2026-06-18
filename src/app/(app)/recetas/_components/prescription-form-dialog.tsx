@@ -9,7 +9,7 @@ import { Textarea } from '@/components/ui/textarea'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Badge } from '@/components/ui/badge'
-import { Loader2, Save, Eye, Printer, FileText } from 'lucide-react'
+import { Loader2, Save, Eye, Printer, FileText, UserCircle } from 'lucide-react'
 import { toast } from 'sonner'
 import { PatientSearcher } from './patient-searcher'
 import { MedicationEditor, emptyMedication } from './medication-editor'
@@ -20,11 +20,24 @@ type Props = {
   open: boolean
   onOpenChange: (v: boolean) => void
   onCreated?: (rx: PrescriptionListItem) => void
+  // Pre-fill desde una consulta (paciente y podólogo ya conocidos)
+  initialPatient?: PatientLite | null
+  initialPodologistId?: string | null
+  initialDiagnosis?: string | null
+  lockPatient?: boolean // si true, oculta el searcher y solo muestra la info del paciente
 }
 
 const SENTINEL_NONE = '__none'
 
-export function PrescriptionFormDialog({ open, onOpenChange, onCreated }: Props) {
+export function PrescriptionFormDialog({
+  open,
+  onOpenChange,
+  onCreated,
+  initialPatient,
+  initialPodologistId,
+  initialDiagnosis,
+  lockPatient,
+}: Props) {
   const qc = useQueryClient()
   const [patient, setPatient] = useState<PatientLite | null>(null)
   const [podologistId, setPodologistId] = useState<string>(SENTINEL_NONE)
@@ -33,6 +46,15 @@ export function PrescriptionFormDialog({ open, onOpenChange, onCreated }: Props)
   const [indications, setIndications] = useState('')
   const [tab, setTab] = useState<'form' | 'preview'>('form')
   const [errors, setErrors] = useState<Record<string, string>>({})
+  const [initialized, setInitialized] = useState(false)
+
+  // Cuando se abre con pre-fill (desde consulta), inicializar una sola vez.
+  if (open && !initialized && (initialPatient || initialDiagnosis || initialPodologistId)) {
+    setPatient(initialPatient || null)
+    setPodologistId(initialPodologistId || SENTINEL_NONE)
+    setDiagnosis(initialDiagnosis || '')
+    setInitialized(true)
+  }
 
   // Load podólogos for the clinic
   const { data: podologos } = useQuery<PodologistLite[]>({
@@ -56,6 +78,7 @@ export function PrescriptionFormDialog({ open, onOpenChange, onCreated }: Props)
     setIndications('')
     setTab('form')
     setErrors({})
+    setInitialized(false)
   }
 
   function close() {
@@ -163,11 +186,28 @@ export function PrescriptionFormDialog({ open, onOpenChange, onCreated }: Props)
             {/* Paciente */}
             <div className="space-y-1.5">
               <Label>Paciente *</Label>
-              <PatientSearcher
-                onSelect={setPatient}
-                selected={patient}
-                error={errors.patient}
-              />
+              {lockPatient && patient ? (
+                <div className="rounded-md border p-3 bg-muted/30 space-y-1">
+                  <div className="flex items-center gap-2">
+                    <UserCircle className="h-5 w-5 text-primary" />
+                    <div>
+                      <p className="font-medium text-sm">
+                        {patient.firstName} {patient.lastName}
+                      </p>
+                      <p className="text-xs text-muted-foreground font-mono">{patient.expNumber}</p>
+                    </div>
+                  </div>
+                  <p className="text-[10px] text-muted-foreground">
+                    Paciente de la consulta en curso.
+                  </p>
+                </div>
+              ) : (
+                <PatientSearcher
+                  onSelect={setPatient}
+                  selected={patient}
+                  error={errors.patient}
+                />
+              )}
             </div>
 
             {/* Podólogo */}
