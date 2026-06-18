@@ -14,9 +14,12 @@ export default function DashboardPage() {
   const { data, isLoading } = useQuery({
     queryKey: ['dashboard'],
     queryFn: () => fetch('/api/dashboard').then((r) => r.json()),
+    // Mostrar datos cacheados mientras refresca (placeholder suave, no skeleton)
+    placeholderData: true,
   })
 
-  if (isLoading || !data) {
+  // Solo mostrar skeleton si NO hay datos cacheados (primera carga)
+  if (isLoading && !data) {
     return (
       <div className="p-4 md:p-6 space-y-4">
         <Skeleton className="h-10 w-64" />

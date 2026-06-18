@@ -11,12 +11,13 @@ export function Providers({ children, session }: { children: React.ReactNode; se
       new QueryClient({
         defaultOptions: {
           queries: {
-            // Refetch al volver a la ventana (para datos frescos)
-            refetchOnWindowFocus: true,
-            // staleTime corto: los datos se consideran "viejos" rápido → refetch automático
-            staleTime: 5_000,
-            // gcTime corto: limpiar cache rápidamente para no mostrar datos viejos
-            gcTime: 30_000,
+            // No refetch al volver a la ventana — evita recargas innecesarias
+            refetchOnWindowFocus: false,
+            // staleTime más largo: los datos se consideran frescos por 1 minuto
+            // Esto evita refetch al cambiar entre módulos
+            staleTime: 60_000,
+            // gcTime: mantener cache por 5 minutos (para volver a módulos rápido)
+            gcTime: 5 * 60_000,
             // Reintentar solo 1 vez
             retry: 1,
             // No pausar refetch cuando hay conexión
