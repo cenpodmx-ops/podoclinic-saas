@@ -1,0 +1,1061 @@
+Sistema CENPOD · Especificaciones Funcionales y Técnicas · Grupo CENPOD 2026
+
+
+
+
+                                                  GRUPO CENPOD
+
+                                Sistema CENPOD
+                     Documento de Especificaciones Funcionales y Técnicas
+                                      Versión 1.0 · Hermosillo, Sonora · 2026
+
+
+
+
+        Confidencial — Uso interno Grupo CENPOD
+Sistema CENPOD · Especificaciones Funcionales y Técnicas · Grupo CENPOD 2026
+
+
+Índice de Contenidos
+
+1. Propósito y alcance del sistema
+2. Entidades del Grupo CENPOD
+3. Arquitectura técnica
+4. Rendimiento y navegación
+5. Roles y permisos
+6. Módulo 01 — Agenda
+7. Módulo 02 — Consulta
+8. Módulo 03 — Expediente de Pacientes
+9. Módulo 04 — Facturación
+10. Módulo 05 — Recetas
+11. Módulo 06 — Inventario
+12. Módulo 07 — Finanzas y Caja
+13. Módulo 08 — CRM
+14. Módulo 09 — Servicios
+15. Módulo 10 — Red CENPOD (Comunicación interna y pedidos)
+16. Módulo 11 — Link de Reserva Pública
+17. Módulo 12 — Consentimientos Informados
+18. Módulo 13 — Dashboard General
+19. Módulo 14 — Seguimiento Post-Consulta
+20. Módulo 15 — Cierre y Apertura de Sucursal
+21. Módulo 16 — Evaluación de Podólogos
+22. Módulo 17 — Control de Equipos y Mantenimiento
+23. Módulo 18 — Configuración General
+24. Fases de desarrollo sugeridas
+
+
+
+
+        Confidencial — Uso interno Grupo CENPOD
+Sistema CENPOD · Especificaciones Funcionales y Técnicas · Grupo CENPOD 2026
+
+
+1. Propósito y Alcance del Sistema
+El Sistema CENPOD es una plataforma de gestión clínica desarrollada exclusivamente para el Grupo
+CENPOD. No es un SaaS, no tiene membresías externas ni licencias por terceros. Es un software
+propietario, interno, que centraliza la operación de todas las sucursales del grupo bajo una sola plataforma.
+
+  Objetivo principal
+  Unificar la gestión de agenda, expedientes, facturación, inventario, finanzas, comunicación interna y
+  CRM de las clínicas CENPOD y la distribuidora en un solo sistema rápido, accesible desde cualquier
+  dispositivo y sin dependencias externas costosas.
+
+
+
+
+Principios de diseño del sistema
+   •   Velocidad: cambio entre módulos instantáneo, sin recargas de página (SPA).
+   •   Responsivo: diseño mobile-first pero optimizado primero para escritorio, donde se usará mayormente.
+   •   Sin fricciones: flujos de trabajo pensados para reducir clics. Lo que más se usa, siempre visible.
+   •   Sin dependencias de pago por uso: WhatsApp se usa vía wa.me (gratuito), no API de pago.
+   •   Privacidad por rol: cada usuario solo ve lo que le corresponde según su rol.
+   •   Multi-sucursal real: una sola instalación, varias sucursales, con datos aislados o compartidos según
+       configuración.
+
+
+
+
+        Confidencial — Uso interno Grupo CENPOD
+Sistema CENPOD · Especificaciones Funcionales y Técnicas · Grupo CENPOD 2026
+
+
+2. Entidades del Grupo CENPOD
+El sistema gestiona las siguientes entidades dentro del mismo grupo. Cada una opera de forma
+independiente pero puede comunicarse con las demás a través del módulo de Red CENPOD.
+
+              Entidad                                Tipo                      Función en el sistema
+
+ Clínica CENPOD 1                      Sucursal clínica                    Agenda, consultas, expedientes,
+                                                                           caja, inventario
+
+ Clínica CENPOD 2                      Sucursal clínica                    Ídem — operación independiente
+
+ Clínica CENPOD 3                      Sucursal clínica                    Ídem — operación independiente
+
+ CENPOD Distribuidora                  Proveedor interno                   Recibe pedidos, gestiona envíos
+                                                                           de material a clínicas
+
+ Matriz / Súper Dueño                  Rol administrativo                  Acceso total a todas las
+                                                                           entidades, avisos globales,
+                                                                           reportes consolidados
+
+
+
+
+        Confidencial — Uso interno Grupo CENPOD
+Sistema CENPOD · Especificaciones Funcionales y Técnicas · Grupo CENPOD 2026
+
+
+3. Arquitectura Técnica
+
+Stack tecnológico
+                 Capa                              Tecnología                       Justificación
+
+ Frontend                              Next.js 14 (App Router)             SPA con navegación instantánea
+                                                                           entre módulos, SSR donde
+                                                                           conviene
+
+ UI / Estilos                          Tailwind CSS + shadcn/ui            Componentes rápidos,
+                                                                           responsivos, consistentes
+
+ Backend / DB                          Supabase (PostgreSQL)               Auth, RLS por sucursal,
+                                                                           Realtime para notificaciones,
+                                                                           Storage para archivos
+
+ Autenticación                         Supabase Auth + tabla               Roles múltiples por usuario,
+                                       user_roles                          sesión segura
+
+ Facturación                           FacturAPI                           CFDI 4.0, compatible con SAT
+                                                                           México
+
+ PDF / Impresión                       react-pdf + react-to-print          Recetas, tickets, expedientes,
+                                                                           reportes
+
+ WhatsApp                              wa.me (sin API de pago)             Botones semiautomáticos con
+                                                                           texto pre-llenado
+
+ Notificaciones internas               Supabase Realtime                   Sin costo adicional, campanita
+                                                                           en tiempo real
+
+ Archivos / docs                       Supabase Storage                    Radiografías, bioquímicos,
+                                                                           consentimientos, logos
+
+
+
+
+Estructura de base de datos principal
+   • Una base de datos única en Supabase con Row-Level Security (RLS) por clinic_id.
+   • Cada clínica tiene su propio espacio de datos aislado por defecto.
+   • La conexión de base de datos entre sucursales es opcional y se activa con un código desde la
+      Configuración de la clínica.
+   • El Súper Dueño (Matriz) tiene acceso a los datos de todas las clínicas sin restricciones.
+   • Las tablas principales: clinicas, usuarios, roles, pacientes, citas, consultas, expedientes, recetas, inventario,
+      servicios, facturas, pagos, pedidos, mensajes, avisos, equipos, cortes_caja.
+
+
+
+
+        Confidencial — Uso interno Grupo CENPOD
+Sistema CENPOD · Especificaciones Funcionales y Técnicas · Grupo CENPOD 2026
+
+
+4. Rendimiento y Navegación
+
+  Requisito crítico de velocidad
+  El cambio entre módulos debe ser instantáneo. No se permiten recargas de página completas al
+  navegar entre secciones del sistema. Todos los módulos se cargan como rutas del mismo SPA
+  (Single Page Application).
+  El tiempo de carga inicial del sistema al iniciar sesión debe ser inferior a 2 segundos en conexión
+  estándar.
+  Las vistas de Agenda, Pacientes y Dashboard deben ser las más optimizadas del sistema.
+
+
+
+
+Estrategia de navegación
+   • Sidebar fijo en escritorio con íconos y etiquetas de cada módulo, siempre visible.
+   • Bottom navigation bar en móvil con los 5 módulos más usados.
+   • Cambio de módulo sin recarga: Next.js App Router + prefetch de rutas.
+   • Los datos se obtienen en paralelo (no en cascada) para minimizar tiempos de espera.
+   • Carga optimista: las acciones del usuario (agendar, cambiar estatus) se reflejan en pantalla al instante
+     antes de confirmarse en servidor.
+   • Skeleton loaders en lugar de spinners: el usuario siempre ve la estructura antes que los datos.
+
+
+
+
+        Confidencial — Uso interno Grupo CENPOD
+Sistema CENPOD · Especificaciones Funcionales y Técnicas · Grupo CENPOD 2026
+
+
+5. Roles y Permisos
+El sistema maneja 4 roles diferenciados. El acceso se controla a nivel de interfaz (qué ve) y a nivel de base
+de datos (qué puede leer o escribir).
+
+                Rol                               Quién lo usa                    Qué puede hacer
+
+ Súper Dueño / Matriz                  Dueño del grupo                     Acceso total a todas las clínicas,
+                                                                           finanzas globales, avisos
+                                                                           masivos, reportes consolidados,
+                                                                           Red CENPOD completa
+
+ Dueño de Clínica                      Encargado de sucursal               Acceso total a su clínica:
+                                                                           agenda, pacientes, finanzas
+                                                                           completas, configuración,
+                                                                           reportes
+
+ Clínica (Recepción)                   Recepcionista / asistente           Agenda, pacientes, consultas,
+                                                                           caja diaria y corte de caja. Sin
+                                                                           acceso a finanzas globales ni
+                                                                           comisiones totales
+
+ Podólogo                              Profesional de la salud             Solo visualización de su agenda
+                                                                           del día. Sin poder eliminar citas
+                                                                           ni ver datos completos de
+                                                                           pacientes. Vista de solo lectura
+
+
+
+  Nota sobre el rol Podólogo
+  Al iniciar sesión como Podólogo, el sistema muestra directamente una página fija con las citas del
+  día asignadas a ese podólogo. No tiene acceso a otros módulos, solo visualiza nombre del paciente,
+  horario y estatus de cada cita. Es una vista de consulta, no de gestión.
+
+
+
+
+        Confidencial — Uso interno Grupo CENPOD
+Sistema CENPOD · Especificaciones Funcionales y Técnicas · Grupo CENPOD 2026
+
+
+  MÓDULO 01     · AGENDA
+  El corazón del sistema. Gestión de citas por podólogo, sucursal y día.
+
+
+
+
+Vista principal de la agenda
+   • Vista semanal y diaria por podólogo, seleccionable desde un selector en la parte superior.
+   • Columnas de tiempo (ej. 8:00 a 20:00 en intervalos de 15 o 30 min, configurable).
+   • Cada sucursal tiene su propia agenda independiente.
+   • El Dueño y Súper Dueño pueden ver la agenda de todos los podólogos al mismo tiempo en una vista
+     panorámica.
+   • Botón de impresión de agenda: imprime el día o semana seleccionada con nombre del podólogo, horario,
+     nombre del paciente y estatus de cada cita.
+
+
+
+Estatus de citas con colores
+Cada cita muestra su estatus con un color distintivo claramente visible en la agenda:
+   PENDIENTE        CONFIRMADA          FINALIZADA       CANCELADA             NO ASISTIÓ   BLOQUEADA
+
+
+
+
+Agendar una cita
+   • Click directo sobre un horario vacío en la agenda para abrir el modal de nueva cita.
+   • Campos requeridos: nombre del paciente (buscador que conecta con base de datos), podólogo asignado,
+     fecha, hora inicio y fin, motivo de consulta breve, notas opcionales.
+   • Si el paciente no existe en la base de datos, opción de crearlo desde el mismo modal.
+   • Al guardar, la cita aparece inmediatamente en la agenda sin recargar la página.
+   • Las citas agendadas desde el Link de Reserva Pública aparecen con etiqueta "Agendado por Web".
+
+
+
+Acciones sobre una cita existente
+   • Click sobre la cita para abrir panel lateral con todas las opciones.
+   • Cambiar estatus: botones de acción directa (Confirmar, Finalizar, Cancelar, No asistió).
+   • Editar datos de la cita (hora, motivo, notas).
+   • Eliminar cita con confirmación.
+   • Reagendar: arrastrar la cita a otro horario, o seleccionar nueva fecha/hora desde el panel.
+   • Botón de WhatsApp para confirmación: abre wa.me con el número del paciente y el texto de confirmación
+     pre-escrito (configurable en Configuración).
+   • Botón de WhatsApp para calificación Google: se activa solo cuando la cita está en estatus Finalizada. Abre
+     wa.me con mensaje pre-escrito con el link de Google Reviews.
+   • Botón "Iniciar Consulta": arranca el flujo del Módulo 02 directamente desde la cita.
+
+
+
+Bloqueos de agenda
+
+        Confidencial — Uso interno Grupo CENPOD
+Sistema CENPOD · Especificaciones Funcionales y Técnicas · Grupo CENPOD 2026
+
+   • Botón "Cerrar día" por podólogo: bloquea todo el día para ese podólogo con un motivo (vacaciones,
+     capacitación, incapacidad, etc.). Aparece en la agenda con bloque gris con el motivo visible.
+   • Botón "Cerrar horario": bloquea un rango de horas específico por podólogo con motivo.
+   • Los bloqueos son visibles para todos los roles que ven la agenda.
+   • Solo Dueño y Clínica (Recepción) pueden crear o eliminar bloqueos.
+
+
+
+
+        Confidencial — Uso interno Grupo CENPOD
+Sistema CENPOD · Especificaciones Funcionales y Técnicas · Grupo CENPOD 2026
+
+
+  MÓDULO 02       · CONSULTA
+  Flujo completo desde el inicio de la consulta hasta el ticket de pago.
+
+
+
+
+Inicio de consulta
+   • Se inicia desde la cita en la Agenda con el botón "Iniciar Consulta".
+   • La cita cambia automáticamente a estatus "En consulta" (puede configurarse si se muestra o no en
+       agenda).
+
+
+
+Datos básicos de la consulta
+   •   Motivo de consulta (campo de texto).
+   •   ¿Quién lo refirió? (campo: nadie / otro paciente / médico / redes sociales / otro).
+   •   Notas de evolución / observaciones del podólogo.
+   •   Diagnóstico (texto libre o selección de lista predefinida, editable en Configuración).
+   •   Tratamiento realizado.
+
+
+
+Acciones dentro de la consulta
+   • Reagendar: propone una fecha de seguimiento directamente desde esta pantalla, que se crea
+     automáticamente en la agenda.
+   • Generar receta: abre el formulario de receta (Módulo 05) pre-llenado con los datos del paciente y podólogo.
+
+
+
+Cobro y cierre de consulta
+   • Costo de la consulta: campo numérico. Puede seleccionarse desde el catálogo de servicios o escribirse
+       manualmente.
+   •   Método de pago: Efectivo, Tarjeta de débito, Tarjeta de crédito, Transferencia, Otro.
+   •   Agregar productos o medicamentos del inventario: buscador que suma al total de cobro.
+   •   Resumen total visible antes de confirmar (consulta + productos + descuento si aplica).
+   •   Botón "Imprimir ticket": genera e imprime el ticket con nombre del paciente, podólogo, fecha, servicios,
+       productos, total y método de pago.
+   •   Al confirmar el pago, la cita pasa a estatus "Finalizada" automáticamente y los datos se registran en Caja y
+       Finanzas.
+   •   La consulta queda guardada en el expediente del paciente de forma automática.
+
+
+
+
+         Confidencial — Uso interno Grupo CENPOD
+Sistema CENPOD · Especificaciones Funcionales y Técnicas · Grupo CENPOD 2026
+
+
+  MÓDULO 03      · EXPEDIENTE DE PACIENTES
+  Base de datos clínica completa, buscable y filtrable.
+
+
+
+
+Lista de pacientes
+   • Buscador en tiempo real por nombre, teléfono o número de expediente.
+   • Filtros: por sucursal que lo atendió, por podólogo, por condición (diabético, alérgico, etc.), por rango de
+       edad, por fecha de última visita, por pacientes sin cita reciente.
+   • Vista de tarjetas o lista, seleccionable por el usuario.
+   • Etiqueta visible cuando el paciente es de otra sucursal (si está activada la BD compartida).
+   • Botón de nuevo paciente desde esta pantalla.
+
+
+
+Ficha del paciente
+   • Datos personales: nombre completo, fecha de nacimiento, edad calculada automáticamente, sexo, CURP,
+       RFC, dirección, teléfono, correo electrónico.
+   • Botón de WhatsApp directo al número del paciente (abre wa.me).
+   • Datos de facturación: RFC, razón social, régimen fiscal, uso de CFDI, correo para facturas.
+   • Notas generales del paciente.
+
+
+
+Información clínica destacada (visible al abrir el expediente)
+   •   Alertas de salud: diabético (sí/no), alergias registradas, medicamentos actuales, enfermedades crónicas.
+   •   Estas alertas aparecen en color rojo/naranja en la parte superior del expediente para visibilidad inmediata.
+   •   Resumen clínico general: redactado por el podólogo.
+   •   Riesgo podológico (bajo / medio / alto), configurable.
+
+
+
+Historia clínica
+   • Sección separada con el apartado completo de historia clínica inicial: antecedentes hereditarios,
+       personales patológicos y no patológicos, exploración física podológica inicial.
+   • Guardado permanente. Botón de impresión.
+
+
+
+Historial de consultas
+   •   Lista cronológica de todas las consultas del paciente.
+   •   Cada entrada: fecha, podólogo que lo atendió, motivo, diagnóstico, monto cobrado, método de pago.
+   •   Click en una consulta para ver el detalle completo.
+   •   Total acumulado que el paciente ha gastado en la clínica.
+   •   Visualización de con qué podólogo se ha atendido más.
+
+
+
+
+         Confidencial — Uso interno Grupo CENPOD
+Sistema CENPOD · Especificaciones Funcionales y Técnicas · Grupo CENPOD 2026
+
+Historial de citas
+   • Todas las citas pasadas y futuras del paciente, con estatus y podólogo asignado.
+
+
+
+Recetas guardadas
+   • Todas las recetas emitidas al paciente, con fecha, podólogo y opciones de reimprimir o descargar PDF.
+
+
+
+Archivos adjuntos
+   • Subida de archivos: bioquímicos, radiografías, estudios, consentimientos firmados, fotos clínicas.
+   • Formatos aceptados: PDF, JPG, PNG, DOCX.
+   • Cada archivo con nombre, fecha de subida y opción de descarga o eliminación.
+
+
+
+Acciones del expediente
+   • Imprimir expediente completo o secciones seleccionadas.
+   • Agendar nueva cita directamente desde el expediente.
+   • Enviar mensaje por WhatsApp al paciente.
+
+
+
+
+        Confidencial — Uso interno Grupo CENPOD
+Sistema CENPOD · Especificaciones Funcionales y Técnicas · Grupo CENPOD 2026
+
+
+  MÓDULO 04     · FACTURACIÓN
+  CFDI 4.0 con FacturAPI, integrado con consultas e inventario.
+
+
+
+
+Lista de citas facturables
+   • Vista de todas las consultas finalizadas que aún no tienen factura emitida.
+   • Filtros por fecha, podólogo, paciente, sucursal.
+   • Botón "Facturar" por registro: con un solo clic se genera la factura usando los datos de pago de la consulta
+      y los datos fiscales del paciente.
+
+
+
+Generación de facturas
+   • Conexión directa con FacturAPI para emisión de CFDI 4.0.
+   • El sistema selecciona automáticamente el tipo de producto/servicio correcto: consulta médica (exenta de
+     IVA), medicamentos con IVA 16%, productos sin IVA.
+   • Una misma factura puede incluir consulta + productos + medicamentos, con el tratamiento fiscal correcto
+     para cada partida.
+   • Vista previa de la factura antes de timbrar.
+   • Una vez timbrada, botón de envío por WhatsApp al paciente (abre wa.me con el PDF adjunto) y envío por
+     correo electrónico.
+
+
+
+Historial de facturas
+   • Lista de todas las facturas emitidas, filtrables por mes, año, paciente, podólogo, estatus (vigente,
+      cancelada).
+   • Resumen mensual: total facturado, desglose por tipo de IVA, total de facturas emitidas.
+   • Descarga de cualquier factura en PDF o XML desde el historial.
+   • Opción de cancelar una factura ante el SAT directamente desde el sistema (vía FacturAPI).
+
+
+
+Facturación de inventario
+   • Los productos del inventario pueden configurarse con: IVA 16%, IVA 0%, o Exentos de IVA.
+   • Al facturar una venta de mostrador que incluye productos, el sistema aplica el IVA correcto
+      automáticamente.
+
+
+
+
+        Confidencial — Uso interno Grupo CENPOD
+Sistema CENPOD · Especificaciones Funcionales y Técnicas · Grupo CENPOD 2026
+
+
+  MÓDULO 05      · RECETAS
+  Diseño editable, previsualización, impresión directa y descarga PDF.
+
+
+
+
+Generación de receta
+   • Se genera desde el módulo de Consulta o directamente desde el módulo de Recetas.
+   • Campos: nombre del paciente, edad, diagnóstico, medicamentos/indicaciones (con dosis, vía y duración),
+       indicaciones generales, podólogo que prescribe, cédula profesional, fecha.
+   • Los medicamentos pueden seleccionarse del catálogo del inventario o escribirse manualmente.
+
+
+
+Diseño de receta editable
+   • El diseño de la receta es completamente configurable desde el Módulo de Configuración.
+   • Se puede agregar: logo de la clínica, nombre del podólogo, especialidad, dirección de la clínica, teléfono,
+     cédula profesional, número de certificación.
+   • El acomodo de los elementos (logo, encabezado, pie de página) es editable con vista previa en tiempo
+     real.
+   • El diseño se aplica a todas las recetas generadas desde esa clínica.
+
+
+
+Previsualización, impresión y descarga
+   •   Vista previa de la receta antes de imprimir o descargar.
+   •   Impresión directa desde el navegador con el diseño correcto.
+   •   Descarga en PDF con el diseño configurado.
+   •   Las recetas quedan guardadas en el expediente del paciente automáticamente.
+
+
+
+
+         Confidencial — Uso interno Grupo CENPOD
+Sistema CENPOD · Especificaciones Funcionales y Técnicas · Grupo CENPOD 2026
+
+
+  MÓDULO 06      · INVENTARIO
+  Productos, precios, IVA, stock, ventas de mostrador e importación masiva.
+
+
+
+
+Catálogo de productos
+   • Cada producto: nombre, descripción, precio de costo, precio de venta, categoría (medicamento / producto /
+     material / equipo), tipo de IVA (16% / 0% / exento), stock actual, stock mínimo, proveedor.
+   • Búsqueda instantánea por nombre o código.
+   • Filtros por categoría, proveedor, con/sin IVA, productos con stock bajo.
+   • Alta de producto individual o importación masiva desde Excel.
+
+
+
+Control de stock
+   • Cada vez que un producto se vende en consulta o en venta de mostrador, el stock se descuenta
+     automáticamente.
+   • Alerta automática cuando un producto llega al stock mínimo configurado.
+   • Registro de entradas de inventario: cantidad recibida, costo, proveedor, fecha.
+   • Ajuste manual de inventario con motivo (merma, robo, uso interno).
+
+
+
+Venta de mostrador
+   •   Punto de venta rápido: buscar producto, agregar al carrito, seleccionar cantidad, cobrar.
+   •   Método de pago: efectivo, tarjeta, transferencia.
+   •   Genera ticket imprimible de la venta.
+   •   La venta se registra automáticamente en Caja y Finanzas.
+   •   Opción de facturar la venta de mostrador directamente.
+
+
+
+Importación desde Excel
+   • Plantilla de Excel descargable con el formato requerido.
+   • Carga masiva de productos: el sistema valida el archivo antes de importar y reporta errores por fila.
+
+
+
+
+         Confidencial — Uso interno Grupo CENPOD
+Sistema CENPOD · Especificaciones Funcionales y Técnicas · Grupo CENPOD 2026
+
+
+  MÓDULO 07      · FINANZAS Y CAJA
+  Cortes diarios, finanzas del dueño y reportes completos. Módulo con acceso restringido.
+
+
+
+  Acceso por rol
+  CAJA: accesible para Clínica (Recepción) y Dueño. Solo movimientos del día y corte de caja.
+  FINANZAS: accesible únicamente para Dueño y Súper Dueño. Incluye historial completo,
+  comisiones, ingresos/egresos, reportes anuales.
+
+
+
+
+Caja — Operación diaria
+   • Apertura de caja: registro del fondo inicial en efectivo al iniciar el día.
+   • Movimientos del día: cada consulta finalizada, venta de mostrador o pago registrado aparece
+       automáticamente en la caja.
+   • Registro de egresos del día: compras, gastos operativos, con motivo y categoría.
+   • Corte de caja: resumen del día con total de entradas por método de pago, total de egresos, saldo final.
+     Genera reporte imprimible firmado por el responsable.
+   • El corte de caja puede enviarse al dueño por WhatsApp con un botón.
+
+
+
+Finanzas — Vista del dueño
+   •   Dashboard de finanzas: ingresos del día, semana, mes y año. Comparativo con período anterior.
+   •   Desglose por fuente: consultas, ventas de mostrador, otros ingresos.
+   •   Desglose por método de pago: efectivo vs transferencia vs tarjeta.
+   •   Ingresos por podólogo: cuánto generó cada uno en el período.
+   •   Egresos por categoría: compras de inventario, gastos fijos, otros.
+   •   Servicios más vendidos: ranking por ingresos generados y por número de veces vendido.
+
+
+
+Comisiones de podólogos
+   • Las comisiones se calculan automáticamente con base en el porcentaje configurado por podólogo (Módulo
+     de Configuración) y el monto de consultas finalizadas.
+   • Reporte de comisiones por período: nombre del podólogo, número de consultas, total generado, porcentaje
+     de comisión, monto a pagar.
+   • Exportable a PDF o imprimible.
+
+
+
+Reportes disponibles
+   •   Reporte diario, semanal, mensual y anual de ingresos.
+   •   Reporte de citas: agendadas vs finalizadas vs canceladas vs no asistidas.
+   •   Reporte de inventario: movimientos del período, productos más vendidos.
+   •   Reporte de comisiones.
+   •   Todos los reportes son exportables a PDF e imprimibles directamente.
+
+         Confidencial — Uso interno Grupo CENPOD
+Sistema CENPOD · Especificaciones Funcionales y Técnicas · Grupo CENPOD 2026
+
+
+
+
+        Confidencial — Uso interno Grupo CENPOD
+Sistema CENPOD · Especificaciones Funcionales y Técnicas · Grupo CENPOD 2026
+
+
+  MÓDULO 08      · CRM
+  Retención de pacientes, campañas semiautomáticas y seguimiento con botones wa.me.
+
+
+
+
+Segmentación de pacientes
+   •   Pacientes que no han visitado la clínica en X días (configurable: 30, 60, 90, 180 días).
+   •   Pacientes con cumpleaños este mes / esta semana / hoy.
+   •   Pacientes diabéticos o con condición de riesgo que no han venido en cierto período.
+   •   Pacientes nuevos del último mes.
+   •   Cualquier combinación de filtros del módulo de Pacientes.
+
+
+
+Campañas semiautomáticas
+   • El sistema genera una lista de pacientes del segmento seleccionado.
+   • Se selecciona una plantilla de mensaje (configurada en Configuración).
+   • El sistema abre wa.me en el navegador para cada paciente de la lista, uno por uno, con el mensaje ya
+     escrito. El usuario solo da clic en enviar.
+   • Se puede marcar si el paciente fue contactado o no, para llevar seguimiento.
+
+
+
+Leads y seguimiento
+   • Registro de personas que preguntaron pero no agendaron: nombre, teléfono, interés, fecha de contacto.
+   • Botón de WhatsApp para hacer seguimiento.
+   • Estatus del lead: nuevo / contactado / agendado / perdido.
+
+
+
+Reportes de CRM
+   •   Tasa de retención de pacientes por período.
+   •   Pacientes nuevos vs recurrentes por mes.
+   •   Efectividad de campañas: cuántos pacientes contactados regresaron a agendar.
+   •   Pacientes en riesgo de abandono (no han venido en más de 90 días).
+
+
+
+
+         Confidencial — Uso interno Grupo CENPOD
+Sistema CENPOD · Especificaciones Funcionales y Técnicas · Grupo CENPOD 2026
+
+
+  MÓDULO 09      · SERVICIOS
+  Catálogo de servicios clínicos con precio y comisión por podólogo.
+
+
+
+   • Lista de todos los servicios ofrecidos por la clínica (ej. consulta general, onicocriptosis, ortoniquia,
+       quiropodia, infiltraciones, etc.).
+   •   Por cada servicio: nombre, descripción breve, duración estimada (en minutos, para bloquear el tiempo
+       correcto en agenda), precio, tipo de IVA, porcentaje de comisión del podólogo.
+   •   Los servicios están disponibles para seleccionar al crear una cita, al iniciar una consulta y al cobrar.
+   •   Posibilidad de activar o desactivar servicios sin eliminarlos.
+   •   El catálogo de servicios puede variar por sucursal si se requiere.
+
+
+
+
+         Confidencial — Uso interno Grupo CENPOD
+Sistema CENPOD · Especificaciones Funcionales y Técnicas · Grupo CENPOD 2026
+
+
+  MÓDULO 10         · RED CENPOD
+  Comunicación interna, avisos de matriz y pedidos a distribuidora. Solo dentro del sistema.
+
+
+
+  ¿Qué es la Red CENPOD?
+  Es el sistema de comunicación interno del Grupo CENPOD. No es WhatsApp, no es correo externo.
+  Es una bandeja de mensajes dentro del Sistema CENPOD donde las clínicas, la distribuidora y la
+  matriz pueden comunicarse, enviar avisos y gestionar pedidos de material.
+
+
+
+
+Entidades conectadas en la Red CENPOD
+              Entidad                             Puede enviar a                   Puede recibir de
+
+ Matriz / Súper Dueño                  Todas las clínicas, Distribuidora   Todos
+
+ Clínica 1, 2 o 3                      Distribuidora, Matriz, otras        Distribuidora, Matriz, otras
+                                       clínicas (opcional)                 clínicas (opcional)
+
+ Distribuidora                         Clínicas, Matriz                    Clínicas, Matriz
+
+
+
+
+Avisos y circulares de Matriz
+   •   El Súper Dueño puede redactar un aviso y enviarlo simultáneamente a una, varias o todas las clínicas.
+   •   El aviso aparece como notificación al iniciar sesión y en la bandeja de la Red CENPOD.
+   •   Registro de quién leyó el aviso y a qué hora.
+   •   Los avisos pueden ser informativos, urgentes o de capacitación, con etiqueta de tipo.
+
+
+
+Mensajes directos entre entidades
+   •   Hilo de conversación tipo correo: asunto, cuerpo del mensaje, respuestas anidadas.
+   •   Estatus del hilo: abierto / resuelto.
+   •   Notificación en tiempo real (campanita) cuando se recibe un mensaje nuevo.
+   •   No es chat en tiempo real; es mensajería asíncrona estructurada.
+
+
+
+Pedidos a Distribuidora CENPOD
+   • Desde cualquier clínica: botón "Nuevo pedido" en la Red CENPOD o en el módulo de Inventario.
+   • Formulario de pedido: seleccionar productos del catálogo de la distribuidora, cantidad requerida, urgencia
+     (normal / urgente), observaciones.
+   • El pedido llega a la Distribuidora como una solicitud pendiente.
+   • La Distribuidora puede: Aceptar (surtirá completo), Surtir parcialmente (indicando qué sí tiene y qué no), o
+     Rechazar con motivo.
+   • La clínica recibe notificación de cada cambio de estatus del pedido.
+
+        Confidencial — Uso interno Grupo CENPOD
+Sistema CENPOD · Especificaciones Funcionales y Técnicas · Grupo CENPOD 2026
+
+   • Historial de pedidos por clínica y por producto, con fechas y estatus.
+   • Botón de WhatsApp opcional para confirmar detalles del pedido directamente con la distribuidora.
+
+
+
+
+        Confidencial — Uso interno Grupo CENPOD
+Sistema CENPOD · Especificaciones Funcionales y Técnicas · Grupo CENPOD 2026
+
+
+  MÓDULO 11     · LINK DE RESERVA PÚBLICA
+  Agendado en línea para pacientes, sin necesidad de llamar a la clínica.
+
+
+
+
+Dos tipos de link
+                                   sistemacenpod.com/reservar — Pregunta primero: ¿A qué clínica
+ Link general del grupo            deseas asistir? Muestra las dos o tres sucursales con nombre,
+                                   dirección y mapa. Luego continúa el flujo normal.
+
+
+
+                                   sistemacenpod.com/reservar/clinica-1 — Va directo a esa clínica sin
+ Link por sucursal                 preguntar. Cada sucursal tiene su propio link para compartir en redes
+                                   sociales, Google My Business, etc.
+
+
+
+
+Flujo del paciente al reservar
+   • Paso 1: Seleccionar o confirmar la sucursal (si entró por el link general).
+   • Paso 2: Seleccionar el podólogo de su preferencia (se muestran los disponibles de esa sucursal).
+   • Paso 3: Seleccionar el día. El sistema muestra solo los días con disponibilidad.
+   • Paso 4: El sistema muestra solo 2 o 3 opciones de horario disponible para ese día (no toda la agenda),
+     facilitando la decisión.
+   • Paso 5: Ingresar datos personales: nombre, teléfono, correo, motivo de visita, si es paciente nuevo o ya ha
+     visitado la clínica.
+   • Paso 6: Confirmación con resumen de la cita y botón de WhatsApp que conecta con la clínica para avisar
+     de la cita agendada.
+
+
+
+Integración con el sistema
+   • Si el paciente ya existe en la base de datos (por teléfono), la cita se vincula a su expediente
+       automáticamente.
+   • Si es un paciente nuevo, se crea su ficha de paciente en la base de datos automáticamente con los datos
+     ingresados.
+   • La cita aparece en la Agenda con la etiqueta "Agendado por Web" visible para el equipo.
+   • La recepción puede confirmar o modificar la cita desde la Agenda normalmente.
+
+
+
+
+        Confidencial — Uso interno Grupo CENPOD
+Sistema CENPOD · Especificaciones Funcionales y Técnicas · Grupo CENPOD 2026
+
+
+  MÓDULO 12      · CONSENTIMIENTOS INFORMADOS
+  Plantillas digitales, firma del paciente y almacenamiento en el expediente.
+
+
+
+   • Biblioteca de plantillas de consentimiento editables: consentimiento general de tratamiento podológico,
+       cirugía ungueal, infiltraciones, procedimientos estéticos, otros.
+   •   Antes de iniciar ciertos tipos de consulta (configurables), el sistema solicita que se obtenga y registre el
+       consentimiento correspondiente.
+   •   Firma digital del paciente: puede firmar desde una tableta, celular o con mouse en la pantalla de la clínica.
+   •   El consentimiento firmado se genera como PDF y se guarda automáticamente en el expediente del
+       paciente con fecha y hora.
+   •   Historial de consentimientos firmados por paciente: qué firmó, cuándo y para qué procedimiento.
+   •   Impresión disponible en cualquier momento desde el expediente.
+
+
+
+
+         Confidencial — Uso interno Grupo CENPOD
+Sistema CENPOD · Especificaciones Funcionales y Técnicas · Grupo CENPOD 2026
+
+
+  MÓDULO 13      · DASHBOARD GENERAL
+  Vista de inicio con KPIs del día y tendencias clave. Primera pantalla al entrar al sistema.
+
+
+
+
+KPIs del día (visibles al abrir el sistema)
+   •   Total de citas del día: agendadas / finalizadas / canceladas / no asistidas.
+   •   Ingresos del día: total cobrado hasta el momento.
+   •   Productos vendidos hoy: unidades y monto.
+   •   Pacientes nuevos del día.
+   •   Próximas citas en las siguientes 2 horas (mini-agenda de hoy).
+
+
+
+Gráficas y tendencias (para Dueño y Súper Dueño)
+   •   Ingresos de los últimos 30 días en gráfica de línea.
+   •   Servicios más vendidos del mes en gráfica de barras.
+   •   Tasa de asistencia vs cancelaciones por podólogo.
+   •   Pacientes nuevos vs recurrentes por mes.
+   •   Horarios más ocupados de la semana (mapa de calor de la agenda).
+   •   Comparativo entre sucursales (solo Súper Dueño).
+
+
+
+Accesos rápidos
+   •   Botón de nueva cita.
+   •   Botón de nuevo paciente.
+   •   Acceso directo a la agenda de hoy.
+   •   Bandeja de mensajes no leídos de la Red CENPOD.
+
+
+
+
+         Confidencial — Uso interno Grupo CENPOD
+Sistema CENPOD · Especificaciones Funcionales y Técnicas · Grupo CENPOD 2026
+
+
+  MÓDULO 14     · SEGUIMIENTO POST-CONSULTA
+  Recordatorios, evolución y retención de pacientes con patologías crónicas.
+
+
+
+   • Al finalizar una consulta, el podólogo puede indicar: "Requiere seguimiento en X días" (campo numérico).
+   • El sistema programa automáticamente un recordatorio para esa fecha.
+   • X días antes del seguimiento sugerido, aparece una alerta en el sistema y un botón para enviar
+      recordatorio al paciente por WhatsApp (wa.me con texto pre-escrito).
+   • Si el paciente no agenda antes del seguimiento, la alerta permanece activa y se mueve al módulo de CRM
+     como paciente a contactar.
+   • Registro de evolución por consulta: el podólogo puede documentar cómo ha progresado el paciente entre
+     visitas, vinculado al expediente.
+   • Especialmente útil para pacientes diabéticos, con pie diabético, onicocriptosis recurrente u otras
+     condiciones que requieren revisiones periódicas.
+
+
+
+
+        Confidencial — Uso interno Grupo CENPOD
+Sistema CENPOD · Especificaciones Funcionales y Técnicas · Grupo CENPOD 2026
+
+
+  MÓDULO 15     · CIERRE Y APERTURA DE SUCURSAL
+  Formaliza el inicio y fin del día operativo de cada sucursal.
+
+
+
+
+Apertura del día
+   • Registro del fondo inicial de caja en efectivo.
+   • El sistema verifica si hay citas programadas para hoy y muestra un resumen.
+   • Se puede agregar una nota de apertura (ej. "Podólogo X no viene hoy").
+
+
+
+Cierre del día
+   • Resumen automático del día: citas atendidas, canceladas, ingresos totales por método de pago.
+   • Confirmación del dinero en caja (el usuario ingresa el físico contado para detectar diferencias).
+   • Registro de incidencias del día (campo de texto libre): problemas de equipo, situaciones con pacientes,
+      observaciones.
+   • Firma digital del responsable del cierre.
+   • El reporte de cierre se genera como PDF y puede enviarse automáticamente al Dueño por WhatsApp.
+   • El historial de cierres queda guardado y es consultable por el Dueño y Súper Dueño.
+
+
+
+
+        Confidencial — Uso interno Grupo CENPOD
+Sistema CENPOD · Especificaciones Funcionales y Técnicas · Grupo CENPOD 2026
+
+
+  MÓDULO 16      · EVALUACIÓN DE PODÓLOGOS
+  Métricas de desempeño, metas y reporte mensual por profesional.
+
+
+
+   • Datos calculados automáticamente por podólogo: número de citas finalizadas, tasa de cancelación,
+       ingresos generados, promedio de valor por consulta, calificaciones de Google recibidas (si se registran
+       manualmente).
+   •   Meta mensual configurable por podólogo: el dueño establece una meta de consultas o de ingresos y el
+       sistema muestra el progreso en tiempo real.
+   •   Comparativo entre podólogos en el mismo período (solo visible para Dueño y Súper Dueño).
+   •   Reporte mensual por podólogo: resumen descargable en PDF con todos sus indicadores.
+   •   Historial de desempeño mes a mes para visualizar tendencias.
+
+
+
+
+         Confidencial — Uso interno Grupo CENPOD
+Sistema CENPOD · Especificaciones Funcionales y Técnicas · Grupo CENPOD 2026
+
+
+  MÓDULO 17      · CONTROL DE EQUIPOS Y MANTENIMIENTO
+  Registro y seguimiento de equipos clínicos por sucursal.
+
+
+
+   • Registro de equipos por sucursal: fresadora podológica, autoclave, láser, ultrasonido, otros.
+   • Por cada equipo: nombre, marca, modelo, número de serie, fecha de adquisición, proveedor de servicio
+       técnico.
+   •   Fechas clave: última calibración, próximo mantenimiento programado.
+   •   Alerta automática en el sistema cuando un equipo está próximo a su mantenimiento (configurable con X
+       días de anticipación).
+   •   Registro de fallas e historial de reparaciones: fecha, descripción del problema, técnico que lo atendió,
+       costo.
+   •   Cumplimiento con buenas prácticas clínicas y documentación ante auditorías.
+
+
+
+
+         Confidencial — Uso interno Grupo CENPOD
+Sistema CENPOD · Especificaciones Funcionales y Técnicas · Grupo CENPOD 2026
+
+
+  MÓDULO 18      · CONFIGURACIÓN GENERAL
+  Todo lo que personaliza el sistema para la clínica, sus profesionales y sus sucursales.
+
+
+
+
+Información de la clínica
+   • Nombre de la sucursal, dirección, teléfono, logotipo, horario de atención.
+   • Estos datos se usan en recetas, tickets, facturas y el link de reserva pública.
+
+
+
+Equipo de trabajo
+   • Alta, edición y baja de podólogos: nombre completo, especialidad, cédula profesional, foto, teléfono,
+       correo, comisión porcentual, sucursal asignada.
+   • Alta de usuarios con rol: qué usuario del sistema corresponde a qué podólogo o recepcionista.
+
+
+
+Horarios de atención y slots de agenda
+   • Definir horario de apertura y cierre de la clínica por día de la semana.
+   • Duración por defecto de cada slot de agenda (15, 20, 30, 60 minutos).
+   • Días de descanso fijos (domingos, festivos nacionales).
+
+
+
+Plantillas de mensajes WhatsApp (wa.me)
+   • Plantilla de confirmación de cita: texto que aparece pre-escrito al dar clic en el botón de WhatsApp desde la
+       agenda.
+   •   Plantilla de recordatorio de cita (24h antes, para CRM).
+   •   Plantilla de calificación Google: mensaje con el link de Google Reviews que se envía al finalizar la consulta.
+   •   Plantilla de cumpleaños.
+   •   Plantilla de paciente sin visitar.
+   •   Cada plantilla puede incluir variables: {{nombre_paciente}}, {{fecha}}, {{hora}}, {{podólogo}},
+       {{link_reserva}}.
+
+
+
+Facturación
+   • Conexión con FacturAPI: ingresar token de API, RFC de la clínica, datos del emisor.
+   • Configurar productos/servicios del catálogo de FacturAPI para la emisión automática.
+
+
+
+Diseño de receta
+   • Editor visual de la receta: subir logo, posicionar elementos, seleccionar fuente y tamaño.
+   • Vista previa en tiempo real.
+
+
+
+         Confidencial — Uso interno Grupo CENPOD
+Sistema CENPOD · Especificaciones Funcionales y Técnicas · Grupo CENPOD 2026
+
+Conexión de base de datos entre sucursales
+   • Botón "Conectar base de datos con otras sucursales del grupo".
+   • Se activa o desactiva con un código proporcionado por la Matriz.
+   • Cuando está activo: desde el módulo de Pacientes se puede buscar en toda la red o solo en la sucursal
+      propia, con etiqueta de qué sucursal pertenece cada paciente.
+
+
+
+Roles y accesos
+   • Crear, editar y desactivar usuarios del sistema.
+   • Asignar rol: Dueño / Clínica (Recepción) / Podólogo.
+   • El rol de Súper Dueño solo puede asignarse desde la cuenta maestra del grupo.
+
+
+
+
+        Confidencial — Uso interno Grupo CENPOD
+Sistema CENPOD · Especificaciones Funcionales y Técnicas · Grupo CENPOD 2026
+
+
+24. Fases de Desarrollo Sugeridas
+Se recomienda construir el sistema en fases para tener funcionalidad real lo antes posible y agregar
+complejidad de forma gradual.
+
+               Fase                           Módulos incluidos                       Resultado
+
+ Fase 1 — Core clínico                 Configuración, Roles, Agenda,       Sistema funcional básico:
+                                       Consulta, Servicios                 agendar, atender y cobrar
+
+ Fase 2 — Expedientes                  Pacientes (expediente               Historia clínica digital completa
+                                       completo), Recetas,
+                                       Consentimientos
+
+ Fase 3 — Finanzas                     Caja, Finanzas, Inventario,         Operación financiera y fiscal
+                                       Facturación                         completa
+
+ Fase 4 — Crecimiento                  CRM, Seguimiento Post-              Retención de pacientes y
+                                       Consulta, Link de Reserva           captación online
+                                       Pública
+
+ Fase 5 — Grupo                        Red CENPOD, Dashboard               Visión consolidada del grupo y
+                                       General, Evaluación de              comunicación interna
+                                       Podólogos
+
+ Fase 6 — Operación                    Cierre/Apertura de Sucursal,        Formalización operativa y
+                                       Control de Equipos                  mantenimiento
+
+
+
+
+  Nota final
+  Este documento es el punto de partida para el desarrollo del Sistema CENPOD. Cada módulo puede
+  refinarse antes de iniciar su construcción. Las fases son indicativas y pueden ajustarse según las
+  necesidades operativas del grupo.
+  Stack recomendado: Next.js 14 + Supabase + Tailwind CSS + shadcn/ui + FacturAPI + react-pdf +
+  react-to-print.
+  Versión del documento: 1.0 | Grupo CENPOD | Hermosillo, Sonora | 2026
+
+
+
+
+        Confidencial — Uso interno Grupo CENPOD
+
