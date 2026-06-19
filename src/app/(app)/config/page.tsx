@@ -319,6 +319,15 @@ function PodologoDialog({ open, onOpenChange, editing, onSave, saving }: any) {
             body.commissionPct = Number(body.commissionPct)
             if (body.monthlyGoalConsults) body.monthlyGoalConsults = Number(body.monthlyGoalConsults)
             if (body.monthlyGoalRevenue) body.monthlyGoalRevenue = Number(body.monthlyGoalRevenue)
+            // slotMinutes: __default = null (usar el de la clínica)
+            if (body.slotMinutes === '__default') {
+              body.slotMinutes = null
+            } else if (body.slotMinutes) {
+              body.slotMinutes = Number(body.slotMinutes)
+            }
+            // openingTime/closingTime vacíos = null
+            if (!body.openingTime) delete body.openingTime
+            if (!body.closingTime) delete body.closingTime
             onSave(body)
           }}
           className="space-y-3"
@@ -376,10 +385,10 @@ function PodologoDialog({ open, onOpenChange, editing, onSave, saving }: any) {
               </div>
               <div className="space-y-1">
                 <Label className="text-xs">Duración cita</Label>
-                <Select name="slotMinutes" defaultValue={String(editing?.slotMinutes || '')}>
+                <Select name="slotMinutes" defaultValue={String(editing?.slotMinutes || '__default')}>
                   <SelectTrigger><SelectValue placeholder="Default" /></SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">Default clínica</SelectItem>
+                    <SelectItem value="__default">Default clínica</SelectItem>
                     <SelectItem value="15">15 min</SelectItem>
                     <SelectItem value="20">20 min</SelectItem>
                     <SelectItem value="30">30 min</SelectItem>
