@@ -329,10 +329,10 @@ function HistoriaClinicaFormBody({
   <div class="section">
     <div class="section-title">Antecedentes heredofamiliares</div>
     ${renderAntecedentes(antFam.items || antFam, {
-      diabetes:'Diabetes mellitus','hipertension':'Hipertensión arterial','renal':'Enfermedad renal crónica',
-      vascular':'Enfermedad vascular periférica','cardiovascular':'Enfermedad cardiovascular','artritis':'Artritis reumatoide',
-      gota':'Gota','psoriasis':'Psoriasis','cancer':'Cáncer','coagulacion':'Trastornos de coagulación',
-      ortopedicos':'Problemas ortopédicos del pie','amputaciones':'Amputaciones','pie_diabetico':'Pie diabético'
+      'diabetes':'Diabetes mellitus','hipertension':'Hipertensión arterial','renal':'Enfermedad renal crónica',
+      'vascular':'Enfermedad vascular periférica','cardiovascular':'Enfermedad cardiovascular','artritis':'Artritis reumatoide',
+      'gota':'Gota','psoriasis':'Psoriasis','cancer':'Cáncer','coagulacion':'Trastornos de coagulación',
+      'ortopedicos':'Problemas ortopédicos del pie','amputaciones':'Amputaciones','pie_diabetico':'Pie diabético'
     })}
   </div>
 
@@ -340,12 +340,12 @@ function HistoriaClinicaFormBody({
   <div class="section">
     <div class="section-title">Antecedentes personales patológicos</div>
     ${renderAntecedentes(antPat.enfermedades || antPat, {
-      dm1':'Diabetes mellitus tipo 1','dm2':'Diabetes mellitus tipo 2','hta':'Hipertensión arterial',
-      dislipidemia':'Dislipidemia','renal':'Enfermedad renal crónica','cardiopatia':'Cardiopatía',
-      venosa':'Insuficiencia venosa','arterial':'Enfermedad arterial periférica','neuropatia':'Neuropatía periférica',
-      artritis':'Artritis reumatoide','gota':'Gota','psoriasis':'Psoriasis','dermatitis':'Dermatitis',
-      inmunosupresion':'Inmunosupresión','vih':'VIH','cancer':'Cáncer','obesidad':'Obesidad',
-      coagulacion':'Trastornos de coagulación','epilepsia':'Epilepsia'
+      'dm1':'Diabetes mellitus tipo 1','dm2':'Diabetes mellitus tipo 2','hta':'Hipertensión arterial',
+      'dislipidemia':'Dislipidemia','renal':'Enfermedad renal crónica','cardiopatia':'Cardiopatía',
+      'venosa':'Insuficiencia venosa','arterial':'Enfermedad arterial periférica','neuropatia':'Neuropatía periférica',
+      'artritis':'Artritis reumatoide','gota':'Gota','psoriasis':'Psoriasis','dermatitis':'Dermatitis',
+      'inmunosupresion':'Inmunosupresión','vih':'VIH','cancer':'Cáncer','obesidad':'Obesidad',
+      'coagulacion':'Trastornos de coagulación','epilepsia':'Epilepsia'
     })}
     ${antPat.diabetes ? `<div style="margin-top:6px"><strong>Datos de diabetes:</strong>` +
       (antPat.diabetes.añoDiagnostico ? `<div class="field">Año de diagnóstico: ${esc(antPat.diabetes.añoDiagnostico)}</div>` : '') +
