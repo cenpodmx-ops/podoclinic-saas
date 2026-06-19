@@ -189,7 +189,7 @@ function HistoriaClinicaFormBody({
       .length / 13
 
   return (
-    <div className="space-y-3">
+    <div className="space-y-3 print-expediente">
       {/* Banner de estado */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 p-3 rounded-md border bg-muted/30 print:hidden">
         <div className="flex items-center gap-2 text-sm">

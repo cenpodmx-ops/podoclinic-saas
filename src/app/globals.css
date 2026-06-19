@@ -230,6 +230,20 @@
       margin: 0;
     }
   }
+  /* Expediente clínico — historia clínica imprimible */
+  .print-expediente,
+  .print-expediente * { visibility: visible !important; }
+  .print-expediente {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+    padding: 12mm;
+    background: #fff;
+  }
+  /* Ocultar botones y elementos no imprimibles dentro del expediente */
+  .print-expediente .print:hidden { display: none !important; }
+  .print-expediente button { display: none !important; }
   .corte-print,
   .corte-print * { visibility: visible !important; }
   .corte-print {
