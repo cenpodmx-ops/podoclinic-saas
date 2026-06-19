@@ -1369,11 +1369,18 @@ function TicketDialog({
   if (!consultation) return null
 
   function handlePrint() {
-    // Añadir clase al body para que el @page sea 80mm solo para tickets
+    // Inyectar @page 80mm dinámicamente para impresoras térmicas
+    const style = document.createElement('style')
+    style.id = 'ticket-page-size'
+    style.textContent = '@media print { @page { size: 80mm auto; margin: 0; } }'
+    document.head.appendChild(style)
     document.body.classList.add('printing-ticket')
     window.print()
-    // Quitar la clase después de imprimir
-    setTimeout(() => document.body.classList.remove('printing-ticket'), 1000)
+    // Limpiar después de imprimir
+    setTimeout(() => {
+      document.body.classList.remove('printing-ticket')
+      document.getElementById('ticket-page-size')?.remove()
+    }, 1000)
   }
 
   // Marcar ticket como impreso (no crítico)

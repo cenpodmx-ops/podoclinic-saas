@@ -225,10 +225,7 @@
   }
   /* Forzar tamaño de papel a 80mm SOLO cuando se imprime un ticket */
   body.printing-ticket {
-    @page {
-      size: 80mm auto;
-      margin: 0;
-    }
+    /* @page no se puede anidar — se maneja con clase en el <head> */
   }
   /* Expediente clínico — historia clínica imprimible */
   .print-expediente,
@@ -242,7 +239,7 @@
     background: #fff;
   }
   /* Ocultar botones y elementos no imprimibles dentro del expediente */
-  .print-expediente .print:hidden { display: none !important; }
+  .print-expediente [class*="print:hidden"] { display: none !important; }
   .print-expediente button { display: none !important; }
   .corte-print,
   .corte-print * { visibility: visible !important; }
