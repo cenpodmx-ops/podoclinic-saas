@@ -99,7 +99,7 @@ export default function PacientesPage() {
 
   // Filters
   const [clinicId, setClinicId] = useState<string>('') // '' = all (SUPER) or own
-  const [globalMode, setGlobalMode] = useState(false) // ver pacientes de todas las clínicas
+  const [globalMode, setGlobalMode] = useState(true) // Global siempre activo por defecto
   const [diabetic, setDiabetic] = useState<'' | 'true' | 'false'>('')
   const [risk, setRisk] = useState<string>('')
   const [sinCitaReciente, setSinCitaReciente] = useState(false)
@@ -420,9 +420,9 @@ export default function PacientesPage() {
                     <div className="min-w-0">
                       <p className="font-semibold truncate">{name}</p>
                       <p className="text-xs text-muted-foreground">Exp. {p.expNumber}</p>
-                      {isSuper && (
-                        <p className="text-[10px] text-muted-foreground mt-0.5">{p.clinic.name}</p>
-                      )}
+                      <Badge variant="secondary" className="text-[9px] mt-0.5" style={{ backgroundColor: '#0a3143', color: 'white' }}>
+                        {p.clinic?.name || 'Sin clínica'}
+                      </Badge>
                     </div>
                     <div className="flex flex-col items-end gap-1">
                       {p.riskLevel && (
@@ -507,7 +507,7 @@ export default function PacientesPage() {
                       <TableCell className="font-mono text-xs">{p.expNumber}</TableCell>
                       <TableCell className="font-medium">{name}</TableCell>
                       <TableCell className="text-xs">{p.phone || '—'}</TableCell>
-                      {isSuper && <TableCell className="text-xs">{p.clinic.name}</TableCell>}
+                      <TableCell className="text-xs"><Badge variant="secondary" className="text-[9px]" style={{ backgroundColor: '#0a3143', color: 'white' }}>{p.clinic?.name || '—'}</Badge></TableCell>
                       <TableCell>
                         <div className="flex gap-1 flex-wrap">
                           {p.isDiabetic && (

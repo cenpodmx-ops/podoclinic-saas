@@ -200,10 +200,12 @@ export async function POST(req: NextRequest) {
   const clinicId = user!.clinicId
   if (!clinicId) return bad('Sin clínica asignada', 403)
 
-  // Patient must belong to same clinic
+  // Patient can be from any clinic in the group (modo global)
+  // La cita se crea en la clínica del usuario, no en la del paciente
   const patient = await db.patient.findUnique({ where: { id: patientId } })
   if (!patient) return bad('Paciente no encontrado', 404)
-  if (user!.role !== 'SUPER' && patient.clinicId !== clinicId) {
+  // Solo PODOLOGIST no puede agendar pacientes de otra clínica
+  if (user!.role === 'PODOLOGIST' && patient.clinicId !== clinicId) {
     return bad('El paciente no pertenece a tu clínica', 403)
   }
 

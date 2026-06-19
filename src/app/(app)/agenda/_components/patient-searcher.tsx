@@ -45,7 +45,7 @@ export function PatientSearcher({ onSelect, initial }: Props) {
 
   const { data, isFetching } = useQuery({
     queryKey: ['pacientes-search', debounced],
-    queryFn: () => fetch(`/api/pacientes?q=${encodeURIComponent(debounced)}&limit=20`).then((r) => r.json()),
+    queryFn: () => fetch(`/api/pacientes?q=${encodeURIComponent(debounced)}&limit=20&global=1`).then((r) => r.json()),
     enabled: debounced.length > 0 && !selected,
   })
 

@@ -35,7 +35,7 @@ export function PatientSearcher({
   const { data, isLoading } = useQuery<PacientesResponse>({
     queryKey: ['pacientes-search', debounced],
     queryFn: () =>
-      fetch(`/api/pacientes?q=${encodeURIComponent(debounced)}&limit=15`).then((r) => r.json()),
+      fetch(`/api/pacientes?q=${encodeURIComponent(debounced)}&limit=15&global=1`).then((r) => r.json()),
     enabled: debounced.length > 0,
   })
 

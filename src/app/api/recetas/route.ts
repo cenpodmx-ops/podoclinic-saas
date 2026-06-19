@@ -140,19 +140,20 @@ export async function POST(req: NextRequest) {
 
   if (!patientId) return bad('Falta patientId')
 
-  // Verify patient exists & belongs to user's clinic (SUPER may pass clinicId)
+  // Verify patient exists (puede ser de cualquier clínica del grupo - modo global)
   const patient = await db.patient.findUnique({
     where: { id: patientId },
     select: { id: true, clinicId: true },
   })
   if (!patient) return bad('Paciente no encontrado', 404)
 
-  // Determine clinicId
-  let clinicId = patient.clinicId
+  // La receta se crea en la clínica del usuario, no en la del paciente
+  let clinicId = user!.clinicId
   if (user!.role === 'SUPER' && body.clinicId) {
     clinicId = body.clinicId
   }
-  if (user!.role !== 'SUPER' && patient.clinicId !== user!.clinicId) {
+  // Solo PODOLOGIST no puede recetar a pacientes de otra clínica
+  if (user!.role === 'PODOLOGIST' && patient.clinicId !== user!.clinicId) {
     return bad('No tienes acceso a este paciente', 403)
   }
 
