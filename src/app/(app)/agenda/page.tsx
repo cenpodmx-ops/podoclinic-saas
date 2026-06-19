@@ -70,6 +70,7 @@ export default function AgendaPage() {
     queryKey: ['citas', date, podologistId, view, user?.role],
     queryFn: () => fetch(`/api/citas?${queryParams.toString()}`).then((r) => r.json()),
     enabled: !!user && !!date,
+    placeholderData: (prev) => prev,
   })
 
   // ---- Auto-open new dialog if ?nueva=1 ----

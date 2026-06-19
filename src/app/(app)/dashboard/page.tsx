@@ -14,6 +14,7 @@ export default function DashboardPage() {
   const { data, isLoading } = useQuery({
     queryKey: ['dashboard'],
     queryFn: () => fetch('/api/dashboard').then((r) => r.json()),
+    placeholderData: (prev) => prev, // mostrar datos anteriores mientras carga
   })
 
   if (isLoading || !data) {
