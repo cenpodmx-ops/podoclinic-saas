@@ -53,7 +53,20 @@ export default function RedPage() {
         </TabsList>
 
         <TabsContent value="mensajes">
-          <MessagesTab box="inbox" />
+          <div className="space-y-3">
+            <Tabs defaultValue="inbox">
+              <TabsList>
+                <TabsTrigger value="inbox">📥 Recibidos</TabsTrigger>
+                <TabsTrigger value="sent">📤 Enviados</TabsTrigger>
+              </TabsList>
+              <TabsContent value="inbox" className="mt-3">
+                <MessagesTab box="inbox" />
+              </TabsContent>
+              <TabsContent value="sent" className="mt-3">
+                <MessagesTab box="sent" />
+              </TabsContent>
+            </Tabs>
+          </div>
         </TabsContent>
         <TabsContent value="avisos">
           <NoticesTab />
