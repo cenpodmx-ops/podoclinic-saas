@@ -38,7 +38,7 @@ const VISTA_LABELS: Record<string, string> = {
 async function loadPatientForUser(id: string, user: { role: string; clinicId: string }) {
   const p = await db.patient.findUnique({ where: { id }, select: { id: true, clinicId: true } })
   if (!p) return null
-  if (user.role !== 'SUPER' && p.clinicId !== user.clinicId) return 'forbidden' as const
+  if (user.role === 'PODOLOGIST' && p.clinicId !== user.clinicId) return 'forbidden' as const
   return p
 }
 

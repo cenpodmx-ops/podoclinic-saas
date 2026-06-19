@@ -18,7 +18,8 @@ async function loadPatientForUser(id: string, user: { role: string; clinicId: st
     select: { id: true, clinicId: true },
   })
   if (!p) return null
-  if (user.role !== 'SUPER' && p.clinicId !== user.clinicId) return 'forbidden' as const
+  // Modo global: OWNER/RECEPTION pueden ver/editar pacientes de cualquier clínica
+  if (user.role === 'PODOLOGIST' && p.clinicId !== user.clinicId) return 'forbidden' as const
   return p
 }
 
