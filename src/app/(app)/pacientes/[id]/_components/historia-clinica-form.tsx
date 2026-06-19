@@ -183,373 +183,307 @@ function HistoriaClinicaFormBody({
   }
 
   const handlePrint = () => {
-    // Generar HTML de impresión profesional NOM-004
     const f = form as any
     const p = patient
     const patientName = `${p.firstName} ${p.lastName}`
     const age = p.birthDate ? Math.floor((Date.now() - new Date(p.birthDate).getTime()) / (365.25 * 24 * 60 * 60 * 1000)) : '—'
+    const ficha = p.fichaIdentificacion ? (typeof p.fichaIdentificacion === 'string' ? JSON.parse(p.fichaIdentificacion) : p.fichaIdentificacion) : {}
 
-    const esc = (s: any) => !s ? '' : String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+    const esc = (s: any) => {
+      if (s === null || s === undefined || s === '') return ''
+      if (typeof s === 'object') return JSON.stringify(s).replace(/[{}"]/g,' ').trim()
+      return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+    }
 
-    // Helper para renderizar antecedentes con checkboxes
-    const renderAntecedentes = (items: Record<string, any>, labels: Record<string, string>) => {
-      if (!items) return '<p class="muted">Sin datos registrados.</p>'
-      const active = Object.entries(items).filter(([, v]) => v && (typeof v === 'object' ? Object.keys(v).length > 0 : v === true))
-      if (active.length === 0) return '<p class="muted">Sin antecedentes registrados.</p>'
-      return active.map(([k, v]) => {
+    // Helper: renderizar valor o "—"
+    const val = (s: any) => s && s !== '' ? esc(s) : '—'
+
+    // Helper: renderizar array de strings como chips
+    const chips = (arr: any) => {
+      if (!arr || !Array.isArray(arr) || arr.length === 0) return '<span class="muted">Ninguno</span>'
+      return arr.map(a => `<span class="chip">${esc(a)}</span>`).join(' ')
+    }
+
+    // Helper: renderizar objeto de antecedentes (checkboxes)
+    const renderChecks = (obj: any, labels: Record<string,string>) => {
+      if (!obj || typeof obj !== 'object') return '<span class="muted">Sin datos</span>'
+      const entries = Object.entries(obj).filter(([, v]) => {
+        if (v === true) return true
+        if (typeof v === 'object' && v && Object.keys(v).length > 0) return true
+        return false
+      })
+      if (entries.length === 0) return '<span class="muted">Ninguno</span>'
+      return entries.map(([k, v]) => {
         const label = labels[k] || k
         if (typeof v === 'object' && v) {
-          return `<div class="ant-row"><span class="ant-check">☑</span> <strong>${esc(label)}</strong>` +
-            (v.familiar ? ` — ${esc(v.familiar)}` : '') +
-            (v.edad ? ` (edad: ${esc(v.edad)})` : '') +
-            (v.observaciones ? ` — ${esc(v.observaciones)}` : '') +
-            `</div>`
+          const parts = [v.familiar, v.edad ? `edad: ${v.edad}` : '', v.observaciones].filter(Boolean)
+          return `<div class="row"><span class="chk">☑</span> <b>${esc(label)}</b>${parts.length ? ' — ' + parts.map(esc).join(', ') : ''}</div>`
         }
-        return `<div class="ant-row"><span class="ant-check">☑</span> ${esc(label)}</div>`
+        return `<div class="row"><span class="chk">☑</span> ${esc(label)}</div>`
       }).join('')
     }
 
-    // Helper para chips
-    const renderChips = (arr: string[], labels?: Record<string,string>) => {
-      if (!arr || arr.length === 0) return '<span class="muted">Ninguno</span>'
-      return arr.map(a => `<span class="chip">${esc(labels?.[a] || a)}</span>`).join(' ')
-    }
-
-    const motivoConsulta = f.motivoConsulta || {}
-    const padecimiento = f.padecimientoActual || {}
+    const motivo = f.motivoConsulta || {}
+    const padec = f.padecimientoActual || {}
     const antFam = f.antecedentesFamiliares || {}
     const antPat = f.antecedentesPatologicos || {}
     const antNoPat = f.antecedentesNoPatologicos || {}
-    const interrogatorio = f.interrogatorioAparatos || {}
-    const signos = f.signosVitales || {}
-    const exploracion = f.exploracionGeneral || {}
-    const explPodo = f.exploracionPodologica || {}
+    const inter = f.interrogatorioAparatos || {}
+    const sig = f.signosVitales || {}
+    const explG = f.exploracionGeneral || {}
+    const explP = f.exploracionPodologica || {}
     const riesgo = f.evaluacionRiesgo || {}
-    const diagnosticos = f.diagnosticos || {}
-    const pronostico = f.pronostico || {}
+    const dx = f.diagnosticos || {}
+    const pron = f.pronostico || {}
     const plan = f.planManejo || {}
 
-    const MOTIVO_LABELS: Record<string,string> = {
-      'una_encarnada':'Uña encarnada','dolor_dedo':'Dolor en dedo','dolor_plantar':'Dolor plantar',
-      'callosidad':'Callosidad','heloma':'Heloma','dureza':'Dureza','verruga_plantar':'Verruga plantar',
-      'onicomicosis':'Onicomicosis','engrosamiento_ungueal':'Engrosamiento ungueal','una_traumatica':'Uña traumática',
-      'pie_diabetico':'Pie diabético','herida':'Herida','ulcera':'Úlcera','mal_olor':'Mal olor',
-      'sudoracion':'Sudoración excesiva','dolor_talon':'Dolor en talón','dolor_arco':'Dolor en arco',
-      'dolor_metatarsos':'Dolor en metatarsos','pisada':'Alteración de la pisada','fascitis':'Fascitis plantar',
-      'revision':'Revisión preventiva','corte':'Corte podológico','seguimiento':'Seguimiento post-procedimiento',
-      'otro':'Otro'
-    }
+    const imc = sig.peso && sig.talla ? (Number(sig.peso) / (Number(sig.talla) ** 2)).toFixed(1) : (sig.imc || '—')
 
     const html = `<!DOCTYPE html>
-<html lang="es">
-<head>
-<meta charset="utf-8"/>
+<html lang="es"><head><meta charset="utf-8"/>
 <title>Historia Clínica — ${esc(patientName)}</title>
 <style>
-  @page { size: A4; margin: 18mm; }
+  @page { size: A4; margin: 16mm; }
   * { box-sizing: border-box; }
-  body { font-family: 'Times New Roman', Georgia, serif; color: #1a1a1a; margin: 0; line-height: 1.6; font-size: 12px; }
-  .doc { max-width: 190mm; margin: 0 auto; }
-  .header { text-align: center; border-bottom: 3px solid #0a3143; padding-bottom: 10px; margin-bottom: 16px; }
-  .header h1 { font-size: 20px; color: #0a3143; margin: 0; letter-spacing: 0.05em; }
-  .header .sub { font-size: 12px; color: #555; margin-top: 4px; }
-  .header .nom { font-size: 10px; color: #888; margin-top: 2px; }
-  .section { margin-top: 14px; }
-  .section-title { font-size: 13px; font-weight: 700; color: #0a3143; text-transform: uppercase; letter-spacing: 0.04em; border-bottom: 1.5px solid #0a3143; padding-bottom: 3px; margin-bottom: 6px; }
-  .field-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 4px 16px; }
-  .field { font-size: 11px; }
-  .field .lbl { font-weight: 600; color: #444; }
-  .field .val { color: #111; }
-  .ant-row { font-size: 11px; margin: 2px 0; }
-  .ant-check { color: #0a3143; font-weight: bold; }
-  .chip { display: inline-block; background: #e8f0f4; border: 1px solid #b0c4d8; border-radius: 3px; padding: 1px 6px; font-size: 10px; margin: 1px; }
-  .muted { color: #999; font-style: italic; font-size: 11px; }
-  .alert-box { border: 1.5px solid #dc2626; background: #fef2f2; border-radius: 4px; padding: 6px 10px; font-size: 11px; color: #991b1b; margin: 6px 0; }
-  .risk-box { display: inline-block; padding: 3px 12px; border-radius: 4px; font-weight: 700; font-size: 12px; }
+  body { font-family: Arial, 'Helvetica Neue', sans-serif; color: #1a1a1a; margin: 0; font-size: 11px; line-height: 1.5; }
+  .hdr { background: #0a3143; color: #fff; padding: 10px 16px; display: flex; justify-content: space-between; align-items: center; }
+  .hdr .brand { font-size: 16px; font-weight: 800; letter-spacing: 0.06em; }
+  .hdr .brand-sub { font-size: 9px; opacity: 0.7; }
+  .hdr .meta { text-align: right; font-size: 9px; opacity: 0.8; }
+  .sec { margin-top: 12px; }
+  .sec-hdr { background: #f0f0f0; padding: 4px 10px; font-weight: 700; font-size: 11px; color: #333; text-transform: uppercase; letter-spacing: 0.03em; border-left: 3px solid #0a3143; }
+  .sec-body { padding: 6px 10px; }
+  .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 2px 14px; }
+  .fld { font-size: 10.5px; margin: 1px 0; }
+  .fld b { color: #555; font-weight: 600; }
+  .chip { display: inline-block; background: #e8f0f4; border: 1px solid #b0c4d8; border-radius: 3px; padding: 0 5px; font-size: 9px; margin: 1px; }
+  .muted { color: #aaa; font-style: italic; }
+  .row { font-size: 10.5px; margin: 1px 0; }
+  .chk { color: #0a3143; font-weight: bold; }
+  .alert { border: 1px solid #dc2626; background: #fef2f2; border-radius: 3px; padding: 4px 8px; font-size: 10px; color: #991b1b; margin: 4px 0; }
+  .risk { display: inline-block; padding: 2px 10px; border-radius: 3px; font-weight: 700; font-size: 11px; }
   .risk-BAJO { background: #d1fae5; color: #065f46; }
   .risk-MEDIO { background: #fef3c7; color: #92400e; }
   .risk-ALTO { background: #fee2e2; color: #991b1b; }
   .risk-URGENTE { background: #dc2626; color: #fff; }
-  .signature-area { margin-top: 40px; display: grid; grid-template-columns: 1fr 1fr; gap: 40px; }
-  .sig-line { border-top: 1.5px solid #333; padding-top: 6px; font-size: 10px; text-align: center; color: #555; }
-  .footer { margin-top: 30px; border-top: 1px solid #ddd; padding-top: 8px; font-size: 9px; color: #888; text-align: center; }
-  .confidential { font-size: 9px; color: #999; text-align: center; margin-top: 4px; font-style: italic; }
-  @media print { .no-print { display: none; } .doc { max-width: none; } }
-</style>
-</head>
-<body>
-<div class="doc">
-  <div class="header">
-    <h1>HISTORIA CLÍNICA PODOLÓGICA</h1>
-    <div class="sub">Grupo CENPOD · Centro Podológico</div>
-    <div class="nom">Documento conforme a la NOM-004-SSA3-2012</div>
-  </div>
+  .sigs { margin-top: 36px; display: grid; grid-template-columns: 1fr 1fr; gap: 36px; }
+  .sig { border-top: 1.5px solid #333; padding-top: 4px; font-size: 9px; text-align: center; color: #555; }
+  .ftr { margin-top: 24px; border-top: 1px solid #ddd; padding-top: 6px; font-size: 8px; color: #999; text-align: center; }
+  .conf { font-size: 8px; color: #bbb; text-align: center; margin-top: 3px; font-style: italic; }
+  @media print { .np { display: none; } }
+</style></head><body>
 
-  <!-- DATOS DEL PACIENTE -->
-  <div class="section">
-    <div class="section-title">Datos del paciente</div>
-    <div class="field-grid">
-      <div class="field"><span class="lbl">Nombre:</span> <span class="val">${esc(patientName)}</span></div>
-      <div class="field"><span class="lbl">Expediente:</span> <span class="val">${esc(p.expNumber)}</span></div>
-      <div class="field"><span class="lbl">Fecha de nacimiento:</span> <span class="val">${p.birthDate ? new Date(p.birthDate).toLocaleDateString('es-MX') : '—'}</span></div>
-      <div class="field"><span class="lbl">Edad:</span> <span class="val">${age} años</span></div>
-      <div class="field"><span class="lbl">Sexo:</span> <span class="val">${esc(p.sex || '—')}</span></div>
-      <div class="field"><span class="lbl">Teléfono:</span> <span class="val">${esc(p.phone || '—')}</span></div>
-      <div class="field"><span class="lbl">CURP:</span> <span class="val">${esc(p.curp || '—')}</span></div>
-      <div class="field"><span class="lbl">RFC:</span> <span class="val">${esc(p.rfc || '—')}</span></div>
+<div class="hdr">
+  <div><div class="brand">CENPOD</div><div class="brand-sub">CENTRO PODOLÓGICO</div></div>
+  <div class="meta">HISTORIA CLÍNICA PODOLÓGICA<br/>Expediente: ${esc(p.expNumber)}<br/>${new Date().toLocaleDateString('es-MX')}</div>
+</div>
+
+<!-- I. FICHA DE IDENTIFICACIÓN -->
+<div class="sec">
+  <div class="sec-hdr">I. Ficha de identificación</div>
+  <div class="sec-body">
+    <div class="grid">
+      <div class="fld"><b>Nombre:</b> ${esc(patientName)}</div>
+      <div class="fld"><b>Edad:</b> ${age} años</div>
+      <div class="fld"><b>Fecha de nacimiento:</b> ${p.birthDate ? new Date(p.birthDate).toLocaleDateString('es-MX') : '—'}</div>
+      <div class="fld"><b>Sexo:</b> ${val(p.sex)}</div>
+      <div class="fld"><b>Ocupación:</b> ${val(ficha.ocupacion || antNoPat.ocupacion)}</div>
+      <div class="fld"><b>Escolaridad:</b> ${val(ficha.escolaridad)}</div>
+      <div class="fld"><b>Estado civil:</b> ${val(ficha.estadoCivil)}</div>
+      <div class="fld"><b>Teléfono:</b> ${val(p.phone)}</div>
+      <div class="fld"><b>Grupo sanguíneo:</b> ${val(ficha.grupoSanguineo)}</div>
+      <div class="fld"><b>Contacto de emergencia:</b> ${val(ficha.contactoEmergencia)} ${ficha.parentescoEmergencia ? '(' + esc(ficha.parentescoEmergencia) + ')' : ''}</div>
     </div>
-    ${p.isDiabetic ? '<div class="alert-box">⚠ PACIENTE DIABÉTICO — Requiere manejo especial y precaución en procedimientos.</div>' : ''}
-    ${p.allergies ? `<div class="alert-box">⚠ ALERGIAS: ${esc(p.allergies)}</div>` : ''}
-    ${p.currentMeds ? `<div class="field" style="margin-top:4px"><span class="lbl">Medicamentos actuales:</span> <span class="val">${esc(p.currentMeds)}</span></div>` : ''}
+    ${p.isDiabetic ? '<div class="alert">⚠ PACIENTE DIABÉTICO</div>' : ''}
+    ${p.allergies ? `<div class="alert">⚠ ALERGIAS: ${esc(p.allergies)}</div>` : ''}
+    ${p.currentMeds ? `<div class="fld" style="margin-top:3px"><b>Medicamentos actuales:</b> ${esc(p.currentMeds)}</div>` : ''}
   </div>
+</div>
 
-  <!-- MOTIVO DE CONSULTA -->
-  ${motivoConsulta.opciones || motivoConsulta.descripcion ? `
-  <div class="section">
-    <div class="section-title">Motivo de consulta</div>
-    ${motivoConsulta.opciones ? `<div style="margin-bottom:4px">${renderChips(motivoConsulta.opciones, MOTIVO_LABELS)}</div>` : ''}
-    ${motivoConsulta.descripcion ? `<div class="field">${esc(motivoConsulta.descripcion)}</div>` : ''}
-  </div>` : ''}
+<!-- II. MOTIVO DE CONSULTA -->
+<div class="sec">
+  <div class="sec-hdr">II. Motivo de consulta</div>
+  <div class="sec-body">
+    ${motivo.opciones && motivo.opciones.length > 0 ? `<div class="fld" style="margin-bottom:3px">${chips(motivo.opciones)}</div>` : ''}
+    ${motivo.descripcion ? `<div class="fld">${esc(motivo.descripcion)}</div>` : '<div class="muted">No registrado</div>'}
+  </div>
+</div>
 
-  <!-- PADECIMIENTO ACTUAL -->
-  ${padecimiento.inicio || padecimiento.tiempo || padecimiento.sintomas ? `
-  <div class="section">
-    <div class="section-title">Padecimiento actual</div>
-    <div class="field-grid">
-      <div class="field"><span class="lbl">Inicio:</span> <span class="val">${esc(padecimiento.inicio || '—')}</span></div>
-      <div class="field"><span class="lbl">Tiempo de evolución:</span> <span class="val">${esc(padecimiento.tiempo || '—')}</span></div>
+<!-- III. PADECIMIENTO ACTUAL -->
+<div class="sec">
+  <div class="sec-hdr">III. Padecimiento actual</div>
+  <div class="sec-body">
+    <div class="grid">
+      <div class="fld"><b>Inicio:</b> ${val(padec.inicio)}</div>
+      <div class="fld"><b>Tiempo de evolución:</b> ${val(padec.tiempo)}</div>
     </div>
-    ${padecimiento.localizacion ? `<div class="field" style="margin-top:4px"><span class="lbl">Localización:</span> ${renderChips(padecimiento.localizacion)}</div>` : ''}
-    ${padecimiento.sintomas ? `<div class="field" style="margin-top:4px"><span class="lbl">Síntomas:</span> ${renderChips(padecimiento.sintomas)}</div>` : ''}
-    ${padecimiento.eva !== undefined ? `<div class="field" style="margin-top:4px"><span class="lbl">Escala EVA:</span> <span class="val">${esc(padecimiento.eva)}/10</span></div>` : ''}
-    ${padecimiento.observaciones ? `<div class="field" style="margin-top:4px"><span class="lbl">Observaciones:</span> ${esc(padecimiento.observaciones)}</div>` : ''}
-  </div>` : ''}
+    ${padec.localizacion ? `<div class="fld" style="margin-top:2px"><b>Localización:</b> ${chips(padec.localizacion)}</div>` : ''}
+    ${padec.mecanismo ? `<div class="fld" style="margin-top:2px"><b>Mecanismo:</b> ${chips(padec.mecanismo)}</div>` : ''}
+    ${padec.sintomas ? `<div class="fld" style="margin-top:2px"><b>Síntomas:</b> ${chips(padec.sintomas)}</div>` : ''}
+    ${padec.eva !== undefined ? `<div class="fld" style="margin-top:2px"><b>EVA:</b> ${esc(padec.eva)}/10</div>` : ''}
+    ${padec.tratamientosPrevios ? `<div class="fld" style="margin-top:2px"><b>Tratamientos previos:</b> ${chips(padec.tratamientosPrevios)}</div>` : ''}
+    ${padec.observaciones ? `<div class="fld" style="margin-top:2px">${esc(padec.observaciones)}</div>` : ''}
+    ${!padec.inicio && !padec.tiempo && !padec.sintomas && !padec.observaciones ? '<div class="muted">No registrado</div>' : ''}
+  </div>
+</div>
 
-  <!-- ANTECEDENTES HEREDOFAMILIARES -->
-  <div class="section">
-    <div class="section-title">Antecedentes heredofamiliares</div>
-    ${renderAntecedentes(antFam.items || antFam, {
-      'diabetes':'Diabetes mellitus','hipertension':'Hipertensión arterial','renal':'Enfermedad renal crónica',
-      'vascular':'Enfermedad vascular periférica','cardiovascular':'Enfermedad cardiovascular','artritis':'Artritis reumatoide',
+<!-- IV. ANTECEDENTES HEREDOFAMILIARES -->
+<div class="sec">
+  <div class="sec-hdr">IV. Antecedentes heredofamiliares</div>
+  <div class="sec-body">
+    ${renderChecks(antFam.condiciones || antFam, {
+      'diabetes':'Diabetes mellitus','hipertension':'Hipertensión arterial','renal':'Enfermedad renal',
+      'vascular':'Enf. vascular periférica','cardiovascular':'Enf. cardiovascular','artritis':'Artritis reumatoide',
       'gota':'Gota','psoriasis':'Psoriasis','cancer':'Cáncer','coagulacion':'Trastornos de coagulación',
       'ortopedicos':'Problemas ortopédicos del pie','amputaciones':'Amputaciones','pie_diabetico':'Pie diabético'
     })}
   </div>
+</div>
 
-  <!-- ANTECEDENTES PERSONALES PATOLÓGICOS -->
-  <div class="section">
-    <div class="section-title">Antecedentes personales patológicos</div>
-    ${renderAntecedentes(antPat.enfermedades || antPat, {
-      'dm1':'Diabetes mellitus tipo 1','dm2':'Diabetes mellitus tipo 2','hta':'Hipertensión arterial',
-      'dislipidemia':'Dislipidemia','renal':'Enfermedad renal crónica','cardiopatia':'Cardiopatía',
-      'venosa':'Insuficiencia venosa','arterial':'Enfermedad arterial periférica','neuropatia':'Neuropatía periférica',
-      'artritis':'Artritis reumatoide','gota':'Gota','psoriasis':'Psoriasis','dermatitis':'Dermatitis',
-      'inmunosupresion':'Inmunosupresión','vih':'VIH','cancer':'Cáncer','obesidad':'Obesidad',
-      'coagulacion':'Trastornos de coagulación','epilepsia':'Epilepsia'
+<!-- V. ANTECEDENTES PERSONALES PATOLÓGICOS -->
+<div class="sec">
+  <div class="sec-hdr">V. Antecedentes personales patológicos</div>
+  <div class="sec-body">
+    ${renderChecks(antPat.condiciones || antPat, {
+      'dm1':'Diabetes tipo 1','dm2':'Diabetes tipo 2','hta':'Hipertensión arterial','dislipidemia':'Dislipidemia',
+      'renal':'Enf. renal crónica','cardiopatia':'Cardiopatía','venosa':'Insuficiencia venosa',
+      'arterial':'Enf. arterial periférica','neuropatia':'Neuropatía periférica','artritis':'Artritis',
+      'gota':'Gota','psoriasis':'Psoriasis','dermatitis':'Dermatitis','inmunosupresion':'Inmunosupresión',
+      'obesidad':'Obesidad','coagulacion':'Trastornos de coagulación','epilepsia':'Epilepsia'
     })}
-    ${antPat.diabetes ? `<div style="margin-top:6px"><strong>Datos de diabetes:</strong>` +
-      (antPat.diabetes.añoDiagnostico ? `<div class="field">Año de diagnóstico: ${esc(antPat.diabetes.añoDiagnostico)}</div>` : '') +
-      (antPat.diabetes.tratamiento ? `<div class="field">Tratamiento: ${renderChips(antPat.diabetes.tratamiento)}</div>` : '') +
-      (antPat.diabetes.ultimaGlucosa ? `<div class="field">Última glucosa capilar: ${esc(antPat.diabetes.ultimaGlucosa)} mg/dL</div>` : '') +
-      (antPat.diabetes.hba1c ? `<div class="field">Última HbA1c: ${esc(antPat.diabetes.hba1c)}%</div>` : '') +
-      (antPat.diabetes.neuropatia ? `<div class="field">⚠ Neuropatía conocida</div>` : '') +
+    ${antPat.diabetes ? `<div style="margin-top:4px"><b>Datos de diabetes:</b>` +
+      (antPat.diabetes.añoDiagnostico ? ` Año: ${esc(antPat.diabetes.añoDiagnostico)}.` : '') +
+      (antPat.diabetes.tratamiento ? ` Tratamiento: ${chips(antPat.diabetes.tratamiento)}.` : '') +
+      (antPat.diabetes.ultimaGlucosa ? ` Glucosa: ${esc(antPat.diabetes.ultimaGlucosa)} mg/dL.` : '') +
+      (antPat.diabetes.hba1c ? ` HbA1c: ${esc(antPat.diabetes.hba1c)}%.` : '') +
+      (antPat.diabetes.neuropatia ? ' ⚠ Neuropatía.' : '') +
       `</div>` : ''}
-    ${antPat.alergias ? `<div class="alert-box" style="margin-top:6px">Alergias: ${esc(antPat.alergias)}</div>` : ''}
-    ${antPat.medicamentos ? `<div class="field" style="margin-top:4px"><span class="lbl">Medicamentos actuales:</span> ${esc(antPat.medicamentos)}</div>` : ''}
-  </div>
-
-  <!-- ANTECEDENTES NO PATOLÓGICOS -->
-  <div class="section">
-    <div class="section-title">Antecedentes personales no patológicos</div>
-    <div class="field-grid">
-      <div class="field"><span class="lbl">Tabaquismo:</span> <span class="val">${esc(antNoPat.tabaquismo || '—')}</span></div>
-      <div class="field"><span class="lbl">Alcohol:</span> <span class="val">${esc(antNoPat.alcohol || '—')}</span></div>
-      <div class="field"><span class="lbl">Actividad física:</span> <span class="val">${esc(antNoPat.actividad || '—')}</span></div>
-      <div class="field"><span class="lbl">Tipo de calzado:</span> <span class="val">${esc(antNoPat.calzado || '—')}</span></div>
-      <div class="field"><span class="lbl">Quién corta uñas:</span> <span class="val">${esc(antNoPat.quienCorta || '—')}</span></div>
-      <div class="field"><span class="lbl">Ocupación:</span> <span class="val">${esc(antNoPat.ocupacion || '—')}</span></div>
-    </div>
-  </div>
-
-  <!-- INTERROGATORIO POR APARATOS -->
-  ${interrogatorio && (interrogatorio.general || interrogatorio.cardiovascular || interrogatorio.endocrino || interrogatorio.neurologico || interrogatorio.dermatologico || interrogatorio.musculoesqueletico) ? `
-  <div class="section">
-    <div class="section-title">Interrogatorio por aparatos y sistemas</div>
-    ${['general','cardiovascular','endocrino','neurologico','dermatologico','musculoesqueletico'].map(sys => {
-      const s = (interrogatorio as any)[sys]
-      if (!s) return ''
-      const labels: Record<string,string> = {general:'General',cardiovascular:'Cardiovascular',endocrino:'Endocrino/Metabólico',neurologico:'Neurológico',dermatologico:'Dermatológico',musculoesqueletico:'Musculoesquelético'}
-      const active = s.checkboxes ? Object.entries(s.checkboxes).filter(([,v]:any) => v).map(([k]:any) => k) : []
-      return `<div class="field" style="margin:3px 0"><span class="lbl">${labels[sys] || sys}:</span> ` +
-        (s.sinDatosPatologicos ? '<span class="muted">Sin datos patológicos</span>' : '') +
-        (active.length > 0 ? ` ${renderChips(active)}` : '') +
-        (s.notas ? `<div style="margin-left:12px">${esc(s.notas)}</div>` : '') +
-        `</div>`
-    }).join('')}
-  </div>` : ''}
-
-  <!-- SIGNOS VITALES -->
-  ${signos && (signos.ta || signos.fc || signos.fr || signos.temperatura || signos.peso || signos.talla || signos.glucosa || signos.eva !== undefined) ? `
-  <div class="section">
-    <div class="section-title">Signos vitales y somatometría</div>
-    <div class="field-grid">
-      <div class="field"><span class="lbl">TA:</span> <span class="val">${esc(signos.ta || '—')} mmHg</span></div>
-      <div class="field"><span class="lbl">FC:</span> <span class="val">${esc(signos.fc || '—')} lpm</span></div>
-      <div class="field"><span class="lbl">FR:</span> <span class="val">${esc(signos.fr || '—')} rpm</span></div>
-      <div class="field"><span class="lbl">Temperatura:</span> <span class="val">${esc(signos.temperatura || '—')} °C</span></div>
-      <div class="field"><span class="lbl">SpO₂:</span> <span class="val">${esc(signos.spo2 || '—')} %</span></div>
-      <div class="field"><span class="lbl">Peso:</span> <span class="val">${esc(signos.peso || '—')} kg</span></div>
-      <div class="field"><span class="lbl">Talla:</span> <span class="val">${esc(signos.talla || '—')} m</span></div>
-      <div class="field"><span class="lbl">IMC:</span> <span class="val">${signos.imc || (signos.peso && signos.talla ? (Number(signos.peso) / (Number(signos.talla) ** 2)).toFixed(1) : '—')}</span></div>
-      <div class="field"><span class="lbl">Glucosa capilar:</span> <span class="val">${esc(signos.glucosa || '—')} mg/dL</span></div>
-      <div class="field"><span class="lbl">EVA:</span> <span class="val">${esc(signos.eva ?? '—')}/10</span></div>
-    </div>
-  </div>` : ''}
-
-  <!-- EXPLORACIÓN FÍSICA GENERAL -->
-  ${exploracion && (exploracion.estadoGeneral || exploracion.marcha || exploracion.estadoAlerta) ? `
-  <div class="section">
-    <div class="section-title">Exploración física general</div>
-    <div class="field-grid">
-      <div class="field"><span class="lbl">Estado de alerta:</span> <span class="val">${esc(exploracion.estadoAlerta || '—')}</span></div>
-      <div class="field"><span class="lbl">Orientación:</span> <span class="val">${esc(exploracion.orientacion || '—')}</span></div>
-      <div class="field"><span class="lbl">Habitus exterior:</span> <span class="val">${esc(exploracion.habitus || '—')}</span></div>
-      <div class="field"><span class="lbl">Estado general:</span> <span class="val">${esc(exploracion.estadoGeneral || '—')}</span></div>
-      <div class="field"><span class="lbl">Marcha:</span> <span class="val">${esc(exploracion.marcha || '—')}</span></div>
-      <div class="field"><span class="lbl">Uso de apoyo:</span> <span class="val">${esc(exploracion.apoyo || '—')}</span></div>
-    </div>
-    ${exploracion.observaciones ? `<div class="field" style="margin-top:4px"><span class="lbl">Observaciones:</span> ${esc(exploracion.observaciones)}</div>` : ''}
-  </div>` : ''}
-
-  <!-- EXPLORACIÓN PODOLÓGICA -->
-  ${explPodo && (explPodo.inspeccionDermatologica || explPodo.exploracionUngueal || explPodo.exploracionVascular || explPodo.exploracionNeurologica || explPodo.exploracionMusculoesqueletica) ? `
-  <div class="section">
-    <div class="section-title">Exploración podológica especializada</div>
-
-    ${explPodo.inspeccionDermatologica ? `
-    <div style="margin-top:6px"><strong>Inspección dermatológica</strong></div>
-    ${['pieDerecho','pieIzquierdo'].map(pie => {
-      const d = explPodo.inspeccionDermatologica[pie as 'pieDerecho' | 'pieIzquierdo']
-      if (!d) return ''
-      const label = pie === 'pieDerecho' ? 'Pie derecho' : 'Pie izquierdo'
-      return `<div class="field" style="margin:2px 0 2px 12px"><span class="lbl">${label}:</span> ` +
-        `Coloración: ${esc(d.coloracion || '—')}, ` +
-        `Temp: ${esc(d.temperatura || '—')}, ` +
-        `Hidratación: ${esc(d.hidratacion || '—')}, ` +
-        `Integridad: ${esc(d.integridad || '—')}` +
-        (d.lesiones ? `, Lesiones: ${esc(d.lesiones)}` : '') +
-        `</div>`
-    }).join('')}` : ''}
-
-    ${explPodo.exploracionUngueal?.dedos ? `
-    <div style="margin-top:6px"><strong>Exploración ungueal</strong></div>
-    ${Object.entries(explPodo.exploracionUngueal.dedos).filter(([,v]:any) => v && Object.values(v).some(x => x)).map(([dedo, v]:any) => {
-      const active = Object.entries(v).filter(([,val]:any) => val && val !== false && val !== '').map(([k]:any) => k)
-      return `<div class="field" style="margin:1px 0 1px 12px"><span class="lbl">${esc(dedo)}:</span> ${active.length > 0 ? renderChips(active) : '<span class="muted">Sin hallazgos</span>'}${v.grado ? ` (grado ${esc(v.grado)})` : ''}${v.observaciones ? ` — ${esc(v.observaciones)}` : ''}</div>`
-    }).join('')}` : ''}
-
-    ${explPodo.exploracionVascular ? `
-    <div style="margin-top:6px"><strong>Exploración vascular</strong></div>
-    <div class="field-grid" style="margin-left:12px">
-      <div class="field"><span class="lbl">Pulso pedio derecho:</span> ${esc(explPodo.exploracionVascular.pulsoPedioDerecho || '—')}</div>
-      <div class="field"><span class="lbl">Pulso pedio izquierdo:</span> ${esc(explPodo.exploracionVascular.pulsoPedioIzquierdo || '—')}</div>
-      <div class="field"><span class="lbl">Pulso tibial derecho:</span> ${esc(explPodo.exploracionVascular.pulsoTibialDerecho || '—')}</div>
-      <div class="field"><span class="lbl">Pulso tibial izquierdo:</span> ${esc(explPodo.exploracionVascular.pulsoTibialIzquierdo || '—')}</div>
-      <div class="field"><span class="lbl">Llenado capilar derecho:</span> ${esc(explPodo.exploracionVascular.llenadoCapilarDerecho || '—')}</div>
-      <div class="field"><span class="lbl">Llenado capilar izquierdo:</span> ${esc(explPodo.exploracionVascular.llenadoCapilarIzquierdo || '—')}</div>
-      <div class="field"><span class="lbl">Edema:</span> ${esc(explPodo.exploracionVascular.edema || '—')}</div>
-      <div class="field"><span class="lbl">ITB derecho:</span> ${esc(explPodo.exploracionVascular.itbDerecho || '—')}</div>
-      <div class="field"><span class="lbl">ITB izquierdo:</span> ${esc(explPodo.exploracionVascular.itbIzquierdo || '—')}</div>
-    </div>` : ''}
-
-    ${explPodo.exploracionNeurologica ? `
-    <div style="margin-top:6px"><strong>Exploración neurológica</strong></div>
-    <div class="field-grid" style="margin-left:12px">
-      <div class="field"><span class="lbl">Monofilamento derecho:</span> ${esc(explPodo.exploracionNeurologica.monofilamentoDerecho || '—')}</div>
-      <div class="field"><span class="lbl">Monofilamento izquierdo:</span> ${esc(explPodo.exploracionNeurologica.monofilamentoIzquierdo || '—')}</div>
-      <div class="field"><span class="lbl">Sensibilidad:</span> ${esc(explPodo.exploracionNeurologica.sensibilidad || '—')}</div>
-      <div class="field"><span class="lbl">Parestesias:</span> ${explPodo.exploracionNeurologica.parestesias ? 'Sí' : 'No'}</div>
-    </div>
-    ${explPodo.exploracionNeurologica.observaciones ? `<div class="field" style="margin-left:12px"><span class="lbl">Observaciones:</span> ${esc(explPodo.exploracionNeurologica.observaciones)}</div>` : ''}` : ''}
-
-    ${explPodo.exploracionMusculoesqueletica ? `
-    <div style="margin-top:6px"><strong>Exploración musculoesquelética y biomecánica</strong></div>
-    <div class="field-grid" style="margin-left:12px">
-      <div class="field"><span class="lbl">Tipo de pie:</span> ${esc(explPodo.exploracionMusculoesqueletica.tipoPie || '—')}</div>
-      <div class="field"><span class="lbl">Tipo de arco:</span> ${esc(explPodo.exploracionMusculoesqueletica.arco || '—')}</div>
-      <div class="field"><span class="lbl">Deformidades:</span> ${esc(explPodo.exploracionMusculoesqueletica.deformidades || '—')}</div>
-      <div class="field"><span class="lbl">Dolor a la palpación:</span> ${esc(explPodo.exploracionMusculoesqueletica.dolor || '—')}</div>
-      <div class="field"><span class="lbl">Rango de movimiento:</span> ${esc(explPodo.exploracionMusculoesqueletica.rom || '—')}</div>
-      <div class="field"><span class="lbl">Marcha:</span> ${esc(explPodo.exploracionMusculoesqueletica.marcha || '—')}</div>
-    </div>` : ''}
-
-  </div>` : ''}
-
-  <!-- EVALUACIÓN DE RIESGO -->
-  ${riesgo.nivel ? `
-  <div class="section">
-    <div class="section-title">Evaluación de riesgo podológico</div>
-    <div class="risk-box risk-${esc(riesgo.nivel)}">Riesgo ${esc(riesgo.nivel)}</div>
-    ${riesgo.observaciones ? `<div class="field" style="margin-top:4px">${esc(riesgo.observaciones)}</div>` : ''}
-    ${riesgo.nivel === 'URGENTE' ? '<div class="alert-box">⚠ Paciente requiere referencia médica urgente.</div>' : ''}
-  </div>` : ''}
-
-  <!-- DIAGNÓSTICOS -->
-  ${diagnosticos.principal || diagnosticos.secundarios ? `
-  <div class="section">
-    <div class="section-title">Diagnósticos</div>
-    ${diagnosticos.principal ? `<div class="field"><span class="lbl">Diagnóstico principal:</span> ${esc(diagnosticos.principal)}</div>` : ''}
-    ${diagnosticos.secundarios ? `<div class="field"><span class="lbl">Secundarios:</span> ${esc(diagnosticos.secundarios)}</div>` : ''}
-    ${diagnosticos.lateralidad ? `<div class="field"><span class="lbl">Lateralidad:</span> ${esc(diagnosticos.lateralidad)}</div>` : ''}
-  </div>` : ''}
-
-  <!-- PRONÓSTICO -->
-  ${pronostico.tipo || pronostico.descripcion ? `
-  <div class="section">
-    <div class="section-title">Pronóstico</div>
-    <div class="field"><span class="lbl">Tipo:</span> ${esc(pronostico.tipo || '—')}</div>
-    ${pronostico.descripcion ? `<div class="field" style="margin-top:4px">${esc(pronostico.descripcion)}</div>` : ''}
-  </div>` : ''}
-
-  <!-- PLAN DE MANEJO -->
-  ${plan.manejo || plan.tratamiento || plan.indicaciones ? `
-  <div class="section">
-    <div class="section-title">Plan terapéutico</div>
-    ${plan.manejo ? `<div class="field"><span class="lbl">Manejo realizado:</span> ${renderChips(plan.manejo)}</div>` : ''}
-    ${plan.tratamiento ? `<div class="field" style="margin-top:4px"><span class="lbl">Tratamiento indicado:</span> ${renderChips(plan.tratamiento)}</div>` : ''}
-    ${plan.indicaciones ? `<div class="field" style="margin-top:4px"><span class="lbl">Indicaciones al paciente:</span> ${esc(plan.indicaciones)}</div>` : ''}
-  </div>` : ''}
-
-  <!-- FIRMAS -->
-  <div class="signature-area">
-    <div>
-      <div class="sig-line">
-        ${esc(patientName)}<br/>
-        Paciente (o tutor)
-      </div>
-    </div>
-    <div>
-      <div class="sig-line">
-        Podólogo/a responsable<br/>
-        Cédula profesional
-      </div>
-    </div>
-  </div>
-
-  <div class="footer">
-    Documento generado el ${new Date().toLocaleString('es-MX')} · Sistema CENPOD · Expediente ${esc(p.expNumber)}
-  </div>
-  <div class="confidential">
-    Documento confidencial — Conforme a la NOM-004-SSA3-2012 del Sistema Nacional de Salud.<br/>
-    La información contenida es propiedad del Grupo CENPOD y su divulgación está prohibida sin autorización.
+    ${antPat.alergias ? `<div class="alert" style="margin-top:3px">Alergias: ${esc(antPat.alergias)}</div>` : ''}
+    ${antPat.medicamentos ? `<div class="fld" style="margin-top:2px"><b>Medicamentos:</b> ${esc(antPat.medicamentos)}</div>` : ''}
   </div>
 </div>
 
-<div class="no-print" style="margin-top:24px;text-align:center;">
+<!-- VI. ANTECEDENTES NO PATOLÓGICOS -->
+<div class="sec">
+  <div class="sec-hdr">VI. Antecedentes personales no patológicos</div>
+  <div class="sec-body">
+    <div class="grid">
+      <div class="fld"><b>Tabaco:</b> ${val(antNoPat.tabaquismo)}</div>
+      <div class="fld"><b>Alcohol:</b> ${val(antNoPat.alcohol)}</div>
+      <div class="fld"><b>Actividad física:</b> ${val(antNoPat.actividad)}</div>
+      <div class="fld"><b>Tipo de calzado:</b> ${val(antNoPat.calzado)}</div>
+      <div class="fld"><b>Quién corta uñas:</b> ${val(antNoPat.quienCorta)}</div>
+      <div class="fld"><b>Higiene de pies:</b> ${val(antNoPat.higiene)}</div>
+      <div class="fld"><b>Bipedestación (hrs):</b> ${val(antNoPat.bipedestacion)}</div>
+      <div class="fld"><b>Ocupación de riesgo:</b> ${val(antNoPat.ocupacion)}</div>
+    </div>
+  </div>
+</div>
+
+<!-- VII. SIGNOS VITALES -->
+${sig.ta || sig.fc || sig.fr || sig.peso || sig.talla ? `
+<div class="sec">
+  <div class="sec-hdr">VII. Signos vitales y somatometría</div>
+  <div class="sec-body">
+    <div class="grid">
+      <div class="fld"><b>TA:</b> ${val(sig.ta)} mmHg</div>
+      <div class="fld"><b>FC:</b> ${val(sig.fc)} lpm</div>
+      <div class="fld"><b>FR:</b> ${val(sig.fr)} rpm</div>
+      <div class="fld"><b>Temp:</b> ${val(sig.temperatura)} °C</div>
+      <div class="fld"><b>Peso:</b> ${val(sig.peso)} kg</div>
+      <div class="fld"><b>Talla:</b> ${val(sig.talla)} m</div>
+      <div class="fld"><b>IMC:</b> ${imc}</div>
+      <div class="fld"><b>Glucosa:</b> ${val(sig.glucosa)} mg/dL</div>
+      <div class="fld"><b>EVA:</b> ${val(sig.eva)}/10</div>
+    </div>
+  </div>
+</div>` : ''}
+
+<!-- VIII. EXPLORACIÓN PODOLÓGICA -->
+${explP.inspeccionDermatologica || explP.exploracionVascular || explP.exploracionNeurologica || explP.exploracionMusculoesqueletica ? `
+<div class="sec">
+  <div class="sec-hdr">VIII. Exploración podológica</div>
+  <div class="sec-body">
+    ${explP.inspeccionDermatologica ? `
+    <div class="fld" style="margin-top:3px"><b>Inspección dermatológica:</b></div>
+    ${['pieDerecho','pieIzquierdo'].map(pie => {
+      const d = explP.inspeccionDermatologica[pie]
+      if (!d) return ''
+      return `<div class="fld" style="margin-left:10px"><b>${pie === 'pieDerecho' ? 'Pie derecho' : 'Pie izquierdo'}:</b> ` +
+        `Coloración: ${val(d.coloracion)}, Temp: ${val(d.temperatura)}, Hidratación: ${val(d.hidratacion)}, Integridad: ${val(d.integridad)}${d.lesiones ? `, Lesiones: ${esc(d.lesiones)}` : ''}</div>`
+    }).join('')}` : ''}
+
+    ${explP.exploracionVascular ? `
+    <div class="fld" style="margin-top:4px"><b>Exploración vascular:</b></div>
+    <div class="grid" style="margin-left:10px">
+      <div class="fld">Pulso pedio D: ${val(explP.exploracionVascular.pulsoPedioDerecho)}</div>
+      <div class="fld">Pulso pedio I: ${val(explP.exploracionVascular.pulsoPedioIzquierdo)}</div>
+      <div class="fld">Pulso tibial D: ${val(explP.exploracionVascular.pulsoTibialDerecho)}</div>
+      <div class="fld">Pulso tibial I: ${val(explP.exploracionVascular.pulsoTibialIzquierdo)}</div>
+      <div class="fld">Llenado capilar D: ${val(explP.exploracionVascular.llenadoCapilarDerecho)}</div>
+      <div class="fld">Llenado capilar I: ${val(explP.exploracionVascular.llenadoCapilarIzquierdo)}</div>
+      <div class="fld">Edema: ${val(explP.exploracionVascular.edema)}</div>
+    </div>` : ''}
+
+    ${explP.exploracionNeurologica ? `
+    <div class="fld" style="margin-top:4px"><b>Exploración neurológica:</b></div>
+    <div class="grid" style="margin-left:10px">
+      <div class="fld">Monofilamento D: ${val(explP.exploracionNeurologica.monofilamentoDerecho)}</div>
+      <div class="fld">Monofilamento I: ${val(explP.exploracionNeurologica.monofilamentoIzquierdo)}</div>
+      <div class="fld">Sensibilidad: ${val(explP.exploracionNeurologica.sensibilidad)}</div>
+      <div class="fld">Parestesias: ${explP.exploracionNeurologica.parestesias ? 'Sí' : 'No'}</div>
+    </div>` : ''}
+
+    ${explP.exploracionMusculoesqueletica ? `
+    <div class="fld" style="margin-top:4px"><b>Exploración musculoesquelética:</b></div>
+    <div class="grid" style="margin-left:10px">
+      <div class="fld">Tipo de pie: ${val(explP.exploracionMusculoesqueletica.tipoPie)}</div>
+      <div class="fld">Arco: ${val(explP.exploracionMusculoesqueletica.arco)}</div>
+      <div class="fld">Deformidades: ${val(explP.exploracionMusculoesqueletica.deformidades)}</div>
+      <div class="fld">Dolor: ${val(explP.exploracionMusculoesqueletica.dolor)}</div>
+    </div>` : ''}
+  </div>
+</div>` : ''}
+
+<!-- IX. RIESGO -->
+${riesgo.nivel ? `
+<div class="sec">
+  <div class="sec-hdr">IX. Riesgo podológico</div>
+  <div class="sec-body">
+    <div class="risk risk-${esc(riesgo.nivel)}">Riesgo ${esc(riesgo.nivel)}</div>
+    ${riesgo.observaciones ? `<div class="fld" style="margin-top:2px">${esc(riesgo.observaciones)}</div>` : ''}
+  </div>
+</div>` : ''}
+
+<!-- X. DIAGNÓSTICO Y PLAN -->
+${dx.principal || dx.secundarios || pron.tipo || plan.indicaciones ? `
+<div class="sec">
+  <div class="sec-hdr">X. Diagnóstico, pronóstico y plan</div>
+  <div class="sec-body">
+    ${dx.principal ? `<div class="fld"><b>Diagnóstico principal:</b> ${esc(dx.principal)}</div>` : ''}
+    ${dx.secundarios ? `<div class="fld"><b>Secundarios:</b> ${esc(dx.secundarios)}</div>` : ''}
+    ${dx.lateralidad ? `<div class="fld"><b>Lateralidad:</b> ${esc(dx.lateralidad)}</div>` : ''}
+    ${pron.tipo ? `<div class="fld" style="margin-top:3px"><b>Pronóstico:</b> ${esc(pron.tipo)}</div>` : ''}
+    ${pron.descripcion ? `<div class="fld">${esc(pron.descripcion)}</div>` : ''}
+    ${plan.manejo && plan.manejo.length ? `<div class="fld" style="margin-top:3px"><b>Manejo realizado:</b> ${chips(plan.manejo)}</div>` : ''}
+    ${plan.tratamiento && plan.tratamiento.length ? `<div class="fld"><b>Tratamiento indicado:</b> ${chips(plan.tratamiento)}</div>` : ''}
+    ${plan.indicaciones ? `<div class="fld" style="margin-top:2px"><b>Indicaciones:</b> ${esc(plan.indicaciones)}</div>` : ''}
+  </div>
+</div>` : ''}
+
+<!-- FIRMAS -->
+<div class="sigs">
+  <div class="sig">${esc(patientName)}<br/>Paciente (o tutor)</div>
+  <div class="sig">Podólogo/a responsable<br/>Cédula profesional</div>
+</div>
+
+<div class="ftr">Documento generado el ${new Date().toLocaleString('es-MX')} · Sistema CENPOD · Expediente ${esc(p.expNumber)}</div>
+<div class="conf">Documento confidencial — NOM-004-SSA3-2012 · La información es propiedad del Grupo CENPOD.</div>
+
+<div class="np" style="margin-top:20px;text-align:center;">
   <button onclick="window.print()" style="background:#0a3143;color:#fff;border:none;padding:10px 24px;font-size:14px;border-radius:6px;cursor:pointer;">Imprimir / Guardar PDF</button>
 </div>
-</body>
-</html>`
+</body></html>`
 
     const win = window.open('', '_blank', 'width=800,height=900')
     if (!win) {
