@@ -371,15 +371,33 @@ function HistoriaClinicaFormBody({
     </div>
   </div>
 
+  <!-- INTERROGATORIO POR APARATOS -->
+  ${interrogatorio && (interrogatorio.general || interrogatorio.cardiovascular || interrogatorio.endocrino || interrogatorio.neurologico || interrogatorio.dermatologico || interrogatorio.musculoesqueletico) ? `
+  <div class="section">
+    <div class="section-title">Interrogatorio por aparatos y sistemas</div>
+    ${['general','cardiovascular','endocrino','neurologico','dermatologico','musculoesqueletico'].map(sys => {
+      const s = (interrogatorio as any)[sys]
+      if (!s) return ''
+      const labels: Record<string,string> = {general:'General',cardiovascular:'Cardiovascular',endocrino:'Endocrino/Metabólico',neurologico:'Neurológico',dermatologico:'Dermatológico',musculoesqueletico:'Musculoesquelético'}
+      const active = s.checkboxes ? Object.entries(s.checkboxes).filter(([,v]:any) => v).map(([k]:any) => k) : []
+      return `<div class="field" style="margin:3px 0"><span class="lbl">${labels[sys] || sys}:</span> ` +
+        (s.sinDatosPatologicos ? '<span class="muted">Sin datos patológicos</span>' : '') +
+        (active.length > 0 ? ` ${renderChips(active)}` : '') +
+        (s.notas ? `<div style="margin-left:12px">${esc(s.notas)}</div>` : '') +
+        `</div>`
+    }).join('')}
+  </div>` : ''}
+
   <!-- SIGNOS VITALES -->
-  ${signos.ta || signos.fc || signos.fr || signos.temperatura || signos.peso || signos.talla ? `
+  ${signos && (signos.ta || signos.fc || signos.fr || signos.temperatura || signos.peso || signos.talla || signos.glucosa || signos.eva !== undefined) ? `
   <div class="section">
     <div class="section-title">Signos vitales y somatometría</div>
     <div class="field-grid">
       <div class="field"><span class="lbl">TA:</span> <span class="val">${esc(signos.ta || '—')} mmHg</span></div>
       <div class="field"><span class="lbl">FC:</span> <span class="val">${esc(signos.fc || '—')} lpm</span></div>
       <div class="field"><span class="lbl">FR:</span> <span class="val">${esc(signos.fr || '—')} rpm</span></div>
-      <div class="field"><span class="lbl">Temp:</span> <span class="val">${esc(signos.temperatura || '—')} °C</span></div>
+      <div class="field"><span class="lbl">Temperatura:</span> <span class="val">${esc(signos.temperatura || '—')} °C</span></div>
+      <div class="field"><span class="lbl">SpO₂:</span> <span class="val">${esc(signos.spo2 || '—')} %</span></div>
       <div class="field"><span class="lbl">Peso:</span> <span class="val">${esc(signos.peso || '—')} kg</span></div>
       <div class="field"><span class="lbl">Talla:</span> <span class="val">${esc(signos.talla || '—')} m</span></div>
       <div class="field"><span class="lbl">IMC:</span> <span class="val">${signos.imc || (signos.peso && signos.talla ? (Number(signos.peso) / (Number(signos.talla) ** 2)).toFixed(1) : '—')}</span></div>
@@ -388,15 +406,83 @@ function HistoriaClinicaFormBody({
     </div>
   </div>` : ''}
 
-  <!-- EXPLORACIÓN PODOLÓGICA -->
-  ${explPodo.dermatologica || explPodo.ungueal || explPodo.vascular || explPodo.neurologica || explPodo.musculoesqueletica ? `
+  <!-- EXPLORACIÓN FÍSICA GENERAL -->
+  ${exploracion && (exploracion.estadoGeneral || exploracion.marcha || exploracion.estadoAlerta) ? `
   <div class="section">
-    <div class="section-title">Exploración podológica</div>
-    ${explPodo.dermatologica ? `<div class="field" style="margin-top:4px"><span class="lbl">Inspección dermatológica:</span> ${esc(JSON.stringify(explPodo.dermatologica).replace(/[{}"]/g,' ').slice(0,500))}</div>` : ''}
-    ${explPodo.ungueal ? `<div class="field" style="margin-top:4px"><span class="lbl">Exploración ungueal:</span> ${esc(JSON.stringify(explPodo.ungueal).replace(/[{}"]/g,' ').slice(0,500))}</div>` : ''}
-    ${explPodo.vascular ? `<div class="field" style="margin-top:4px"><span class="lbl">Exploración vascular:</span> ${esc(JSON.stringify(explPodo.vascular).replace(/[{}"]/g,' ').slice(0,300))}</div>` : ''}
-    ${explPodo.neurologica ? `<div class="field" style="margin-top:4px"><span class="lbl">Exploración neurológica:</span> ${esc(JSON.stringify(explPodo.neurologica).replace(/[{}"]/g,' ').slice(0,300))}</div>` : ''}
-    ${explPodo.musculoesqueletica ? `<div class="field" style="margin-top:4px"><span class="lbl">Exploración musculoesquelética:</span> ${esc(JSON.stringify(explPodo.musculoesqueletica).replace(/[{}"]/g,' ').slice(0,300))}</div>` : ''}
+    <div class="section-title">Exploración física general</div>
+    <div class="field-grid">
+      <div class="field"><span class="lbl">Estado de alerta:</span> <span class="val">${esc(exploracion.estadoAlerta || '—')}</span></div>
+      <div class="field"><span class="lbl">Orientación:</span> <span class="val">${esc(exploracion.orientacion || '—')}</span></div>
+      <div class="field"><span class="lbl">Habitus exterior:</span> <span class="val">${esc(exploracion.habitus || '—')}</span></div>
+      <div class="field"><span class="lbl">Estado general:</span> <span class="val">${esc(exploracion.estadoGeneral || '—')}</span></div>
+      <div class="field"><span class="lbl">Marcha:</span> <span class="val">${esc(exploracion.marcha || '—')}</span></div>
+      <div class="field"><span class="lbl">Uso de apoyo:</span> <span class="val">${esc(exploracion.apoyo || '—')}</span></div>
+    </div>
+    ${exploracion.observaciones ? `<div class="field" style="margin-top:4px"><span class="lbl">Observaciones:</span> ${esc(exploracion.observaciones)}</div>` : ''}
+  </div>` : ''}
+
+  <!-- EXPLORACIÓN PODOLÓGICA -->
+  ${explPodo && (explPodo.inspeccionDermatologica || explPodo.exploracionUngueal || explPodo.exploracionVascular || explPodo.exploracionNeurologica || explPodo.exploracionMusculoesqueletica) ? `
+  <div class="section">
+    <div class="section-title">Exploración podológica especializada</div>
+
+    ${explPodo.inspeccionDermatologica ? `
+    <div style="margin-top:6px"><strong>Inspección dermatológica</strong></div>
+    ${['pieDerecho','pieIzquierdo'].map(pie => {
+      const d = explPodo.inspeccionDermatologica[pie as 'pieDerecho' | 'pieIzquierdo']
+      if (!d) return ''
+      const label = pie === 'pieDerecho' ? 'Pie derecho' : 'Pie izquierdo'
+      return `<div class="field" style="margin:2px 0 2px 12px"><span class="lbl">${label}:</span> ` +
+        `Coloración: ${esc(d.coloracion || '—')}, ` +
+        `Temp: ${esc(d.temperatura || '—')}, ` +
+        `Hidratación: ${esc(d.hidratacion || '—')}, ` +
+        `Integridad: ${esc(d.integridad || '—')}` +
+        (d.lesiones ? `, Lesiones: ${esc(d.lesiones)}` : '') +
+        `</div>`
+    }).join('')}` : ''}
+
+    ${explPodo.exploracionUngueal?.dedos ? `
+    <div style="margin-top:6px"><strong>Exploración ungueal</strong></div>
+    ${Object.entries(explPodo.exploracionUngueal.dedos).filter(([,v]:any) => v && Object.values(v).some(x => x)).map(([dedo, v]:any) => {
+      const active = Object.entries(v).filter(([,val]:any) => val && val !== false && val !== '').map(([k]:any) => k)
+      return `<div class="field" style="margin:1px 0 1px 12px"><span class="lbl">${esc(dedo)}:</span> ${active.length > 0 ? renderChips(active) : '<span class="muted">Sin hallazgos</span>'}${v.grado ? ` (grado ${esc(v.grado)})` : ''}${v.observaciones ? ` — ${esc(v.observaciones)}` : ''}</div>`
+    }).join('')}` : ''}
+
+    ${explPodo.exploracionVascular ? `
+    <div style="margin-top:6px"><strong>Exploración vascular</strong></div>
+    <div class="field-grid" style="margin-left:12px">
+      <div class="field"><span class="lbl">Pulso pedio derecho:</span> ${esc(explPodo.exploracionVascular.pulsoPedioDerecho || '—')}</div>
+      <div class="field"><span class="lbl">Pulso pedio izquierdo:</span> ${esc(explPodo.exploracionVascular.pulsoPedioIzquierdo || '—')}</div>
+      <div class="field"><span class="lbl">Pulso tibial derecho:</span> ${esc(explPodo.exploracionVascular.pulsoTibialDerecho || '—')}</div>
+      <div class="field"><span class="lbl">Pulso tibial izquierdo:</span> ${esc(explPodo.exploracionVascular.pulsoTibialIzquierdo || '—')}</div>
+      <div class="field"><span class="lbl">Llenado capilar derecho:</span> ${esc(explPodo.exploracionVascular.llenadoCapilarDerecho || '—')}</div>
+      <div class="field"><span class="lbl">Llenado capilar izquierdo:</span> ${esc(explPodo.exploracionVascular.llenadoCapilarIzquierdo || '—')}</div>
+      <div class="field"><span class="lbl">Edema:</span> ${esc(explPodo.exploracionVascular.edema || '—')}</div>
+      <div class="field"><span class="lbl">ITB derecho:</span> ${esc(explPodo.exploracionVascular.itbDerecho || '—')}</div>
+      <div class="field"><span class="lbl">ITB izquierdo:</span> ${esc(explPodo.exploracionVascular.itbIzquierdo || '—')}</div>
+    </div>` : ''}
+
+    ${explPodo.exploracionNeurologica ? `
+    <div style="margin-top:6px"><strong>Exploración neurológica</strong></div>
+    <div class="field-grid" style="margin-left:12px">
+      <div class="field"><span class="lbl">Monofilamento derecho:</span> ${esc(explPodo.exploracionNeurologica.monofilamentoDerecho || '—')}</div>
+      <div class="field"><span class="lbl">Monofilamento izquierdo:</span> ${esc(explPodo.exploracionNeurologica.monofilamentoIzquierdo || '—')}</div>
+      <div class="field"><span class="lbl">Sensibilidad:</span> ${esc(explPodo.exploracionNeurologica.sensibilidad || '—')}</div>
+      <div class="field"><span class="lbl">Parestesias:</span> ${explPodo.exploracionNeurologica.parestesias ? 'Sí' : 'No'}</div>
+    </div>
+    ${explPodo.exploracionNeurologica.observaciones ? `<div class="field" style="margin-left:12px"><span class="lbl">Observaciones:</span> ${esc(explPodo.exploracionNeurologica.observaciones)}</div>` : ''}` : ''}
+
+    ${explPodo.exploracionMusculoesqueletica ? `
+    <div style="margin-top:6px"><strong>Exploración musculoesquelética y biomecánica</strong></div>
+    <div class="field-grid" style="margin-left:12px">
+      <div class="field"><span class="lbl">Tipo de pie:</span> ${esc(explPodo.exploracionMusculoesqueletica.tipoPie || '—')}</div>
+      <div class="field"><span class="lbl">Tipo de arco:</span> ${esc(explPodo.exploracionMusculoesqueletica.arco || '—')}</div>
+      <div class="field"><span class="lbl">Deformidades:</span> ${esc(explPodo.exploracionMusculoesqueletica.deformidades || '—')}</div>
+      <div class="field"><span class="lbl">Dolor a la palpación:</span> ${esc(explPodo.exploracionMusculoesqueletica.dolor || '—')}</div>
+      <div class="field"><span class="lbl">Rango de movimiento:</span> ${esc(explPodo.exploracionMusculoesqueletica.rom || '—')}</div>
+      <div class="field"><span class="lbl">Marcha:</span> ${esc(explPodo.exploracionMusculoesqueletica.marcha || '—')}</div>
+    </div>` : ''}
+
   </div>` : ''}
 
   <!-- EVALUACIÓN DE RIESGO -->
