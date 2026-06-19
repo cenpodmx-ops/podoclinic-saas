@@ -211,78 +211,78 @@
   font-size: 11px;
 }
 
+/* ===== UN SOLO BLOQUE @media print UNIFICADO ===== */
 @media print {
+  /* Ocultar todo por defecto */
   body * { visibility: hidden !important; }
+
+  /* Ticket de consulta (80mm térmico) */
   .ticket-print,
   .ticket-print * { visibility: visible !important; }
   .ticket-print {
-    position: absolute;
-    left: 0;
-    top: 0;
-    width: 80mm;
-    margin: 0;
-    padding: 2mm;
+    position: absolute; left: 0; top: 0;
+    width: 80mm; margin: 0; padding: 2mm;
   }
-  /* Forzar tamaño de papel a 80mm SOLO cuando se imprime un ticket */
-  body.printing-ticket {
-    /* @page no se puede anidar — se maneja con clase en el <head> */
-  }
-  /* Expediente clínico — historia clínica imprimible */
+
+  /* Expediente clínico / historia clínica */
   .print-expediente,
   .print-expediente * { visibility: visible !important; }
   .print-expediente {
-    position: absolute;
-    left: 0;
-    top: 0;
-    width: 100%;
-    padding: 12mm;
-    background: #fff;
+    position: absolute; left: 0; top: 0;
+    width: 100%; padding: 12mm; background: #fff;
   }
-  /* Ocultar botones y elementos no imprimibles dentro del expediente */
   .print-expediente [class*="print:hidden"] { display: none !important; }
   .print-expediente button { display: none !important; }
+
+  /* Corte de caja */
   .corte-print,
   .corte-print * { visibility: visible !important; }
   .corte-print {
-    position: absolute;
-    left: 0;
-    top: 0;
-    width: 210mm;
-    min-height: 297mm;
-    margin: 0;
-    padding: 12mm;
-    background: #fff;
-    color: #111;
+    position: absolute; left: 0; top: 0;
+    width: 210mm; min-height: 297mm; margin: 0; padding: 12mm;
+    background: #fff; color: #111;
   }
+
+  /* Reporte */
   .reporte-print,
   .reporte-print * { visibility: visible !important; }
   .reporte-print {
-    position: absolute;
-    left: 0;
-    top: 0;
-    width: 210mm;
-    min-height: 297mm;
-    margin: 0;
-    padding: 12mm;
-    background: #fff;
-    color: #111;
+    position: absolute; left: 0; top: 0;
+    width: 210mm; min-height: 297mm; margin: 0; padding: 12mm;
+    background: #fff; color: #111;
   }
-  @page { size: 80mm auto; margin: 0; }
-  @page corte { size: A4; margin: 10mm; }
-  @page reporte { size: A4; margin: 10mm; }
-  .corte-print { page: corte; }
-  .reporte-print { page: reporte; }
-  @page facturaresumen { size: letter; margin: 12mm; }
+
+  /* Receta (vista previa imprimible) */
+  .rx-preview-printable,
+  .rx-preview-printable * { visibility: visible !important; }
+  .rx-preview-printable {
+    position: absolute; left: 0; top: 0; width: 100%;
+  }
+  .rx-preview-sheet {
+    border: none; padding: 0; min-height: auto;
+  }
+
+  /* Agenda */
+  .print-agenda,
+  .print-agenda * { visibility: visible !important; }
+  .print-agenda {
+    position: absolute; left: 0; top: 0;
+    width: 100%; padding: 0 !important;
+  }
+
+  /* Factura resumen */
+  .no-print, .no-print * { display: none !important; }
+  .factura-resumen-print .print-only { display: block !important; }
+  .factura-resumen-print { padding: 0 !important; }
+
+  /* Ocultar sidebar, topbar y bottom nav */
+  aside, header, nav { display: none !important; }
+  .min-h-screen { display: block !important; }
+  .flex-1 { width: 100% !important; overflow: visible !important; }
 }
 
 /* ===== Resumen mensual de facturación (impresión carta) ===== */
 .factura-resumen-print .print-only { display: none; }
-@media print {
-  .no-print, .no-print * { display: none !important; }
-  .factura-resumen-print .print-only { display: block !important; }
-  .factura-resumen-print { padding: 0 !important; }
-  .factura-resumen-print { page: facturaresumen; }
-}
 
 /* ===== Corte de caja / Reporte (pantalla + impresión A4) ===== */
 .corte-print, .reporte-print {
@@ -544,61 +544,23 @@
   .rx-preview-meds-table th, .rx-preview-meds-table td { padding: 4px 5px; }
 }
 
-@media print {
-  /* Permite imprimir la vista previa directamente desde la página:
-     oculta todo excepto .rx-preview-printable .rx-preview-sheet */
-  body * { visibility: hidden !important; }
-  .rx-preview-printable,
-  .rx-preview-printable * { visibility: visible !important; }
-  .rx-preview-printable {
-    position: absolute;
-    left: 0;
-    top: 0;
-    width: 100%;
-  }
-  .rx-preview-sheet {
-    border: none;
-    padding: 0;
-    min-height: auto;
-  }
-  /* ===== AGENDA: permitir imprimir la vista de impresión ===== */
-  .print-agenda,
-  .print-agenda * { visibility: visible !important; }
-  .print-agenda {
-    position: absolute;
-    left: 0;
-    top: 0;
-    width: 100%;
-    padding: 0 !important;
-  }
-  /* Ocultar sidebar, topbar y bottom nav al imprimir */
-  aside, header, nav { display: none !important; }
-  /* El contenedor principal ocupa todo el ancho */
-  .min-h-screen { display: block !important; }
-  .flex-1 { width: 100% !important; overflow: visible !important; }
-}
-
-/* ===== VISTA DE IMPRESIÓN DE LA AGENDA ===== */
-@media print {
-  @page { size: landscape; margin: 12mm; }
-  body { background: white !important; }
-  .print-agenda { font-family: Arial, sans-serif; color: #1a1a1a; }
-  .print-agenda h1 { text-align: center; font-size: 22px; margin: 0; letter-spacing: 0.05em; }
-  .print-agenda .sub { text-align: center; font-size: 13px; margin: 4px 0 16px; color: #555; }
-  .print-agenda table { width: 100%; border-collapse: collapse; font-size: 12px; }
-  .print-agenda th { background: #0a3143; color: white; padding: 8px 10px; text-align: left; font-size: 11px; text-transform: uppercase; letter-spacing: 0.04em; }
-  .print-agenda td { border: 1px solid #ddd; padding: 8px 10px; vertical-align: top; }
-  .print-agenda tr:nth-child(even) td { background: #f8f8f8; }
-  .print-agenda .hora { font-weight: 700; color: #0a3143; width: 70px; text-align: center; }
-  .print-agenda .status-PENDIENTE { color: #b45309; font-weight: 600; }
-  .print-agenda .status-CONFIRMEDA { color: #059669; font-weight: 600; }
-  .print-agenda .status-FINALIZADA { color: #6b7280; }
-  .print-agenda .status-CANCELADA { color: #dc2626; text-decoration: line-through; }
-  .print-agenda .status-NO_ASISTIO { color: #ea580c; font-weight: 600; }
-  .print-agenda .status-EN_CONSULTA { color: #2563eb; font-weight: 600; }
-  .print-agenda .footer { margin-top: 20px; text-align: center; font-size: 10px; color: #999; border-top: 1px solid #eee; padding-top: 8px; }
-  .print-agenda .podologo-col { width: 130px; font-weight: 600; }
-  .print-agenda .motivo-col { width: 25%; }
-  .print-agenda .status-col { width: 100px; }
-  .print-agenda .notas-col { width: 25%; }
-}
+/* Estilos de la agenda imprimible (fuera de @media print para que apliquen siempre al .print-agenda) */
+.print-agenda { font-family: Arial, sans-serif; color: #1a1a1a; }
+.print-agenda h1 { text-align: center; font-size: 22px; margin: 0; letter-spacing: 0.05em; }
+.print-agenda .sub { text-align: center; font-size: 13px; margin: 4px 0 16px; color: #555; }
+.print-agenda table { width: 100%; border-collapse: collapse; font-size: 12px; }
+.print-agenda th { background: #0a3143; color: white; padding: 8px 10px; text-align: left; font-size: 11px; text-transform: uppercase; letter-spacing: 0.04em; }
+.print-agenda td { border: 1px solid #ddd; padding: 8px 10px; vertical-align: top; }
+.print-agenda tr:nth-child(even) td { background: #f8f8f8; }
+.print-agenda .hora { font-weight: 700; color: #0a3143; width: 70px; text-align: center; }
+.print-agenda .status-PENDIENTE { color: #b45309; font-weight: 600; }
+.print-agenda .status-CONFIRMADA { color: #059669; font-weight: 600; }
+.print-agenda .status-FINALIZADA { color: #6b7280; }
+.print-agenda .status-CANCELADA { color: #dc2626; text-decoration: line-through; }
+.print-agenda .status-NO_ASISTIO { color: #ea580c; font-weight: 600; }
+.print-agenda .status-EN_CONSULTA { color: #2563eb; font-weight: 600; }
+.print-agenda .footer { margin-top: 20px; text-align: center; font-size: 10px; color: #999; border-top: 1px solid #eee; padding-top: 8px; }
+.print-agenda .podologo-col { width: 130px; font-weight: 600; }
+.print-agenda .motivo-col { width: 25%; }
+.print-agenda .status-col { width: 100px; }
+.print-agenda .notas-col { width: 25%; }
