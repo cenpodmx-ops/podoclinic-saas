@@ -1369,7 +1369,11 @@ function TicketDialog({
   if (!consultation) return null
 
   function handlePrint() {
+    // Añadir clase al body para que el @page sea 80mm solo para tickets
+    document.body.classList.add('printing-ticket')
     window.print()
+    // Quitar la clase después de imprimir
+    setTimeout(() => document.body.classList.remove('printing-ticket'), 1000)
   }
 
   // Marcar ticket como impreso (no crítico)

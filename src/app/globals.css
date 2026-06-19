@@ -221,7 +221,14 @@
     top: 0;
     width: 80mm;
     margin: 0;
-    padding: 4mm;
+    padding: 2mm;
+  }
+  /* Forzar tamaño de papel a 80mm SOLO cuando se imprime un ticket */
+  body.printing-ticket {
+    @page {
+      size: 80mm auto;
+      margin: 0;
+    }
   }
   .corte-print,
   .corte-print * { visibility: visible !important; }
