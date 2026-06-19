@@ -4,14 +4,19 @@ import { requireSession, ok, bad } from '@/lib/api'
 import { Prisma } from '@prisma/client'
 import { logAudit } from '@/lib/audit'
 
-/** Carga el paciente verificando acceso cross-clinic. */
+/** Carga el paciente verificando acceso cross-clinic.
+ *  SUPER: acceso a todo.
+ *  OWNER/RECEPTION: acceso a pacientes de cualquier clínica del grupo (modo global).
+ *  PODOLOGIST: solo su clínica.
+ */
 async function loadPatientForUser(id: string, user: { role: string; clinicId: string }) {
   const p = await db.patient.findUnique({
     where: { id },
     select: { id: true, clinicId: true },
   })
   if (!p) return null
-  if (user.role !== 'SUPER' && p.clinicId !== user.clinicId) return 'forbidden' as const
+  if (user.role === 'PODOLOGIST' && p.clinicId !== user.clinicId) return 'forbidden' as const
+  // SUPER y OWNER/RECEPTION pueden ver pacientes de cualquier clínica del grupo
   return p
 }
 

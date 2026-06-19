@@ -99,6 +99,7 @@ export default function PacientesPage() {
 
   // Filters
   const [clinicId, setClinicId] = useState<string>('') // '' = all (SUPER) or own
+  const [globalMode, setGlobalMode] = useState(false) // ver pacientes de todas las clínicas
   const [diabetic, setDiabetic] = useState<'' | 'true' | 'false'>('')
   const [risk, setRisk] = useState<string>('')
   const [sinCitaReciente, setSinCitaReciente] = useState(false)
@@ -145,10 +146,17 @@ export default function PacientesPage() {
   if (isSuper && clinicId) {
     params.set('clinicId', clinicId)
   }
+  if (globalMode && !isSuper) {
+    params.set('global', '1')
+  }
+  if (isSuper && !clinicId) {
+    params.set('global', '1')
+  }
 
   const { data, isLoading, isFetching } = useQuery({
-    queryKey: ['pacientes', debounced, page, limit, diabetic, risk, sinCitaReciente, clinicId, isSuper],
+    queryKey: ['pacientes', debounced, page, limit, diabetic, risk, sinCitaReciente, clinicId, isSuper, globalMode],
     queryFn: () => fetch(`/api/pacientes?${params.toString()}`).then((r) => r.json()),
+    placeholderData: (prev) => prev,
   })
 
   const rows: PatientRow[] = data?.data || []
@@ -263,6 +271,19 @@ export default function PacientesPage() {
           {isFetching && (
             <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 animate-spin text-muted-foreground" />
           )}
+        </div>
+
+        {/* Switch Global / Esta sucursal */}
+        <div className="flex items-center gap-2 px-3 py-1.5 rounded-md border bg-muted/30">
+          <span className={`text-xs font-medium ${!globalMode ? 'text-primary' : 'text-muted-foreground'}`}>Esta sucursal</span>
+          <button
+            type="button"
+            onClick={() => { setGlobalMode(!globalMode); setPage(1) }}
+            className={`relative w-10 h-5 rounded-full transition-colors ${globalMode ? 'bg-emerald-500' : 'bg-muted-foreground/30'}`}
+          >
+            <span className={`absolute top-0.5 left-0.5 w-4 h-4 rounded-full bg-white shadow transition-transform ${globalMode ? 'translate-x-5' : ''}`} />
+          </button>
+          <span className={`text-xs font-medium ${globalMode ? 'text-emerald-600' : 'text-muted-foreground'}`}>Global</span>
         </div>
 
         <div className="flex items-center gap-2">

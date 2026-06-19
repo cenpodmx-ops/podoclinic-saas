@@ -40,18 +40,30 @@ export async function GET(req: NextRequest) {
   const noRecent = sp.get('sinCitaReciente') === '1'
   const allParam = sp.get('all') || undefined
   const overrideClinicId = sp.get('clinicId') || undefined
+  const global = sp.get('global') === '1'
 
   // SUPER puede ver todas las clínicas con ?all=1, o pisar clinicId
+  // OWNER/RECEPTION con ?global=1 puede ver pacientes de todas las clínicas del grupo
   let clinicId: string | undefined
+  let clinicFilter: Prisma.PatientWhereInput = {}
+
   if (user!.role === 'SUPER') {
     if (overrideClinicId) clinicId = overrideClinicId
     else clinicId = effectiveClinic(user!, allParam)
+    if (clinicId) clinicFilter = { clinicId }
+  } else if (global) {
+    // Modo global: ver pacientes de todas las clínicas operativas (no distribuidora ni matriz)
+    const allClinics = await db.clinic.findMany({
+      where: { isDistributor: false, isMatrix: false },
+      select: { id: true },
+    })
+    clinicFilter = { clinicId: { in: allClinics.map(c => c.id) } }
   } else {
     clinicId = user!.clinicId
+    clinicFilter = { clinicId }
   }
 
-  const where: Prisma.PatientWhereInput = {}
-  if (clinicId) where.clinicId = clinicId
+  const where: Prisma.PatientWhereInput = clinicFilter
 
   if (q) {
     // NOTE: SQLite no soporta `mode: 'insensitive'` pero ya es case-insensitive por defecto.
