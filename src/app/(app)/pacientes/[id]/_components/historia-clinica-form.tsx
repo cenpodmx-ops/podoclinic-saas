@@ -275,6 +275,11 @@ function HistoriaClinicaFormBody({
     .np { display: none; }
     body { padding: 0 !important; background: #fff !important; }
     .page { max-width: none !important; box-shadow: none !important; border-radius: 0 !important; }
+    .sec { break-inside: avoid; page-break-inside: avoid; }
+    .sec-hdr { break-after: avoid; page-break-after: avoid; }
+    .sigs { break-inside: avoid; page-break-inside: avoid; }
+    .alert { break-inside: avoid; page-break-inside: avoid; }
+    .grid { break-inside: avoid; page-break-inside: avoid; }
   }
 </style></head><body>
 <div class="page">
