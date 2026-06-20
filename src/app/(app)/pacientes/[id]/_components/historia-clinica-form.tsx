@@ -243,33 +243,33 @@ function HistoriaClinicaFormBody({
 <html lang="es"><head><meta charset="utf-8"/>
 <title>Historia Clínica — ${esc(patientName)}</title>
 <style>
-  @page { size: A4; margin: 16mm; }
+  @page { size: A4; margin: 22mm 20mm; }
   * { box-sizing: border-box; }
-  body { font-family: Arial, 'Helvetica Neue', sans-serif; color: #1a1a1a; margin: 0; font-size: 11px; line-height: 1.5; }
-  .hdr { background: #0a3143; color: #fff; padding: 10px 16px; display: flex; justify-content: space-between; align-items: center; }
+  body { font-family: Arial, 'Helvetica Neue', sans-serif; color: #1a1a1a; margin: 0; font-size: 11px; line-height: 1.6; }
+  .hdr { background: #0a3143; color: #fff; padding: 12px 20px; display: flex; justify-content: space-between; align-items: center; border-radius: 4px; }
   .hdr .brand { font-size: 16px; font-weight: 800; letter-spacing: 0.06em; }
   .hdr .brand-sub { font-size: 9px; opacity: 0.7; }
   .hdr .meta { text-align: right; font-size: 9px; opacity: 0.8; }
-  .sec { margin-top: 12px; }
-  .sec-hdr { background: #f0f0f0; padding: 4px 10px; font-weight: 700; font-size: 11px; color: #333; text-transform: uppercase; letter-spacing: 0.03em; border-left: 3px solid #0a3143; }
-  .sec-body { padding: 6px 10px; }
-  .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 2px 14px; }
-  .fld { font-size: 10.5px; margin: 1px 0; }
+  .sec { margin-top: 14px; }
+  .sec-hdr { background: #f0f0f0; padding: 5px 12px; font-weight: 700; font-size: 11px; color: #333; text-transform: uppercase; letter-spacing: 0.03em; border-left: 4px solid #0a3143; border-radius: 0 3px 3px 0; }
+  .sec-body { padding: 8px 12px; }
+  .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 4px 18px; }
+  .fld { font-size: 10.5px; margin: 2px 0; }
   .fld b { color: #555; font-weight: 600; }
-  .chip { display: inline-block; background: #e8f0f4; border: 1px solid #b0c4d8; border-radius: 3px; padding: 0 5px; font-size: 9px; margin: 1px; }
+  .chip { display: inline-block; background: #e8f0f4; border: 1px solid #b0c4d8; border-radius: 3px; padding: 1px 6px; font-size: 9px; margin: 1px; }
   .muted { color: #aaa; font-style: italic; }
-  .row { font-size: 10.5px; margin: 1px 0; }
+  .row { font-size: 10.5px; margin: 2px 0; }
   .chk { color: #0a3143; font-weight: bold; }
-  .alert { border: 1px solid #dc2626; background: #fef2f2; border-radius: 3px; padding: 4px 8px; font-size: 10px; color: #991b1b; margin: 4px 0; }
-  .risk { display: inline-block; padding: 2px 10px; border-radius: 3px; font-weight: 700; font-size: 11px; }
+  .alert { border: 1px solid #dc2626; background: #fef2f2; border-radius: 3px; padding: 5px 10px; font-size: 10px; color: #991b1b; margin: 5px 0; }
+  .risk { display: inline-block; padding: 3px 12px; border-radius: 3px; font-weight: 700; font-size: 11px; }
   .risk-BAJO { background: #d1fae5; color: #065f46; }
   .risk-MEDIO { background: #fef3c7; color: #92400e; }
   .risk-ALTO { background: #fee2e2; color: #991b1b; }
   .risk-URGENTE { background: #dc2626; color: #fff; }
-  .sigs { margin-top: 36px; display: grid; grid-template-columns: 1fr 1fr; gap: 36px; }
-  .sig { border-top: 1.5px solid #333; padding-top: 4px; font-size: 9px; text-align: center; color: #555; }
-  .ftr { margin-top: 24px; border-top: 1px solid #ddd; padding-top: 6px; font-size: 8px; color: #999; text-align: center; }
-  .conf { font-size: 8px; color: #bbb; text-align: center; margin-top: 3px; font-style: italic; }
+  .sigs { margin-top: 40px; display: grid; grid-template-columns: 1fr 1fr; gap: 40px; }
+  .sig { border-top: 1.5px solid #333; padding-top: 5px; font-size: 9px; text-align: center; color: #555; }
+  .ftr { margin-top: 28px; border-top: 1px solid #ddd; padding-top: 8px; font-size: 8px; color: #999; text-align: center; }
+  .conf { font-size: 8px; color: #bbb; text-align: center; margin-top: 4px; font-style: italic; }
   @media print { .np { display: none; } }
 </style></head><body>
 
