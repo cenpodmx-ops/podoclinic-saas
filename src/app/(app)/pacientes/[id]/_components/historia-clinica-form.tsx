@@ -245,7 +245,8 @@ function HistoriaClinicaFormBody({
 <style>
   @page { size: A4; margin: 22mm 20mm; }
   * { box-sizing: border-box; }
-  body { font-family: Arial, 'Helvetica Neue', sans-serif; color: #1a1a1a; margin: 0; font-size: 11px; line-height: 1.6; }
+  body { font-family: Arial, 'Helvetica Neue', sans-serif; color: #1a1a1a; margin: 0; font-size: 11px; line-height: 1.6; padding: 30px 40px; background: #f5f5f5; }
+  .page { max-width: 800px; margin: 0 auto; background: #fff; padding: 30px 36px; box-shadow: 0 2px 12px rgba(0,0,0,0.1); border-radius: 6px; }
   .hdr { background: #0a3143; color: #fff; padding: 12px 20px; display: flex; justify-content: space-between; align-items: center; border-radius: 4px; }
   .hdr .brand { font-size: 16px; font-weight: 800; letter-spacing: 0.06em; }
   .hdr .brand-sub { font-size: 9px; opacity: 0.7; }
@@ -270,8 +271,13 @@ function HistoriaClinicaFormBody({
   .sig { border-top: 1.5px solid #333; padding-top: 5px; font-size: 9px; text-align: center; color: #555; }
   .ftr { margin-top: 28px; border-top: 1px solid #ddd; padding-top: 8px; font-size: 8px; color: #999; text-align: center; }
   .conf { font-size: 8px; color: #bbb; text-align: center; margin-top: 4px; font-style: italic; }
-  @media print { .np { display: none; } }
+  @media print {
+    .np { display: none; }
+    body { padding: 0 !important; background: #fff !important; }
+    .page { max-width: none !important; padding: 0 !important; box-shadow: none !important; border-radius: 0 !important; }
+  }
 </style></head><body>
+<div class="page">
 
 <div class="hdr">
   <div><div class="brand">CENPOD</div><div class="brand-sub">CENTRO PODOLÓGICO</div></div>
@@ -479,6 +485,8 @@ ${dx.principal || dx.secundarios || pron.tipo || plan.indicaciones ? `
 
 <div class="ftr">Documento generado el ${new Date().toLocaleString('es-MX')} · Sistema CENPOD · Expediente ${esc(p.expNumber)}</div>
 <div class="conf">Documento confidencial — NOM-004-SSA3-2012 · La información es propiedad del Grupo CENPOD.</div>
+
+</div><!-- fin .page -->
 
 <div class="np" style="margin-top:20px;text-align:center;">
   <button onclick="window.print()" style="background:#0a3143;color:#fff;border:none;padding:10px 24px;font-size:14px;border-radius:6px;cursor:pointer;">Imprimir / Guardar PDF</button>
