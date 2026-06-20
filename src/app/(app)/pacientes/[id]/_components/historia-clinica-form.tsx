@@ -243,7 +243,7 @@ function HistoriaClinicaFormBody({
 <html lang="es"><head><meta charset="utf-8"/>
 <title>Historia Clínica — ${esc(patientName)}</title>
 <style>
-  @page { size: A4; margin: 0; }
+  @page { size: A4; margin: 18mm; }
   * { box-sizing: border-box; }
   body { font-family: Arial, 'Helvetica Neue', sans-serif; color: #1a1a1a; margin: 0; font-size: 11px; line-height: 1.6; padding: 30px 40px; background: #f5f5f5; }
   .page { max-width: 800px; margin: 0 auto; background: #fff; padding: 30px 36px; box-shadow: 0 2px 12px rgba(0,0,0,0.1); border-radius: 6px; }
@@ -274,7 +274,7 @@ function HistoriaClinicaFormBody({
   @media print {
     .np { display: none; }
     body { padding: 0 !important; background: #fff !important; }
-    .page { max-width: none !important; box-shadow: none !important; border-radius: 0 !important; }
+    .page { max-width: none !important; box-shadow: none !important; border-radius: 0 !important; padding: 0 !important; }
     .sec { break-inside: avoid; page-break-inside: avoid; }
     .sec-hdr { break-after: avoid; page-break-after: avoid; }
     .sigs { break-inside: avoid; page-break-inside: avoid; }
