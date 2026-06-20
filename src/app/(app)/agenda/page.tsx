@@ -66,11 +66,11 @@ export default function AgendaPage() {
   })
   if (podologistId && podologistId !== 'all') queryParams.set('podologistId', podologistId)
 
-  const { data, isLoading } = useQuery({
+  const { data, isPending } = useQuery({
     queryKey: ['citas', date, podologistId, view, user?.role],
     queryFn: () => fetch(`/api/citas?${queryParams.toString()}`).then((r) => r.json()),
     enabled: !!user && !!date,
-    placeholderData: (prev) => prev,
+    staleTime: 30_000, // 30s — datos operativos sensibles
   })
 
   // ---- Auto-open new dialog if ?nueva=1 ----
@@ -377,7 +377,7 @@ export default function AgendaPage() {
         view={view}
         date={date}
         data={data}
-        isLoading={isLoading}
+        isPending={isPending}
         podologos={podologos}
         selectedPodologistId={podologistId}
         onSlotClick={openNewFromSlot}

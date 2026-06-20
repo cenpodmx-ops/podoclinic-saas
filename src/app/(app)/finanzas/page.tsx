@@ -144,7 +144,7 @@ function FinanzasContent() {
       if (!r.ok) throw new Error('No se pudo cargar el dashboard')
       return r.json()
     },
-    staleTime: 30_000,
+    staleTime: 60_000,
   })
 
   // ── Comisiones
@@ -156,7 +156,7 @@ function FinanzasContent() {
       if (!r.ok) throw new Error('No se pudo cargar comisiones')
       return r.json()
     },
-    staleTime: 30_000,
+    staleTime: 60_000,
   })
 
   // ── Reportes
@@ -171,7 +171,7 @@ function FinanzasContent() {
       return r.json()
     },
     enabled: !!reporteType,
-    staleTime: 30_000,
+    staleTime: 60_000,
   })
 
   // ── Configuración de la clínica (para encabezado del reporte)
@@ -269,7 +269,7 @@ function FinanzasContent() {
         </CardContent>
       </Card>
 
-      {dashQ.isLoading || !dashQ.data ? (
+      {dashQ.isPending || !dashQ.data ? (
         <div className="space-y-4">
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
             {Array.from({ length: 4 }).map((_, i) => (
@@ -321,7 +321,7 @@ function FinanzasContent() {
               </div>
             </CardHeader>
             <CardContent className="p-0">
-              {comisionesQ.isLoading || !comisionesQ.data ? (
+              {comisionesQ.isPending || !comisionesQ.data ? (
                 <Skeleton className="h-64 m-4" />
               ) : (
                 <>
@@ -431,7 +431,7 @@ function FinanzasContent() {
             </div>
           </DialogHeader>
           <div className="p-2">
-            {reporteQ.isLoading && <Skeleton className="h-96 m-4" />}
+            {reporteQ.isPending && <Skeleton className="h-96 m-4" />}
             {reporteQ.data && (
               <ReporteView
                 data={reporteQ.data}

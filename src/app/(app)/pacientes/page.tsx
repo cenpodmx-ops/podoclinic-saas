@@ -153,10 +153,9 @@ export default function PacientesPage() {
     params.set('global', '1')
   }
 
-  const { data, isLoading, isFetching } = useQuery({
+  const { data, isPending: isLoading, isFetching } = useQuery({
     queryKey: ['pacientes', debounced, page, limit, diabetic, risk, sinCitaReciente, clinicId, isSuper, globalMode],
     queryFn: () => fetch(`/api/pacientes?${params.toString()}`).then((r) => r.json()),
-    placeholderData: (prev) => prev,
   })
 
   const rows: PatientRow[] = data?.data || []

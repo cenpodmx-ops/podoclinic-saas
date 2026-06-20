@@ -89,7 +89,7 @@ export default function InventarioPage() {
     return p.toString()
   }, [page, limit, category, stockBajo, includeInactive, debouncedSearch])
 
-  const { data, isLoading, isFetching } = useQuery({
+  const { data, isPending: isLoading, isFetching } = useQuery({
     queryKey: ['inventario-list', queryParams],
     queryFn: () => fetch(`/api/inventario?${queryParams}`).then((r) => r.json()),
   })

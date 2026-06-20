@@ -11,13 +11,12 @@ import Link from 'next/link'
 import { fmtMoney } from '@/lib/format'
 
 export default function DashboardPage() {
-  const { data, isLoading } = useQuery({
+  const { data, isPending } = useQuery({
     queryKey: ['dashboard'],
     queryFn: () => fetch('/api/dashboard').then((r) => r.json()),
-    placeholderData: (prev) => prev, // mostrar datos anteriores mientras carga
   })
 
-  if (isLoading || !data) {
+  if (isPending || !data) {
     return (
       <div className="p-4 md:p-6 space-y-4">
         <Skeleton className="h-10 w-64" />

@@ -86,7 +86,7 @@ export default function CajaPage() {
       if (!r.ok) throw new Error('No se pudo cargar la caja')
       return r.json()
     },
-    staleTime: 5_000,
+    staleTime: 45_000, // 45s — datos operativos de caja
   })
 
   // Cargar configuración (nombre de la clínica, dirección, teléfono)
@@ -194,7 +194,7 @@ export default function CajaPage() {
   })
 
   // ── Render: cargando
-  if (cajaQ.isLoading || !cajaQ.data) {
+  if (cajaQ.isPending || !cajaQ.data) {
     return (
       <div className="p-4 md:p-6 max-w-[1400px] mx-auto space-y-4">
         <Skeleton className="h-10 w-48" />

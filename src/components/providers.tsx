@@ -2,7 +2,7 @@
 
 import { SessionProvider } from 'next-auth/react'
 import { ThemeProvider } from 'next-themes'
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { QueryClient, QueryClientProvider, keepPreviousData } from '@tanstack/react-query'
 import { useState } from 'react'
 
 export function Providers({ children, session }: { children: React.ReactNode; session: any }) {
@@ -12,16 +12,15 @@ export function Providers({ children, session }: { children: React.ReactNode; se
         defaultOptions: {
           queries: {
             refetchOnWindowFocus: false,
-            // staleTime largo: los datos se consideran frescos por 2 minutos
-            // Evita refetch al cambiar entre módulos
-            staleTime: 2 * 60_000,
-            // gcTime: mantener cache por 10 minutos
+            // staleTime: 5 min por defecto (módulos no operativos)
+            // Módulos operativos (agenda, caja, finanzas) overridean a 30-60s individualmente
+            staleTime: 5 * 60_000,
             gcTime: 10 * 60_000,
-            // Reintentar solo 1 vez
             retry: 1,
             refetchOnReconnect: true,
-            // Mostrar datos anteriores mientras se cargan los nuevos
-            // (en v5 se usa placeholderData en cada query individual)
+            // placeholderData global: mostrar datos anteriores mientras se cargan los nuevos
+            // Esto elimina el skeleton parpadeante al navegar entre módulos
+            placeholderData: keepPreviousData,
           },
         },
       })
