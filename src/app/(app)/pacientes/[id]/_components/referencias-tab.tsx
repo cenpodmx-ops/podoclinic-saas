@@ -89,7 +89,7 @@ export function ReferenciasTab({ patient }: { patient: Patient }) {
   const [saving, setSaving] = useState(false)
   const sigRef = useRef<SignaturePadHandle>(null)
 
-  const { data, isLoading } = useQuery<ReferralRow[]>({
+  const { data, isPending: isLoading } = useQuery<ReferralRow[]>({
     queryKey: ['referencias', patient.id],
     queryFn: () =>
       fetch(`/api/referencias?patientId=${patient.id}`)

@@ -72,7 +72,7 @@ export function TabArchivos({ patient }: { patient: Patient }) {
   const [progress, setProgress] = useState(0)
   const [deletingId, setDeletingId] = useState<string | null>(null)
 
-  const { data, isLoading } = useQuery({
+  const { data, isPending: isLoading } = useQuery({
     queryKey: ['paciente-archivos', patient.id],
     queryFn: () => fetch(`/api/pacientes/${patient.id}/archivos`).then((r) => r.json()),
   })

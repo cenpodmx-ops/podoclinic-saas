@@ -102,7 +102,7 @@ const RISK_COLOR: Record<string, string> = {
 export function HistoriaClinicaForm({ patient }: { patient: Patient }) {
   // Cargar historia clínica primero, luego montar el body con key para evitar
   // setState-in-effect (remount limpio cuando los datos llegan).
-  const { data: hcData, isLoading } = useQuery<{ historiaClinicaInicial?: HistoriaClinicaInicial }>({
+  const { data: hcData, isPending: isLoading } = useQuery<{ historiaClinicaInicial?: HistoriaClinicaInicial }>({
     queryKey: ['historia-clinica', patient.id],
     queryFn: () =>
       fetch(`/api/pacientes/${patient.id}/historia-clinica`)

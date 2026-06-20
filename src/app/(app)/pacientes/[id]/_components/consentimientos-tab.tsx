@@ -65,7 +65,7 @@ export function ConsentimientosTab({ patient }: { patient: Patient }) {
   const sigTestigoRef = useRef<SignaturePadHandle>(null)
   const sigTutorRef = useRef<SignaturePadHandle>(null)
 
-  const { data, isLoading } = useQuery<ConsentRow[]>({
+  const { data, isPending: isLoading } = useQuery<ConsentRow[]>({
     queryKey: ['consentimientos', patient.id],
     queryFn: () =>
       fetch(`/api/consentimientos?patientId=${patient.id}`)

@@ -71,7 +71,7 @@ export default function PacienteDetallePage() {
   const [tab, setTab] = useState('resumen')
   const [editOpen, setEditOpen] = useState(false)
 
-  const { data: patient, isLoading, isError, error } = useQuery<Patient>({
+  const { data: patient, isPending, isError, error } = useQuery<Patient>({
     queryKey: ['paciente', params.id],
     queryFn: () =>
       fetch(`/api/pacientes/${params.id}`).then((r) => {
@@ -85,7 +85,7 @@ export default function PacienteDetallePage() {
     qc.invalidateQueries({ queryKey: ['paciente', params.id] })
   }
 
-  if (isLoading) {
+  if (isPending) {
     return (
       <div className="p-4 md:p-6 space-y-4 max-w-[1600px] mx-auto">
         <Skeleton className="h-10 w-64" />
@@ -318,7 +318,7 @@ function DiagnosticoTabWrapper({ patient }: { patient: Patient }) {
     retry: false,
   })
 
-  if (fetched.isLoading) {
+  if (fetched.isPending) {
     return (
       <div className="flex items-center justify-center p-10">
         <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />

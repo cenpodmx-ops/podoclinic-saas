@@ -14,7 +14,7 @@ import { ExploracionPodologicaSection } from './exploracion-podologica-section'
 import type { HistoriaClinicaInicial, Patient } from './types'
 
 export function ExploracionPodologicaTab({ patient }: { patient: Patient }) {
-  const { data: hcData, isLoading } = useQuery<{ historiaClinicaInicial?: HistoriaClinicaInicial }>({
+  const { data: hcData, isPending: isLoading } = useQuery<{ historiaClinicaInicial?: HistoriaClinicaInicial }>({
     queryKey: ['historia-clinica', patient.id],
     queryFn: () =>
       fetch(`/api/pacientes/${patient.id}/historia-clinica`)

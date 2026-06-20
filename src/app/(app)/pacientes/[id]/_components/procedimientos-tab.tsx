@@ -79,7 +79,7 @@ export function ProcedimientosTab({ patient }: { patient: Patient }) {
   const [saving, setSaving] = useState(false)
   const sigRef = useRef<SignaturePadHandle>(null)
 
-  const { data, isLoading } = useQuery<ProcedureRow[]>({
+  const { data, isPending: isLoading } = useQuery<ProcedureRow[]>({
     queryKey: ['procedimientos', patient.id],
     queryFn: () =>
       fetch(`/api/procedimientos?patientId=${patient.id}`)

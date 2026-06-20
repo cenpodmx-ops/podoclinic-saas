@@ -39,7 +39,7 @@ const ACTION_COLOR: Record<string, string> = {
 }
 
 export function AuditoriaTab({ patient }: { patient: Patient }) {
-  const { data, isLoading } = useQuery<AuditLogRow[]>({
+  const { data, isPending: isLoading } = useQuery<AuditLogRow[]>({
     queryKey: ['auditoria', patient.id],
     queryFn: () =>
       fetch(`/api/auditoria?patientId=${patient.id}`)
