@@ -982,3 +982,38 @@ Stage Summary:
 - worklog.md (957 líneas) preservado con TODO el contexto conversacional previo.
 - PENDIENTE ÚNICO: credenciales reales de Supabase para reconectar la base de datos (los datos en la nube están intactos: 3 clínicas, 4 usuarios, 3 podólogos, 7 servicios, 6 pacientes, 7 citas, 8 productos, 2 equipos).
 - Una vez recibidas las credenciales, el sistema quedará 100% operativo.
+
+---
+Task ID: RECOVERY-DB-CONNECT-2026-06-21
+Agent: main (post-crash recovery — DB connection phase)
+Task: Reconectar base de datos Supabase y verificar end-to-end
+
+Work Log:
+- Usuario proporcionó contraseña Supabase: Marichuy!12 (URL-encoded como Marichuy%2112).
+- Primera configuración .env: DATABASE_URL=pooler, DIRECT_URL=directa (db.lvmillaexhmehrjoouca.supabase.co). Falló: ese host solo resuelve a IPv6 (2600:1f14:b9e:...) y el sandbox NO tiene IPv6 saliente → "Network is unreachable".
+- Diagnóstico: pooler (aws-1-us-west-2.pooler.supabase.com → IPv4 44.225.139.66) SÍ accesible; API REST Supabase responde 401 (proyecto vivo).
+- Segunda configuración .env: AMBAS conexiones (DATABASE_URL + DIRECT_URL) apuntando al session pooler. `prisma db push` exitoso: "The database is already in sync with the Prisma schema" — esquema sin cambios pendientes, datos intactos.
+- Lanzado dev server con launcher daemon (doble-fork + setsid) en /home/z/launch-cenpod.sh.
+- PROBLEMA detectado vía Agent Browser: login POST /api/auth/callback/credentials devolvía 401 con error Prisma "URL must start with postgresql://".
+- DIAGNÓSTICO RAÍZ: el shell del sandbox tiene DATABASE_URL=file:/home/z/my-project/db/custom.db como variable de entorno del SISTEMA (heredada del proceso padre), que OVERWRITES el .env file. Verificado con /proc/PID/environ del next-server.
+- SOLUCIÓN: launcher script exporta explícitamente DATABASE_URL, DIRECT_URL, NEXTAUTH_SECRET, NEXTAUTH_URL, SUPABASE_URL antes de exec bun run dev, overriding la var del sistema.
+- Verificación end-to-end con Agent Browser:
+  * GET /login → 200, página renderiza "Sistema CENPOD · Gestión Clínica" con formulario (email+password+Iniciar sesión)
+  * POST /api/auth/callback/credentials → 200, login exitoso como dueno@cenpod.com
+  * Redirect a /dashboard → 200, muestra "CENPOD OCOTILLO" (clínica desde DB), "Dueño Clínica 1" (usuario desde DB), fecha "domingo, 21 de junio de 2026"
+  * Sidebar completo con los 19 módulos: Dashboard, Agenda, Consulta, Pacientes, Recetas, Inventario, Caja, Finanzas, Facturación, CRM, Seguimiento, Link de Reserva, Red CENPOD, Evaluación Podólogos, Cierre/Apertura, Servicios, Equipos, Configuración
+  * KPIs cargados: Citas hoy, Ingresos hoy ($0.00 / $600.00 este mes), Productos vendidos, Pacientes nuevos, Pendientes, Confirmadas, No asistió, Mensajes Red, Gráfico ingresos 30 días
+  * GET /api/dashboard → 200 (7.0s primer query cold start, posteriormente rápido)
+  * Navegación a /pacientes → 200, muestra "7 pacientes en total" con tarjetas reales: María González (Exp. C1-00001, riesgo alto, diabético, $600 gastados), Pedro López (Exp. C1-00004, riesgo bajo), Rosa Martínez (Exp. C1-00005, riesgo medio, alergia penicilina)
+  * GET /api/pacientes?page=1&limit=20&global=1 → 200 (3.5s)
+- Capturas guardadas: /home/z/my-project/dashboard-recovery.png (93KB), /home/z/my-project/pacientes-recovery.png (141KB)
+- Dev server persistente: PID 4351, escuchando en *:3000, sobrevive entre llamadas bash.
+
+Stage Summary:
+- RECUPERACIÓN 100% COMPLETA. Sistema CENPOD operativo end-to-end.
+- Código: 50 commits restaurados del repo GitHub cenpodmx-ops/sistema-cenpod.
+- Base de datos: Supabase reconectada via session pooler (IPv4). Datos intactos (3 clínicas, 4+ usuarios, 3 podólogos, 7 servicios, 7 pacientes, 8 productos, 2 equipos).
+- Login, dashboard, navegación entre módulos y queries a DB todos verificados funcionando.
+- Configuración final: launcher script en /home/z/launch-cenpod.sh con env vars embebidas (override del sistema). Para reiniciar el server: `bash /home/z/launch-cenpod.sh`.
+- Pendiente menor: SUPABASE_ANON_KEY sigue como placeholder (no afecta funcionalidad actual; solo se necesita si se usa Supabase Storage para archivos). El usuario puede proporcionarla después si hace falta.
+- Recordatorio de seguridad: el token de GitHub (ghp_JjG9...) compartido por el usuario debe ser revocado.
