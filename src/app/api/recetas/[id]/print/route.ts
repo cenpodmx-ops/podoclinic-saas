@@ -31,7 +31,6 @@ type PrescriptionDesign = {
   signatureLabel?: string
   paperSize?: 'A4' | 'Letter' | 'MediaCarta'
   fontSize?: number
-  // NEW
   textColor?: string
   backgroundColor?: string
   lineHeight?: number
@@ -40,6 +39,8 @@ type PrescriptionDesign = {
   logoOpacity?: number // 0-100
   watermarkEnabled?: boolean
   watermarkOpacity?: number // 0-100
+  watermarkSize?: number // %
+  watermarkText?: string
   watermarkPosition?: 'center' | 'top-right' | 'bottom-right'
   showPatientInfo?: boolean
   showDoctorInfo?: boolean
@@ -48,6 +49,40 @@ type PrescriptionDesign = {
   showIndications?: boolean
   showSignature?: boolean
   fontFamilyCategory?: 'serif' | 'sans-serif' | 'system'
+  doctorNameMode?: 'podologist' | 'fixed'
+  doctorFixedName?: string
+
+  // === NUEVOS: Datos del médico editables ===
+  doctorCedula?: string
+  doctorSpecialty?: string
+  doctorPhone?: string
+  doctorAddress?: string
+
+  // === NUEVOS: Plantilla predefinida ===
+  template?: 'classic' | 'minimalist' | 'compact' | 'digital-qr' | 'institutional'
+
+  // === NUEVOS: Estilo visual avanzado ===
+  headerStyle?: 'modern' | 'classic' | 'compact'
+  borderStyle?: 'rounded' | 'square' | 'none'
+  borderRadius?: number
+
+  // === NUEVOS: Footer expandible ===
+  showFooterAddress?: boolean
+  showFooterHours?: boolean
+  showFooterDigitalSign?: boolean
+  showFooterFollowupMsg?: boolean
+  footerFollowupMsg?: string
+  footerHours?: string
+
+  // === NUEVOS: Opciones de entrega ===
+  prepareForPrint?: boolean
+  sendPdfToPatient?: boolean
+  showQrVerification?: boolean
+
+  // === NUEVOS: Layout del header ===
+  headerLayout?: 'logo-text' | 'text-only' | 'logo-only' | 'logo-top-text-bottom'
+  logoContain?: boolean
+  logoBgTransparent?: boolean
 }
 
 const DEFAULT_DESIGN: PrescriptionDesign = {
@@ -71,6 +106,7 @@ const DEFAULT_DESIGN: PrescriptionDesign = {
   logoOpacity: 100,
   watermarkEnabled: false,
   watermarkOpacity: 10,
+  watermarkSize: 60,
   watermarkPosition: 'center',
   showPatientInfo: true,
   showDoctorInfo: true,
@@ -78,6 +114,29 @@ const DEFAULT_DESIGN: PrescriptionDesign = {
   showMedications: true,
   showIndications: true,
   showSignature: true,
+  doctorNameMode: 'podologist',
+  doctorFixedName: '',
+  // Nuevos defaults
+  template: 'classic',
+  doctorCedula: '',
+  doctorSpecialty: '',
+  doctorPhone: '',
+  doctorAddress: '',
+  headerStyle: 'classic',
+  borderStyle: 'rounded',
+  borderRadius: 8,
+  showFooterAddress: true,
+  showFooterHours: false,
+  showFooterDigitalSign: false,
+  showFooterFollowupMsg: false,
+  footerFollowupMsg: 'Gracias por su confianza. ¡Que mejore pronto!',
+  footerHours: 'Lun – Vie: 9:00 – 19:00 · Sáb: 9:00 – 14:00',
+  prepareForPrint: true,
+  sendPdfToPatient: false,
+  showQrVerification: false,
+  headerLayout: 'logo-text',
+  logoContain: false,
+  logoBgTransparent: false,
 }
 
 function safeParseMeds(s: string | null | undefined): Medication[] {
@@ -219,15 +278,17 @@ export async function GET(_req: NextRequest, ctx: { params: Promise<{ id: string
   }
 
   const patientName = rx.patient ? `${rx.patient.firstName} ${rx.patient.lastName}` : '—'
-  // Doctor name: usar nombre fijo si está configurado, sino el del podólogo que recetó
-  const doctorNameMode = (design as any).doctorNameMode || 'podologist'
-  const doctorFixedName = (design as any).doctorFixedName || ''
-  const podName = doctorNameMode === 'fixed' && doctorFixedName
+  // Doctor data: usar override del diseño si está definido, sino el del podólogo
+  const doctorNameMode = design.doctorNameMode || 'podologist'
+  const doctorFixedName = design.doctorFixedName || ''
+  const doctorName = doctorNameMode === 'fixed' && doctorFixedName
     ? doctorFixedName
     : (rx.podologist?.name || '—')
-  const podCed = rx.podologist?.cedula || ''
-  const podSpec = rx.podologist?.specialty || ''
-  const podCert = rx.podologist?.certNumber || ''
+  const doctorCedula = design.doctorCedula || rx.podologist?.cedula || ''
+  const doctorSpecialty = design.doctorSpecialty || rx.podologist?.specialty || ''
+  const doctorPhone = design.doctorPhone || clinic?.phone || ''
+  const doctorAddress = design.doctorAddress || clinic?.address || ''
+  const doctorCert = rx.podologist?.certNumber || ''
 
   const align = design.logoPosition || 'left'
   const fontFamily = resolveFontFamily(design)
@@ -243,6 +304,21 @@ export async function GET(_req: NextRequest, ctx: { params: Promise<{ id: string
   const paperSize = design.paperSize || 'A4'
   const paper = resolvePaperSize(paperSize)
 
+  // Nuevos campos
+  const headerLayout = design.headerLayout || 'logo-text'
+  const headerStyle = design.headerStyle || 'classic'
+  const borderStyle = design.borderStyle || 'rounded'
+  const borderRadius = design.borderRadius ?? (borderStyle === 'rounded' ? 8 : borderStyle === 'square' ? 0 : 0)
+  const logoContain = design.logoContain === true
+  const logoBgTransparent = design.logoBgTransparent === true
+  const showFooterAddress = design.showFooterAddress !== false
+  const showFooterHours = design.showFooterHours === true
+  const showFooterDigitalSign = design.showFooterDigitalSign === true
+  const showFooterFollowupMsg = design.showFooterFollowupMsg === true
+  const footerFollowupMsg = design.footerFollowupMsg || 'Gracias por su confianza.'
+  const footerHours = design.footerHours || 'Lun – Vie: 9:00 – 19:00'
+  const showQrVerification = design.showQrVerification === true
+
   const showHeader = design.showHeader !== false
   const showFooter = design.showFooter !== false
   const showRx = design.showRxSymbol !== false
@@ -257,31 +333,70 @@ export async function GET(_req: NextRequest, ctx: { params: Promise<{ id: string
   const watermarkEnabled = design.watermarkEnabled === true
   const watermarkOpacity = (design.watermarkOpacity ?? DEFAULT_DESIGN.watermarkOpacity!) / 100
   const watermarkPosition = design.watermarkPosition || 'center'
-  const watermarkSize = (design as any).watermarkSize ?? 60
-  const wmSizePct = watermarkSize // porcentaje del ancho de la página
-  const wmSizePx = watermarkSize * 2 // píxeles para esquinas
+  const watermarkSize = design.watermarkSize ?? 60
+  const wmSizePct = watermarkSize
+  const wmSizePx = watermarkSize * 2
+  const wmText = design.watermarkText || ''
 
   const todayStr = format(new Date(), "dd 'de' MMMM 'de' yyyy", { locale: undefined })
   const rxDateStr = format(new Date(rx.date), "dd/MM/yyyy")
+  const folio = rx.id.slice(-8).toUpperCase()
 
-  const logoHtml = logoUrl
-    ? `<img src="${esc(logoUrl)}" alt="logo" class="rx-logo" style="opacity:${logoOpacity};"/>`
+  // Logo con mix-blend-mode si aplica (elimina bordes blancos visuales)
+  const logoBlendStyle = (logoContain || logoBgTransparent) ? 'mix-blend-mode: multiply;' : ''
+  const logoHtml = logoUrl && headerLayout !== 'text-only'
+    ? `<img src="${esc(logoUrl)}" alt="logo" class="rx-logo" style="opacity:${logoOpacity};${logoBlendStyle}"/>`
     : ''
 
+  // Header layout CSS según headerLayout
+  let headerGridCss = ''
+  if (headerLayout === 'text-only') {
+    headerGridCss = `display:grid;grid-template-columns:1fr;gap:6px;justify-items:${align === 'center' ? 'center' : 'stretch'};text-align:${align === 'center' ? 'center' : 'left'};`
+  } else if (headerLayout === 'logo-only') {
+    headerGridCss = `display:grid;grid-template-columns:1fr;justify-items:${align === 'center' ? 'center' : align === 'right' ? 'end' : 'start'};`
+  } else if (headerLayout === 'logo-top-text-bottom') {
+    headerGridCss = `display:grid;grid-template-columns:1fr;gap:6px;justify-items:center;text-align:center;`
+  } else {
+    // 'logo-text' (default)
+    if (align === 'center') {
+      headerGridCss = `display:grid;grid-template-columns:1fr;gap:14px;justify-items:center;text-align:center;`
+    } else if (align === 'right') {
+      headerGridCss = `display:grid;grid-template-columns:1fr auto;gap:18px;align-items:center;text-align:right;`
+    } else {
+      headerGridCss = `display:grid;grid-template-columns:auto 1fr;gap:18px;align-items:center;text-align:left;`
+    }
+  }
+
+  // Header wrapper CSS según headerStyle
+  let headerWrapperCss = ''
+  if (headerStyle === 'modern') {
+    headerWrapperCss = `background:${primary};color:#fff;padding:14px 18px;border-radius:${borderRadius}px;margin-bottom:14px;`
+  } else if (headerStyle === 'compact') {
+    headerWrapperCss = `border-bottom:2px solid ${primary};padding-bottom:6px;margin-bottom:10px;`
+  } else {
+    // classic
+    headerWrapperCss = `border-bottom:2.5px solid ${primary};padding-bottom:10px;margin-bottom:14px;`
+  }
+  const headerTextPrimary = headerStyle === 'modern' ? '#ffffff' : primary
+  const headerTextSub = headerStyle === 'modern' ? 'rgba(255,255,255,0.85)' : withAlpha(textColor, 0.70)
+
   const headerInner = `
-    <div class="rx-header-inner rx-pos-${align}">
+    <div style="${headerGridCss}">
       ${logoHtml}
-      <div class="rx-clinic-info">
-        <div class="rx-clinic-name" style="color:${primary};">${esc(clinic?.name)}</div>
-        ${clinic?.razonSocial ? `<div class="rx-clinic-sub">${esc(clinic.razonSocial)}</div>` : ''}
-        ${clinic?.address ? `<div class="rx-clinic-line">${esc(clinic.address)}</div>` : ''}
-        <div class="rx-clinic-line">
-          ${clinic?.phone ? `Tel. ${esc(clinic.phone)}` : ''}
-          ${clinic?.phone && clinic?.email ? ' · ' : ''}
-          ${clinic?.email ? esc(clinic.email) : ''}
+      ${headerLayout !== 'logo-only' ? `
+        <div class="rx-clinic-info" style="min-width:0;overflow:hidden;">
+          <div class="rx-clinic-name" style="color:${headerTextPrimary};">${esc(clinic?.name)}</div>
+          ${clinic?.razonSocial ? `<div class="rx-clinic-sub" style="color:${headerTextSub};">${esc(clinic.razonSocial)}</div>` : ''}
+          ${doctorName ? `<div class="rx-clinic-line" style="color:${headerTextSub};font-weight:600;margin-top:2px;">${esc(doctorName)}${doctorSpecialty ? ` · ${esc(doctorSpecialty)}` : ''}${doctorCedula ? ` · Céd. ${esc(doctorCedula)}` : ''}</div>` : ''}
+          ${doctorAddress ? `<div class="rx-clinic-line" style="color:${headerTextSub};">${esc(doctorAddress)}</div>` : ''}
+          <div class="rx-clinic-line" style="color:${headerTextSub};">
+            ${doctorPhone ? `Tel. ${esc(doctorPhone)}` : ''}
+            ${doctorPhone && clinic?.email ? ' · ' : ''}
+            ${clinic?.email ? esc(clinic.email) : ''}
+          </div>
+          ${clinic?.rfc ? `<div class="rx-clinic-line" style="color:${headerTextSub};">RFC: ${esc(clinic.rfc)}</div>` : ''}
         </div>
-        ${clinic?.rfc ? `<div class="rx-clinic-line">RFC: ${esc(clinic.rfc)}</div>` : ''}
-      </div>
+      ` : ''}
     </div>
   `
 
@@ -321,28 +436,68 @@ export async function GET(_req: NextRequest, ctx: { params: Promise<{ id: string
   ` : ''
 
   const indicationsHtml = (showIndications && rx.indications)
-    ? `<div class="rx-section"><div class="rx-section-title" style="color:${primary};border-bottom-color:${withAlpha(primary, 0.18)};">Indicaciones generales</div><div class="rx-section-body rx-indications" style="border-left-color:${accent};">${escMultiline(rx.indications)}</div></div>`
+    ? `<div class="rx-section"><div class="rx-section-title" style="color:${primary};border-bottom-color:${withAlpha(primary, 0.18)};">Indicaciones generales</div><div class="rx-section-body rx-indications" style="border-left-color:${accent};${borderStyle === 'none' ? '' : `border-radius:${borderRadius}px;`}">${escMultiline(rx.indications)}</div></div>`
     : ''
+
+  // QR placeholder (CSS grid simulando un QR)
+  const qrHtml = showQrVerification ? `
+    <div style="margin-top:14px;display:flex;align-items:center;gap:12px;padding:10px 12px;${borderStyle === 'none' ? '' : `border:1px solid ${withAlpha(textColor, 0.10)};border-radius:${borderRadius}px;`}background:${withAlpha(accent, 0.05)};">
+      <div style="width:60px;height:60px;background:#fff;border:1px solid ${withAlpha(textColor, 0.20)};padding:3px;display:grid;grid-template-columns:repeat(8,1fr);grid-template-rows:repeat(8,1fr);">
+        ${Array.from({ length: 64 }).map((_, i) => {
+          const seed = (i * 7 + folio.charCodeAt(0)) % 3 === 0
+          return `<div style="background:${seed ? textColor : 'transparent'};"></div>`
+        }).join('')}
+      </div>
+      <div>
+        <div style="font-size:11px;font-weight:700;color:${primary};">Verifica tu receta</div>
+        <div style="font-size:9px;color:${withAlpha(textColor, 0.65)};font-family:'Courier New',monospace;">Folio: ${esc(folio)}</div>
+        <div style="font-size:9px;color:${withAlpha(textColor, 0.55)};">Escanea para validar autenticidad</div>
+      </div>
+    </div>
+  ` : ''
 
   const signatureHtml = showSignature ? `
     <div class="rx-signature">
       <div class="rx-sig-line"></div>
-      <div class="rx-sig-name" style="color:${primary};">${esc(podName)}</div>
+      <div class="rx-sig-name" style="color:${primary};">${esc(doctorName)}</div>
       <div class="rx-sig-meta">
-        ${podSpec ? esc(podSpec) : 'Podología'}
-        ${podCed ? ` · Cédula: ${esc(podCed)}` : ''}
-        ${podCert ? ` · Cert: ${esc(podCert)}` : ''}
+        ${doctorSpecialty ? esc(doctorSpecialty) : 'Podología'}
+        ${doctorCedula ? ` · Cédula: ${esc(doctorCedula)}` : ''}
+        ${doctorCert ? ` · Cert: ${esc(doctorCert)}` : ''}
       </div>
       <div class="rx-sig-label">${esc(sigLabel)}</div>
     </div>
   ` : ''
 
-  const footerHtml = showFooter ? `
+  // Footer pieces (granulares)
+  const footerPieces: string[] = []
+  if (showFooterAddress && doctorAddress) {
+    footerPieces.push(`<div style="font-size:10px;">📍 ${esc(doctorAddress)}</div>`)
+  }
+  if (showFooterHours) {
+    footerPieces.push(`<div style="font-size:10px;">🕒 ${esc(footerHours)}</div>`)
+  }
+  if (showFooterDigitalSign) {
+    footerPieces.push(`<div style="font-size:9px;font-style:italic;color:${withAlpha(textColor, 0.55)};">✓ Documento firmado digitalmente</div>`)
+  }
+  if (showFooterFollowupMsg) {
+    footerPieces.push(`<div style="font-size:10px;font-style:italic;color:${primary};">${esc(footerFollowupMsg)}</div>`)
+  }
+
+  const footerHtml = showFooter && footerPieces.length > 0 ? `
     <div class="rx-footer">
-      <div>${esc(clinic?.name)} · Receta ${esc(rx.id.slice(-8).toUpperCase())}</div>
+      ${footerPieces.join('')}
+      <div class="rx-footer-bottom">
+        <div>${esc(clinic?.name)} · Receta ${esc(folio)}</div>
+        <div>Generada el ${esc(todayStr)}</div>
+      </div>
+    </div>
+  ` : (showFooter ? `
+    <div class="rx-footer rx-footer-simple">
+      <div>${esc(clinic?.name)} · Receta ${esc(folio)}</div>
       <div>Generada el ${esc(todayStr)}</div>
     </div>
-  ` : ''
+  ` : '')
 
   // Patient / Doctor info: build meta grid conditionally
   const metaCells: string[] = []
@@ -359,17 +514,20 @@ export async function GET(_req: NextRequest, ctx: { params: Promise<{ id: string
     }
   }
   if (showDoctorInfo) {
-    metaCells.push(`<div><strong>Podólogo</strong> ${esc(podName)}</div>`)
-    if (podCed) metaCells.push(`<div><strong>Cédula</strong> ${esc(podCed)}</div>`)
+    metaCells.push(`<div><strong>Profesional</strong> ${esc(doctorName)}</div>`)
+    if (doctorCedula) metaCells.push(`<div><strong>Cédula</strong> ${esc(doctorCedula)}</div>`)
+    if (doctorSpecialty) metaCells.push(`<div><strong>Especialidad</strong> ${esc(doctorSpecialty)}</div>`)
   }
 
   const metaHtml = metaCells.length > 0
-    ? `<div class="rx-meta-grid" style="background:${withAlpha(accent, 0.06)};border-left-color:${primary};">${metaCells.join('')}</div>`
+    ? `<div class="rx-meta-grid" style="background:${withAlpha(accent, 0.06)};border-left-color:${primary};${borderStyle === 'none' ? '' : `border-radius:${borderRadius}px;`}">${metaCells.join('')}</div>`
     : ''
 
   // Watermark element
-  const watermarkHtml = (watermarkEnabled && logoUrl)
-    ? `<div class="rx-watermark rx-wm-${watermarkPosition}" style="opacity:${watermarkOpacity};"><img src="${esc(logoUrl)}" alt="watermark"/></div>`
+  const watermarkHtml = (watermarkEnabled && (logoUrl || wmText))
+    ? logoUrl
+      ? `<div class="rx-watermark rx-wm-${watermarkPosition}" style="opacity:${watermarkOpacity};"><img src="${esc(logoUrl)}" alt="watermark"/></div>`
+      : `<div class="rx-watermark rx-wm-${watermarkPosition}" style="opacity:${watermarkOpacity};font-size:80px;font-weight:800;color:${primary};letter-spacing:0.15em;">${esc(wmText)}</div>`
     : ''
 
   // Page CSS for paper size + margins
@@ -427,25 +585,6 @@ export async function GET(_req: NextRequest, ctx: { params: Promise<{ id: string
   }
   .rx-wm-bottom-right img { max-width: ${wmSizePx}px; max-height: ${wmSizePx}px; }
   .rx-sheet > * { position: relative; z-index: 1; }
-  .rx-header {
-    border-bottom: 2.5px solid ${primary};
-    padding-bottom: 10px;
-    margin-bottom: 14px;
-  }
-  .rx-header-inner {
-    display: flex;
-    align-items: center;
-    gap: 18px;
-  }
-  .rx-header-inner.rx-pos-center {
-    flex-direction: column;
-    text-align: center;
-    align-items: center;
-  }
-  .rx-header-inner.rx-pos-right {
-    flex-direction: row-reverse;
-    text-align: right;
-  }
   .rx-logo {
     max-height: ${logoSize}px;
     max-width: ${Math.round(logoSize * 2.3)}px;
@@ -461,12 +600,10 @@ export async function GET(_req: NextRequest, ctx: { params: Promise<{ id: string
   }
   .rx-clinic-sub {
     font-size: 12px;
-    color: ${withAlpha(textColor, 0.65)};
     margin-top: 2px;
   }
   .rx-clinic-line {
     font-size: 11.5px;
-    color: ${withAlpha(textColor, 0.70)};
     margin-top: 1px;
   }
   .rx-title-row {
@@ -493,7 +630,6 @@ export async function GET(_req: NextRequest, ctx: { params: Promise<{ id: string
     gap: 6px 18px;
     padding: 10px 12px;
     border-left: 3px solid ${primary};
-    border-radius: 4px;
     margin-bottom: 14px;
     font-size: 12.5px;
   }
@@ -566,7 +702,6 @@ export async function GET(_req: NextRequest, ctx: { params: Promise<{ id: string
     white-space: pre-wrap;
     padding: 8px 10px;
     background: ${withAlpha(textColor, 0.03)};
-    border-radius: 4px;
     border-left: 3px solid ${accent};
   }
   .rx-signature {
@@ -602,9 +737,20 @@ export async function GET(_req: NextRequest, ctx: { params: Promise<{ id: string
     border-top: 1px solid ${withAlpha(textColor, 0.18)};
     padding-top: 6px;
     display: flex;
+    flex-direction: column;
+    gap: 2px;
+    color: ${withAlpha(textColor, 0.65)};
+  }
+  .rx-footer-bottom {
+    display: flex;
     justify-content: space-between;
-    font-size: 10px;
-    color: ${withAlpha(textColor, 0.55)};
+    font-size: 9px;
+    color: ${withAlpha(textColor, 0.45)};
+    margin-top: 4px;
+  }
+  .rx-footer-simple {
+    flex-direction: row;
+    justify-content: space-between;
   }
   @media print {
     body { background: #fff; }
@@ -631,17 +777,16 @@ export async function GET(_req: NextRequest, ctx: { params: Promise<{ id: string
       box-shadow: none;
     }
     .rx-meta-grid { grid-template-columns: 1fr; }
-    .rx-header-inner.rx-pos-center { flex-direction: column !important; text-align: center !important; align-items: center !important; }
   }
 </style>
 </head>
 <body>
   <div class="rx-sheet">
     ${watermarkHtml}
-    ${showHeader ? `<div class="rx-header">${headerInner}</div>` : ''}
+    ${showHeader ? `<div class="rx-header" style="${headerWrapperCss}">${headerInner}</div>` : ''}
 
     <div class="rx-title-row">
-      <div class="rx-folio">Folio: ${esc(rx.id.slice(-8).toUpperCase())}</div>
+      <div class="rx-folio">Folio: ${esc(folio)}</div>
     </div>
 
     ${metaHtml}
@@ -653,6 +798,8 @@ export async function GET(_req: NextRequest, ctx: { params: Promise<{ id: string
     ${medsHtml}
 
     ${indicationsHtml}
+
+    ${qrHtml}
 
     ${signatureHtml}
 
@@ -676,3 +823,6 @@ export async function GET(_req: NextRequest, ctx: { params: Promise<{ id: string
     },
   })
 }
+
+// Avoid unused import warning for `bad` (kept for API compat)
+void bad

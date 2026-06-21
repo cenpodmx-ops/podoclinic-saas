@@ -11,6 +11,7 @@ import { useMemo } from 'react'
 // ============================================================
 
 export type PrescriptionDesign = {
+  // === EXISTENTES (mantener todos) ===
   logoPosition?: 'left' | 'center' | 'right'
   logoUrl?: string | 'auto' | 'none'
   fontFamily?: string
@@ -33,6 +34,7 @@ export type PrescriptionDesign = {
   watermarkOpacity?: number
   watermarkSize?: number
   watermarkPosition?: 'center' | 'top-right' | 'bottom-right'
+  watermarkText?: string
   showPatientInfo?: boolean
   showDoctorInfo?: boolean
   showDiagnosis?: boolean
@@ -41,6 +43,38 @@ export type PrescriptionDesign = {
   showSignature?: boolean
   doctorNameMode?: 'podologist' | 'fixed'
   doctorFixedName?: string
+
+  // === NUEVOS: Datos del médico editables (override del podólogo) ===
+  doctorCedula?: string         // cédula profesional manual
+  doctorSpecialty?: string      // especialidad manual
+  doctorPhone?: string          // teléfono de contacto del médico
+  doctorAddress?: string        // dirección del consultorio
+
+  // === NUEVOS: Plantilla predefinida ===
+  template?: 'classic' | 'minimalist' | 'compact' | 'digital-qr' | 'institutional'
+
+  // === NUEVOS: Estilo visual avanzado ===
+  headerStyle?: 'modern' | 'classic' | 'compact'   // tipo de encabezado
+  borderStyle?: 'rounded' | 'square' | 'none'      // bordes de tarjetas/secciones
+  borderRadius?: number                              // radio del borde en px
+
+  // === NUEVOS: Footer expandible ===
+  showFooterAddress?: boolean
+  showFooterHours?: boolean
+  showFooterDigitalSign?: boolean
+  showFooterFollowupMsg?: boolean
+  footerFollowupMsg?: string                         // mensaje personalizado
+  footerHours?: string                               // horario personalizado
+
+  // === NUEVOS: Opciones de entrega ===
+  prepareForPrint?: boolean
+  sendPdfToPatient?: boolean
+  showQrVerification?: boolean
+
+  // === NUEVOS: Layout del header (solución al problema de logo) ===
+  headerLayout?: 'logo-text' | 'text-only' | 'logo-only' | 'logo-top-text-bottom'
+  logoContain?: boolean        // true = object-fit: contain + mix-blend-mode: multiply
+  logoBgTransparent?: boolean  // true = mix-blend-mode: multiply sobre el logo
 }
 
 export type PreviewClinic = {
@@ -109,6 +143,7 @@ const DEFAULT_DESIGN: PrescriptionDesign = {
   logoOpacity: 100,
   watermarkEnabled: false,
   watermarkOpacity: 10,
+  watermarkSize: 60,
   watermarkPosition: 'center',
   showPatientInfo: true,
   showDoctorInfo: true,
@@ -116,6 +151,29 @@ const DEFAULT_DESIGN: PrescriptionDesign = {
   showMedications: true,
   showIndications: true,
   showSignature: true,
+  doctorNameMode: 'podologist',
+  doctorFixedName: '',
+  // Nuevos defaults
+  template: 'classic',
+  doctorCedula: '',
+  doctorSpecialty: '',
+  doctorPhone: '',
+  doctorAddress: '',
+  headerStyle: 'classic',
+  borderStyle: 'rounded',
+  borderRadius: 8,
+  showFooterAddress: true,
+  showFooterHours: false,
+  showFooterDigitalSign: false,
+  showFooterFollowupMsg: false,
+  footerFollowupMsg: 'Gracias por su confianza. ¡Que mejore pronto!',
+  footerHours: 'Lun – Vie: 9:00 – 19:00 · Sáb: 9:00 – 14:00',
+  prepareForPrint: true,
+  sendPdfToPatient: false,
+  showQrVerification: false,
+  headerLayout: 'logo-text',
+  logoContain: false,
+  logoBgTransparent: false,
 }
 
 function resolveFontFamily(design: PrescriptionDesign): string {
@@ -204,11 +262,18 @@ export function PrescriptionLivePreview({
   const clinic = data.clinic
   const folio = (data.id || 'PREVIEW00').slice(-8).toUpperCase()
   const patientName = patient?.name || (patient ? `${patient.firstName || ''} ${patient.lastName || ''}`.trim() : 'Paciente de ejemplo')
-  const podName = pod?.name || 'Dr. Ejemplo Podólogo'
-  const podCed = pod?.cedula || '1234567'
-  const podSpec = pod?.specialty || 'Podología'
-  const podCert = pod?.certNumber || ''
   const age = useMemo(() => calcAge(patient?.birthDate), [patient?.birthDate])
+
+  // Datos del médico: usar override si está definido, sino el del podólogo
+  const doctorNameMode = d.doctorNameMode || 'podologist'
+  const doctorName = doctorNameMode === 'fixed' && d.doctorFixedName
+    ? d.doctorFixedName
+    : (pod?.name || 'Dr. Ejemplo Podólogo')
+  const doctorCedula = d.doctorCedula || pod?.cedula || '1234567'
+  const doctorSpecialty = d.doctorSpecialty || pod?.specialty || 'Podología'
+  const doctorPhone = d.doctorPhone || clinic?.phone || ''
+  const doctorAddress = d.doctorAddress || clinic?.address || ''
+  const doctorCert = pod?.certNumber || ''
 
   // Resolve logo URL
   let logoUrl: string | null = null
@@ -235,6 +300,21 @@ export function PrescriptionLivePreview({
   const watermarkOpacity = (d.watermarkOpacity ?? 10) / 100
   const watermarkPosition = d.watermarkPosition || 'center'
 
+  // Nuevos toggles
+  const headerLayout = d.headerLayout || 'logo-text'
+  const logoContain = d.logoContain === true
+  const logoBgTransparent = d.logoBgTransparent === true
+  const headerStyle = d.headerStyle || 'classic'
+  const borderStyle = d.borderStyle || 'rounded'
+  const borderRadius = d.borderRadius ?? (borderStyle === 'rounded' ? 8 : borderStyle === 'square' ? 0 : 0)
+  const showFooterAddress = d.showFooterAddress !== false
+  const showFooterHours = d.showFooterHours === true
+  const showFooterDigitalSign = d.showFooterDigitalSign === true
+  const showFooterFollowupMsg = d.showFooterFollowupMsg === true
+  const footerFollowupMsg = d.footerFollowupMsg || 'Gracias por su confianza. ¡Que mejore pronto!'
+  const footerHours = d.footerHours || 'Lun – Vie: 9:00 – 19:00 · Sáb: 9:00 – 14:00'
+  const showQrVerification = d.showQrVerification === true
+
   const diagnosisText = data.diagnosis || 'Onicomicosis en primer dedo del pie derecho'
   const indicationsText = data.indications || 'Reposo relativo, control en una semana, evitar humedad en pies, uso de calzado amplio y transpirable.'
   const medications = data.medications && data.medications.length > 0
@@ -243,6 +323,107 @@ export function PrescriptionLivePreview({
         { name: 'Terbinafina 250 mg', dose: '1 tableta cada 24h', via: 'Oral', duration: '6 semanas' },
         { name: 'Crema ketoconazol 2%', dose: 'Aplicar 2 veces al día', via: 'Tópica', duration: '4 semanas' },
       ]
+
+  // CSS para bordes
+  const cardBorder = borderStyle === 'none'
+    ? { border: 'none' }
+    : {
+        border: `1px solid ${withAlpha(textColor, 0.10)}`,
+        borderRadius: `${borderRadius}px`,
+      }
+
+  // Logo img style con mix-blend-mode si aplica
+  const logoImgStyle: React.CSSProperties = {
+    maxHeight: `calc(${logoSize}px * 0.42)`,
+    maxWidth: `calc(${logoSize * 2.3}px * 0.42)`,
+    height: 'auto',
+    width: 'auto',
+    objectFit: 'contain',
+    opacity: logoOpacity,
+    ...(logoContain ? { mixBlendMode: 'multiply' as const } : {}),
+    ...(logoBgTransparent && !logoContain ? { mixBlendMode: 'multiply' as const } : {}),
+  }
+
+  // Header layout grid
+  const headerGridStyle: React.CSSProperties = (() => {
+    if (headerLayout === 'text-only') {
+      return {
+        display: 'grid',
+        gridTemplateColumns: '1fr',
+        gap: '0.4em',
+        justifyItems: d.logoPosition === 'center' ? 'center' : 'stretch',
+        textAlign: d.logoPosition === 'center' ? 'center' as const : 'left' as const,
+      }
+    }
+    if (headerLayout === 'logo-only') {
+      return {
+        display: 'grid',
+        gridTemplateColumns: '1fr',
+        gap: '0.4em',
+        justifyItems: d.logoPosition === 'center' ? 'center' : d.logoPosition === 'right' ? 'end' : 'start',
+      }
+    }
+    if (headerLayout === 'logo-top-text-bottom') {
+      return {
+        display: 'grid',
+        gridTemplateColumns: '1fr',
+        gap: '0.4em',
+        justifyItems: 'center',
+        textAlign: 'center' as const,
+      }
+    }
+    // 'logo-text' (default)
+    if (d.logoPosition === 'center') {
+      return {
+        display: 'grid',
+        gridTemplateColumns: '1fr',
+        gap: '1em',
+        justifyItems: 'center',
+        textAlign: 'center' as const,
+      }
+    }
+    return {
+      display: 'grid',
+      gridTemplateColumns: 'auto 1fr',
+      gap: '1em',
+      alignItems: 'center',
+      textAlign: 'left' as const,
+      ...(d.logoPosition === 'right' ? {
+        gridTemplateColumns: '1fr auto',
+        textAlign: 'right' as const,
+      } : {}),
+    }
+  })()
+
+  // Estilo del header según headerStyle
+  const headerWrapperStyle: React.CSSProperties = (() => {
+    if (headerStyle === 'modern') {
+      return {
+        background: primary,
+        color: '#ffffff',
+        padding: '1em 1.2em',
+        borderRadius: `${borderRadius}px`,
+        marginBottom: '0.8em',
+      }
+    }
+    if (headerStyle === 'compact') {
+      return {
+        borderBottom: `2px solid ${primary}`,
+        paddingBottom: '0.4em',
+        marginBottom: '0.6em',
+      }
+    }
+    // classic
+    return {
+      borderBottom: `2.5px solid ${primary}`,
+      paddingBottom: '0.5em',
+      marginBottom: '0.7em',
+    }
+  })()
+
+  // Color del texto del header si es modern
+  const headerTextPrimary = headerStyle === 'modern' ? '#ffffff' : primary
+  const headerTextSub = headerStyle === 'modern' ? withAlpha('#ffffff', 0.85) : withAlpha(textColor, 0.70)
 
   // Build meta cells
   const metaCells: { label: string; value: string }[] = []
@@ -255,8 +436,34 @@ export function PrescriptionLivePreview({
     if (patient?.phone) metaCells.push({ label: 'Teléfono', value: patient.phone })
   }
   if (showDoctorInfo) {
-    metaCells.push({ label: 'Podólogo', value: podName })
-    if (podCed) metaCells.push({ label: 'Cédula', value: podCed })
+    metaCells.push({ label: 'Profesional', value: doctorName })
+    if (doctorCedula) metaCells.push({ label: 'Cédula', value: doctorCedula })
+    if (doctorSpecialty) metaCells.push({ label: 'Especialidad', value: doctorSpecialty })
+  }
+
+  // Footer pieces
+  const footerPieces: React.ReactNode[] = []
+  if (showFooterAddress && doctorAddress) {
+    footerPieces.push(
+      <div key="addr" style={{ fontSize: '0.78em' }}>📍 {doctorAddress}</div>
+    )
+  }
+  if (showFooterHours) {
+    footerPieces.push(
+      <div key="hours" style={{ fontSize: '0.78em' }}>🕒 {footerHours}</div>
+    )
+  }
+  if (showFooterDigitalSign) {
+    footerPieces.push(
+      <div key="digsign" style={{ fontSize: '0.7em', fontStyle: 'italic', color: withAlpha(textColor, 0.55) }}>
+        ✓ Documento firmado digitalmente
+      </div>
+    )
+  }
+  if (showFooterFollowupMsg) {
+    footerPieces.push(
+      <div key="msg" style={{ fontSize: '0.78em', fontStyle: 'italic', color: primary }}>{footerFollowupMsg}</div>
+    )
   }
 
   return (
@@ -279,7 +486,7 @@ export function PrescriptionLivePreview({
       }}
     >
       {/* Watermark */}
-      {watermarkEnabled && logoUrl && (
+      {watermarkEnabled && (logoUrl || d.watermarkText) && (
         <div
           style={{
             position: 'absolute',
@@ -299,7 +506,13 @@ export function PrescriptionLivePreview({
             }),
           }}
         >
-          <img src={logoUrl} alt="" style={{ maxWidth: watermarkPosition === 'center' ? '60%' : '100%', maxHeight: watermarkPosition === 'center' ? '60%' : '120px', objectFit: 'contain' }} />
+          {logoUrl ? (
+            <img src={logoUrl} alt="" style={{ maxWidth: watermarkPosition === 'center' ? '60%' : '100%', maxHeight: watermarkPosition === 'center' ? '60%' : '120px', objectFit: 'contain' }} />
+          ) : (
+            <div style={{ fontSize: '5em', fontWeight: 800, color: primary, letterSpacing: '0.15em', opacity: 0.5 }}>
+              {d.watermarkText || 'CONFIDENCIAL'}
+            </div>
+          )}
         </div>
       )}
 
@@ -307,55 +520,45 @@ export function PrescriptionLivePreview({
       <div style={{ position: 'relative', zIndex: 1 }}>
         {/* Header */}
         {showHeader && (
-          <div style={{ borderBottom: `2.5px solid ${primary}`, paddingBottom: '0.5em', marginBottom: '0.7em' }}>
-            <div
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '1em',
-                ...(d.logoPosition === 'center' && { flexDirection: 'column', textAlign: 'center' as const }),
-                ...(d.logoPosition === 'right' && { flexDirection: 'row-reverse', textAlign: 'right' as const }),
-              }}
-            >
-              {logoUrl && (
-                <img
-                  src={logoUrl}
-                  alt="logo"
-                  style={{
-                    maxHeight: `calc(${logoSize}px * 0.42)`,
-                    maxWidth: `calc(${logoSize * 2.3}px * 0.42)`,
-                    height: 'auto',
-                    width: 'auto',
-                    objectFit: 'contain',
-                    opacity: logoOpacity,
-                  }}
-                />
+          <div style={headerWrapperStyle}>
+            <div style={headerGridStyle}>
+              {logoUrl && headerLayout !== 'text-only' && (
+                <img src={logoUrl} alt="logo" style={logoImgStyle} />
               )}
-              <div>
-                <div style={{ fontSize: '1.7em', fontWeight: 700, color: primary, letterSpacing: '0.04em', lineHeight: 1.15 }}>
-                  {clinic?.name || 'Clínica CENPOD'}
+              {headerLayout !== 'logo-only' && (
+                <div style={{ minWidth: 0, overflow: 'hidden' }}>
+                  <div style={{ fontSize: headerStyle === 'compact' ? '1.4em' : '1.7em', fontWeight: 700, color: headerTextPrimary, letterSpacing: '0.04em', lineHeight: 1.15 }}>
+                    {clinic?.name || 'Clínica CENPOD'}
+                  </div>
+                  {clinic?.razonSocial && (
+                    <div style={{ fontSize: '0.85em', color: headerTextSub, marginTop: '0.15em' }}>
+                      {clinic.razonSocial}
+                    </div>
+                  )}
+                  {doctorName && (
+                    <div style={{ fontSize: '0.85em', color: headerTextSub, marginTop: '0.15em', fontWeight: 600 }}>
+                      {doctorName}
+                      {doctorSpecialty && ` · ${doctorSpecialty}`}
+                      {doctorCedula && ` · Céd. ${doctorCedula}`}
+                    </div>
+                  )}
+                  {(doctorAddress || clinic?.address) && (
+                    <div style={{ fontSize: '0.78em', color: headerTextSub, marginTop: '0.05em' }}>
+                      {doctorAddress || clinic?.address}
+                    </div>
+                  )}
+                  <div style={{ fontSize: '0.78em', color: headerTextSub, marginTop: '0.05em' }}>
+                    {doctorPhone && `Tel. ${doctorPhone}`}
+                    {doctorPhone && clinic?.email && ' · '}
+                    {clinic?.email}
+                  </div>
+                  {clinic?.rfc && (
+                    <div style={{ fontSize: '0.78em', color: headerTextSub }}>
+                      RFC: {clinic.rfc}
+                    </div>
+                  )}
                 </div>
-                {clinic?.razonSocial && (
-                  <div style={{ fontSize: '0.85em', color: withAlpha(textColor, 0.65), marginTop: '0.15em' }}>
-                    {clinic.razonSocial}
-                  </div>
-                )}
-                {clinic?.address && (
-                  <div style={{ fontSize: '0.8em', color: withAlpha(textColor, 0.70), marginTop: '0.05em' }}>
-                    {clinic.address}
-                  </div>
-                )}
-                <div style={{ fontSize: '0.8em', color: withAlpha(textColor, 0.70), marginTop: '0.05em' }}>
-                  {clinic?.phone && `Tel. ${clinic.phone}`}
-                  {clinic?.phone && clinic?.email && ' · '}
-                  {clinic?.email}
-                </div>
-                {clinic?.rfc && (
-                  <div style={{ fontSize: '0.8em', color: withAlpha(textColor, 0.70) }}>
-                    RFC: {clinic.rfc}
-                  </div>
-                )}
-              </div>
+              )}
             </div>
           </div>
         )}
@@ -380,7 +583,7 @@ export function PrescriptionLivePreview({
               padding: '0.5em 0.6em',
               background: withAlpha(accent, 0.06),
               borderLeft: `3px solid ${primary}`,
-              borderRadius: 3,
+              ...cardBorder,
               marginBottom: '0.7em',
               fontSize: '0.95em',
             }}
@@ -460,21 +663,58 @@ export function PrescriptionLivePreview({
             <div style={{ fontSize: '0.78em', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.12em', borderBottom: `1px solid ${withAlpha(primary, 0.18)}`, paddingBottom: '0.15em', marginBottom: '0.3em', color: primary }}>
               Indicaciones generales
             </div>
-            <div style={{ fontSize: '1em', lineHeight, whiteSpace: 'pre-wrap', padding: '0.4em 0.5em', background: withAlpha(textColor, 0.03), borderRadius: 3, borderLeft: `3px solid ${accent}` }}>
+            <div style={{ fontSize: '1em', lineHeight, whiteSpace: 'pre-wrap', padding: '0.4em 0.5em', background: withAlpha(textColor, 0.03), ...cardBorder, borderLeft: `3px solid ${accent}` }}>
               {indicationsText}
+            </div>
+          </div>
+        )}
+
+        {/* QR verification */}
+        {showQrVerification && (
+          <div style={{ marginTop: '0.8em', display: 'flex', alignItems: 'center', gap: '0.8em', padding: '0.6em 0.7em', ...cardBorder, background: withAlpha(accent, 0.05) }}>
+            {/* QR placeholder */}
+            <div
+              style={{
+                width: 'calc(60px * 0.42)',
+                height: 'calc(60px * 0.42)',
+                background: '#fff',
+                border: `1px solid ${withAlpha(textColor, 0.20)}`,
+                display: 'grid',
+                gridTemplateColumns: 'repeat(8, 1fr)',
+                gridTemplateRows: 'repeat(8, 1fr)',
+                padding: '2px',
+                flexShrink: 0,
+              }}
+              aria-label="Código QR de verificación"
+            >
+              {Array.from({ length: 64 }).map((_, i) => {
+                const seed = (i * 7 + folio.charCodeAt(0)) % 3 === 0
+                return (
+                  <div key={i} style={{ background: seed ? textColor : 'transparent' }} />
+                )
+              })}
+            </div>
+            <div style={{ minWidth: 0 }}>
+              <div style={{ fontSize: '0.85em', fontWeight: 700, color: primary }}>Verifica tu receta</div>
+              <div style={{ fontSize: '0.72em', color: withAlpha(textColor, 0.65), fontFamily: "'Courier New', monospace" }}>
+                Folio: {folio}
+              </div>
+              <div style={{ fontSize: '0.7em', color: withAlpha(textColor, 0.55) }}>
+                Escanea para validar autenticidad
+              </div>
             </div>
           </div>
         )}
 
         {/* Signature */}
         {showSignature && (
-          <div style={{ marginTop: '5em', textAlign: 'center' }}>
+          <div style={{ marginTop: '4em', textAlign: 'center' }}>
             <div style={{ borderTop: `1.5px solid ${textColor}`, width: '60%', margin: '0 auto 0.3em' }} />
-            <div style={{ fontWeight: 700, fontSize: '1em', color: primary }}>{podName}</div>
+            <div style={{ fontWeight: 700, fontSize: '1em', color: primary }}>{doctorName}</div>
             <div style={{ fontSize: '0.85em', color: withAlpha(textColor, 0.65), marginTop: '0.05em' }}>
-              {podSpec}
-              {podCed && ` · Cédula: ${podCed}`}
-              {podCert && ` · Cert: ${podCert}`}
+              {doctorSpecialty}
+              {doctorCedula && ` · Cédula: ${doctorCedula}`}
+              {doctorCert && ` · Cert: ${doctorCert}`}
             </div>
             <div style={{ fontSize: '0.78em', color: withAlpha(textColor, 0.55), marginTop: '0.1em', textTransform: 'uppercase', letterSpacing: '0.08em' }}>
               {sigLabel}
@@ -483,10 +723,13 @@ export function PrescriptionLivePreview({
         )}
 
         {/* Footer */}
-        {showFooter && (
-          <div style={{ marginTop: '2em', borderTop: `1px solid ${withAlpha(textColor, 0.18)}`, paddingTop: '0.3em', display: 'flex', justifyContent: 'space-between', fontSize: '0.78em', color: withAlpha(textColor, 0.55) }}>
-            <div>{clinic?.name || 'Clínica CENPOD'} · Receta {folio}</div>
-            <div>Generada el {new Date().toLocaleDateString('es-MX', { day: '2-digit', month: 'long', year: 'numeric' })}</div>
+        {showFooter && footerPieces.length > 0 && (
+          <div style={{ marginTop: '2em', borderTop: `1px solid ${withAlpha(textColor, 0.18)}`, paddingTop: '0.4em', display: 'flex', flexDirection: 'column', gap: '0.15em', color: withAlpha(textColor, 0.65) }}>
+            {footerPieces}
+            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.72em', color: withAlpha(textColor, 0.45), marginTop: '0.2em' }}>
+              <div>{clinic?.name || 'Clínica CENPOD'} · Receta {folio}</div>
+              <div>Generada el {new Date().toLocaleDateString('es-MX', { day: '2-digit', month: 'long', year: 'numeric' })}</div>
+            </div>
           </div>
         )}
       </div>
