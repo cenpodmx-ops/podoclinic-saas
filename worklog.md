@@ -1181,3 +1181,41 @@ Stage Summary:
 - Header sticky con backdrop-blur permanece fijo al hacer scroll.
 - Todas las 6 columnas (incluida IP) visibles y bien espaciadas.
 - Commit 30bb114 deployado en Vercel con email correcto del autor.
+
+---
+Task ID: FIX-RECETAS-BUSCADOR-ALIGN-2026-06-21
+Agent: main (post-recovery — fix buscador de Recetas chueco)
+Task: Alinear buscador del módulo de Recetas con campos de fecha (estaba chueco)
+
+Work Log:
+- Usuario reportó: "acomoda el buscador en el módulo de receta, está chueco como puedes ver en la imagen".
+- Captura del usuario mostraba el buscador desalineado respecto a los campos Desde/Hasta.
+- Diagnóstico con Agent Browser (medición de bounding boxes):
+  * Buscador (text input): top=189, height=36
+  * Desde (date input): top=208, height=36
+  * Hasta (date input): top=208, height=36
+  * Diferencia: 19px (exactamente la altura del label que tenían Desde/Hasta pero no el buscador).
+- Causa raíz: el grid de filtros tenía 3 columnas. El buscador no tenía label, mientras que Desde/Hasta sí tenían label ("DESDE"/"HASTA" con icono CalendarRange). Esto empujaba los date inputs 19px hacia abajo, dejando el buscador más alto.
+- Fix aplicado en src/app/(app)/recetas/page.tsx:
+  * Agregado label "Buscar" con icono Search al buscador (igual que Desde/Hasta tienen label con icono).
+  * Añadido items-end al grid para alinear todos los items por la base.
+  * Reestructurado el contenedor: el div relative ahora envuelve solo al Input + icono (no al label), para que el icono se posicione correctamente con top-1/2 -translate-y-1/2.
+  * Agregado pointer-events-none al icono para que no bloquee clicks en el input.
+- Verificación local con Agent Browser:
+  * Antes: Buscador top=189, Desde top=208, Hasta top=208 (19px de diferencia)
+  * Después: Buscador top=208, Desde top=208, Hasta top=208 (alineados)
+  * Los tres inputs ahora tienen height=36, bottom=244 idénticos.
+- Lint: 0 errores.
+- Commit 6c99b53 con email correcto (cenpodmx@gmail.com).
+- Push a GitHub exitoso → Vercel deploy automático.
+- Verificación en PRODUCCIÓN (https://sistema-cenpod.vercel.app/recetas) con Agent Browser:
+  * Buscador top=208, height=36, bottom=244
+  * Desde top=208, height=36, bottom=244
+  * Hasta top=208, height=36, bottom=244
+  * Los tres inputs perfectamente alineados en producción.
+
+Stage Summary:
+- BUG RESUELTO en producción. Buscador de Recetas ahora alineado con campos de fecha.
+- Los tres inputs (Buscador, Desde, Hasta) empiezan exactamente en la misma línea horizontal.
+- Labels consistentes: "Buscar" (con Search icon), "Desde" (con CalendarRange icon), "Hasta" (con CalendarRange icon).
+- Commit 6c99b53 deployado en Vercel con email correcto del autor.
