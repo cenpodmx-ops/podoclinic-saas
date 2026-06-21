@@ -1137,3 +1137,47 @@ Stage Summary:
 - Fix del bug "C.map is not a function" YA ESTÁ EN PRODUCCIÓN funcionando.
 - Historial limpio: 8 commits desde 68608f3, todos con email correcto.
 - Backup original eliminado (no necesario tras verificación exitosa).
+
+---
+Task ID: FIX-AUDITORIA-OVERFLOW-2026-06-21
+Agent: main (post-recovery — fix Auditoría overflow)
+Task: Fix tabla de Auditoría que se salía del card + no tenía scroll
+
+Work Log:
+- Usuario reportó: "en auditorías se salen del recuadro, y no tiene barra el recuadro donde vienen todos esos datos, no se pueden ver adecuadamente".
+- Captura del usuario: tabla con 6 columnas se desbordaba del card en el lado derecho, columna IP no se veía, sin scrollbar.
+- VLM análisis confirmó: borde derecho de la tabla excedía borde derecho del card, ancho de la tabla mayor que el contenedor.
+- Inspección del código en auditoria-tab.tsx: usaba <ScrollArea className="max-h-[600px]"> que solo daba scroll vertical (no horizontal), y la tabla tenía min-width desbocado.
+- Fix aplicado:
+  * Quité ScrollArea (no maneja horizontal bien), reemplacé por <div className="overflow-auto max-h-[600px]">
+  * Card con overflow-hidden para que las esquinas redondeadas no se rompan con el scroll
+  * Table con min-w-[900px] para forzar scroll horizontal cuando contenedor es angosto
+  * Header sticky con bg-muted/95 + backdrop-blur para que quede fijo al hacer scroll vertical
+  * whitespace-nowrap en celdas cortas (Fecha, Usuario, Acción, Sección, IP) para que no se rompan
+  * Detalles con min-w-[280px] max-w-[420px] + break-words para texto largo controlado
+  * Eliminé import no usado de ScrollArea
+- Verificación local con Agent Browser:
+  * Tab Auditoría carga sin desbordarse del card
+  * Scroll vertical funcional (993px contenido en 600px viewport)
+  * Header queda fijo al hacer scroll (sticky con backdrop-blur)
+  * Todas las 6 columnas visibles y correctamente espaciadas
+  * Sin errores en consola
+- Lint: 0 errores.
+- Commit 30bb114 con email correcto (cenpodmx@gmail.com).
+- Push a GitHub exitoso → Vercel deploy automático.
+- Verificación en PRODUCCIÓN (https://sistema-cenpod.vercel.app) con Agent Browser:
+  * Login dueno@cenpod.com
+  * Navegué a paciente Miguel Joswe Sanchez (cmql7jm2z0000la04ltkixbmg, 40 eventos de auditoría)
+  * Tab Auditoría carga correctamente
+  * 6 columnas visibles (Fecha/hora, Usuario, Acción, Sección, Detalles, IP)
+  * Filas bien contenidas, sin overflow
+  * VLM confirmó: "No, la tabla no se sale del card blanco"
+  * x-vercel-cache: MISS (deploy fresco con el fix)
+
+Stage Summary:
+- BUG RESUELTO en producción. Tabla de Auditoría ahora se contiene dentro del card.
+- Scroll vertical funcional hasta 600px de alto (más allá, scrollbar vertical aparece).
+- Scroll horizontal funcional si la pantalla es muy angosta (móvil).
+- Header sticky con backdrop-blur permanece fijo al hacer scroll.
+- Todas las 6 columnas (incluida IP) visibles y bien espaciadas.
+- Commit 30bb114 deployado en Vercel con email correcto del autor.
