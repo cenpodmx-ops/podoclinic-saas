@@ -1219,3 +1219,56 @@ Stage Summary:
 - Los tres inputs (Buscador, Desde, Hasta) empiezan exactamente en la misma línea horizontal.
 - Labels consistentes: "Buscar" (con Search icon), "Desde" (con CalendarRange icon), "Hasta" (con CalendarRange icon).
 - Commit 6c99b53 deployado en Vercel con email correcto del autor.
+
+---
+Task ID: REDESIGN-RECETAS-EDITOR-2026-06-21
+Agent: main (post-recovery — rediseño editor de recetas)
+Task: Rediseñar editor de recetas con plantillas, datos médicos editables y mejor layout del header
+
+Work Log:
+- Usuario reportó 3 problemas en el editor de recetas:
+  1. Logo con bordes blancos ocupaba espacio y deformaba el header
+  2. El texto se hacía chico al aumentar tamaño del logo
+  3. Datos del médico (cédula, especialidad, teléfono, dirección) estaban harcodeados
+- Usuario envió imagen de referencia con editor de 6 secciones numeradas.
+- Inspección del código reveló que el rediseño ya estaba implementado en los 3 archivos clave (prescription-editor.tsx, prescription-preview.tsx, print/route.ts) — probablemente de una iteración anterior del chat que se crasheó, pero los cambios NO estaban commiteados.
+- Verificación local con Agent Browser en http://localhost:3000/config → tab Recetas:
+  * Las 6 secciones numeradas se ven y colapsan/expanden correctamente:
+    1. Plantilla de receta (5 plantillas: Clínica clásica, Minimalista premium, Compacta, Digital con QR, Institucional)
+    2. Tamaño y entrega (A4/Media carta/Carta + toggles impresión/PDF/QR)
+    3. Cabecera profesional (logo, fondo transparente, datos médico editables, alineación, layout, tamaño/opacidad logo)
+    4. Estilo visual (color, tipografía, encabezado, bordes, marca de agua)
+    5. Contenido clínico (8 toggles en grid 2 columnas)
+    6. Pie de página (4 toggles + mensaje personalizable)
+  * Cambiar de plantilla actualiza el preview en vivo
+  * Editar datos del médico (cédula, especialidad, teléfono, dirección) funciona
+  * Toggle "Fondo transparente" aplica mix-blend-mode: multiply al logo (elimina bordes blancos)
+  * Layout del header con CSS Grid evita que logo compita con texto
+  * Guardar diseño funciona (toast "Diseño de receta guardado")
+  * Controles de zoom del preview (100%, Acercar, Ajustar, Vista móvil)
+  * 0 errores en consola
+- Lint: 0 errores.
+- Revertí cambio accidental en prisma/schema.prisma (estaba cambiado a sqlite localmente, debe ser postgresql para producción).
+- Commit 14a6de7 "feat: rediseño completo del editor de recetas con plantillas y datos editables" — 3 archivos, +1478 -411 líneas.
+- Push a GitHub exitoso (d90a793..14a6de7) — Vercel deploy automático.
+- Verificación en PRODUCCIÓN (https://sistema-cenpod.vercel.app/config → Recetas):
+  * Login OK
+  * Tab Recetas carga sin errores
+  * Las 6 secciones numeradas visibles y funcionales
+  * 0 errores en consola
+  * x-vercel-id presente (deploy fresco)
+- Capturas de evidencia:
+  * /home/z/my-project/recetas-editor-redesign.png (211KB)
+  * /home/z/my-project/recetas-editor-all-expanded.png (248KB)
+  * /home/z/my-project/prod-recetas-editor.png (214KB)
+
+Stage Summary:
+- REDISEÑO COMPLETO DEL EDITOR DE RECETAS deployado en producción.
+- 3 problemas del usuario resueltos:
+  1. Logo con bordes blancos: toggle "Fondo transparente" aplica mix-blend-mode: multiply que fusiona el logo con el fondo, eliminando visualmente los bordes blancos.
+  2. Texto chico al aumentar logo: layout del header ahora usa CSS Grid (grid-template-columns: auto 1fr) en vez de flex, el logo tiene tamaño fijo y el texto ocupa el espacio restante con min-width: 0.
+  3. Datos harcodeados: cédula, especialidad, teléfono y dirección del médico ahora son editables en la sección "Cabecera profesional" (sobreescriben los del podólogo si se llenan, si se dejan vacíos se usan los del podólogo).
+- 5 plantillas predefinidas aplican configuraciones completas con un click.
+- 6 secciones numeradas collapsibles organizan todos los controles.
+- Preview en vivo con controles de zoom refleja todos los cambios en tiempo real.
+- Commit 14a6de7 deployado en Vercel con email correcto del autor (cenpodmx@gmail.com).
