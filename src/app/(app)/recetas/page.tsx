@@ -118,15 +118,20 @@ export default function RecetasPage() {
       {/* Filters */}
       <Card>
         <CardContent className="p-4 space-y-3">
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-            <div className="relative sm:col-span-2 lg:col-span-2">
-              <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <Input
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                placeholder="Buscar por paciente, expediente o diagnóstico…"
-                className="pl-9"
-              />
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 items-end">
+            <div className="sm:col-span-2 lg:col-span-2">
+              <label className="text-[10px] uppercase tracking-wide text-muted-foreground flex items-center gap-1 mb-1">
+                <Search className="h-3 w-3" /> Buscar
+              </label>
+              <div className="relative">
+                <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
+                <Input
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  placeholder="Buscar por paciente, expediente o diagnóstico…"
+                  className="pl-9"
+                />
+              </div>
             </div>
             <div>
               <label className="text-[10px] uppercase tracking-wide text-muted-foreground flex items-center gap-1 mb-1">
