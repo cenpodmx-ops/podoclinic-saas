@@ -75,7 +75,11 @@ export function ConsentimientosTab({ patient }: { patient: Patient }) {
     retry: false,
   })
 
-  const consents = data || patient.consents || []
+  const consents = Array.isArray(data)
+    ? data
+    : Array.isArray(patient.consents)
+      ? patient.consents
+      : []
 
   function openNew() {
     setEditId(null)
@@ -87,7 +91,12 @@ export function ConsentimientosTab({ patient }: { patient: Patient }) {
     setEditId(c.id)
     let riesgos: string[] = []
     try {
-      riesgos = c.riesgosJson ? JSON.parse(c.riesgosJson) : []
+      const parsed = c.riesgosJson
+        ? typeof c.riesgosJson === 'string'
+          ? JSON.parse(c.riesgosJson)
+          : c.riesgosJson
+        : []
+      riesgos = Array.isArray(parsed) ? parsed : []
     } catch {}
     setForm({
       procedimientoPropuesto: c.procedimientoPropuesto,
@@ -394,11 +403,19 @@ export function ConsentimientosTab({ patient }: { patient: Patient }) {
                 <div>
                   <p className="text-[10px] uppercase text-muted-foreground">Riesgos</p>
                   <div className="flex flex-wrap gap-1 mt-1">
-                    {(JSON.parse(viewing.riesgosJson) as string[]).map((r) => (
-                      <Badge key={r} variant="outline" className="text-[10px]">
-                        {r}
-                      </Badge>
-                    ))}
+                    {(() => {
+                      let arr: any = null
+                      try {
+                        arr = typeof viewing.riesgosJson === 'string'
+                          ? JSON.parse(viewing.riesgosJson)
+                          : viewing.riesgosJson
+                      } catch {}
+                      return (Array.isArray(arr) ? arr : []).map((r: string) => (
+                        <Badge key={r} variant="outline" className="text-[10px]">
+                          {r}
+                        </Badge>
+                      ))
+                    })()}
                   </div>
                 </div>
               )}

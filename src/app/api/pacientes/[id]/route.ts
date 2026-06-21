@@ -77,7 +77,20 @@ export async function GET(_req: NextRequest, ctx: { params: Promise<{ id: string
 
   // Parsear campos JSON del expediente NOM-004 para el frontend
   const fichaIdentificacion = safeJsonParse(patient.fichaIdentificacion, null)
-  const historiaClinicaInicial = safeJsonParse(patient.historiaClinicaInicial, null)
+  const historiaClinicaInicialRaw = safeJsonParse(patient.historiaClinicaInicial, null)
+
+  // Normalizar historiaClinicaInicial: asegurar que los campos que deben ser
+  // arrays realmente lo sean (pueden venir como string si se guardaron mal
+  // en una versión anterior del formulario o por migraciones de datos).
+  const historiaClinicaInicial = (() => {
+    if (!historiaClinicaInicialRaw || typeof historiaClinicaInicialRaw !== 'object') return null
+    const hc = historiaClinicaInicialRaw as any
+    if (hc.diagnosticos && typeof hc.diagnosticos === 'object') {
+      const s = hc.diagnosticos.secundarios
+      hc.diagnosticos.secundarios = Array.isArray(s) ? s : (typeof s === 'string' && s.trim() ? s.split(',').map((x: string) => x.trim()).filter(Boolean) : [])
+    }
+    return hc
+  })()
 
   // Registrar acceso al expediente (auditoría legal NOM-004)
   await logAudit(
@@ -98,14 +111,24 @@ export async function GET(_req: NextRequest, ctx: { params: Promise<{ id: string
       ...p,
       anestesiaJson: p.anestesiaJson ? safeJsonParse(p.anestesiaJson) : null,
     })),
-    consents: consents.map((c) => ({
-      ...c,
-      riesgosJson: c.riesgosJson ? safeJsonParse<string[]>(c.riesgosJson, []) : [],
-    })),
-    referrals: referrals.map((r) => ({
-      ...r,
-      motivoClinicoJson: r.motivoClinicoJson ? safeJsonParse<string[]>(r.motivoClinicoJson, []) : [],
-    })),
+    consents: consents.map((c) => {
+      const riesgos = c.riesgosJson
+        ? (() => {
+            const p = safeJsonParse<any>(c.riesgosJson, [])
+            return Array.isArray(p) ? p : []
+          })()
+        : []
+      return { ...c, riesgosJson: riesgos }
+    }),
+    referrals: referrals.map((r) => {
+      const motivo = r.motivoClinicoJson
+        ? (() => {
+            const p = safeJsonParse<any>(r.motivoClinicoJson, [])
+            return Array.isArray(p) ? p : []
+          })()
+        : []
+      return { ...r, motivoClinicoJson: motivo }
+    }),
     auditLogs,
   })
 }

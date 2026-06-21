@@ -71,7 +71,8 @@ export function ResumenTab({
   )
   const hc = patient.historiaClinicaInicial
   const diagnosticosActivos =
-    hc?.diagnosticos?.diagnosticoPrincipal || (hc?.diagnosticos?.secundarios?.length || 0) > 0
+    hc?.diagnosticos?.diagnosticoPrincipal ||
+    (Array.isArray(hc?.diagnosticos?.secundarios) ? hc.diagnosticos.secundarios.length : 0) > 0
 
   async function patchRisk(v: string) {
     setSavingRisk(true)
@@ -310,7 +311,7 @@ export function ResumenTab({
                   )}
                 </div>
               )}
-              {hc?.diagnosticos?.secundarios && hc.diagnosticos.secundarios.length > 0 && (
+              {Array.isArray(hc?.diagnosticos?.secundarios) && hc.diagnosticos.secundarios.length > 0 && (
                 <div>
                   <p className="text-[10px] uppercase text-muted-foreground mb-1">Secundarios</p>
                   <div className="flex flex-wrap gap-1.5">
@@ -328,7 +329,7 @@ export function ResumenTab({
       </Card>
 
       {/* Alertas clínicas (si existen) */}
-      {alertas && alertas.length > 0 && (
+      {Array.isArray(alertas) && alertas.length > 0 && (
         <Card>
           <CardHeader className="pb-3">
             <CardTitle className="text-base flex items-center gap-2">

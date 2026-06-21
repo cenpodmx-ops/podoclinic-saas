@@ -89,7 +89,11 @@ export function ProcedimientosTab({ patient }: { patient: Patient }) {
     retry: false,
   })
 
-  const procs = data || patient.procedures || []
+  const procs = Array.isArray(data)
+    ? data
+    : Array.isArray(patient.procedures)
+      ? patient.procedures
+      : []
 
   function openNew() {
     setEditId(null)

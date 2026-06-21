@@ -49,7 +49,11 @@ export function AuditoriaTab({ patient }: { patient: Patient }) {
     retry: false,
   })
 
-  const logs = data || patient.auditLogs || []
+  const logs = Array.isArray(data)
+    ? data
+    : Array.isArray(patient.auditLogs)
+      ? patient.auditLogs
+      : []
 
   return (
     <div className="space-y-3">

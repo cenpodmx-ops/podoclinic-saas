@@ -99,7 +99,11 @@ export function ReferenciasTab({ patient }: { patient: Patient }) {
     retry: false,
   })
 
-  const refs = data || patient.referrals || []
+  const refs = Array.isArray(data)
+    ? data
+    : Array.isArray(patient.referrals)
+      ? patient.referrals
+      : []
 
   function openNew() {
     setEditId(null)
