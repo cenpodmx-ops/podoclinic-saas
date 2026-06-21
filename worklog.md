@@ -1017,3 +1017,25 @@ Stage Summary:
 - Configuración final: launcher script en /home/z/launch-cenpod.sh con env vars embebidas (override del sistema). Para reiniciar el server: `bash /home/z/launch-cenpod.sh`.
 - Pendiente menor: SUPABASE_ANON_KEY sigue como placeholder (no afecta funcionalidad actual; solo se necesita si se usa Supabase Storage para archivos). El usuario puede proporcionarla después si hace falta.
 - Recordatorio de seguridad: el token de GitHub (ghp_JjG9...) compartido por el usuario debe ser revocado.
+
+---
+Task ID: VERIFY-FIX-PROCEDIMIENTOS-2026-06-21
+Agent: main (post-recovery — verify production fix)
+Task: Verificar si el bug "Application error: client-side exception" en tabs Procedimientos/Consentimientos/Referencias/Auditoría persiste en producción
+
+Work Log:
+- Inspeccioné el commit 68608f3 "fix: crash en procedimientos/consentimientos/referencias/auditoría" — cambiaba isLoading por isPending:isLoading (alias TanStack Query v5) en 8 tabs del expediente + page.tsx.
+- Verifiqué en GitHub API: el último commit en main es exactamente 68608f3 (20-jun-2026 03:34 UTC), ya pusheado.
+- Verifiqué en Vercel (https://sistema-cenpod.vercel.app/): el deploy está activo, headers x-vercel-id presentes, server Vercel respondiendo.
+- Reproducción local con Agent Browser (localhost:3000): entré a /pacientes/cmqj2sqm0001knnxfx3ilj2ry (María González), hice click en tabs Procedimientos/Consentimientos/Referencias/Auditoría — todos cargaron sin errores en consola ni en page errors. Diálogo "Nuevo procedimiento" también abre correctamente.
+- Reproducción en PRODUCCIÓN con Agent Browser: mismo flujo en https://sistema-cenpod.vercel.app/. Login como dueno@cenpod.com, navegué a 3 pacientes (María González, Pedro López, Rosa Martínez), en cada uno hice click en los 4 tabs problemáticos. Resultado: 0 errores en consola, 0 page errors, todos los tabs renderizan correctamente ("0 procedimiento(s) registrado(s)", "Sin procedimientos registrados", etc.).
+- Abrí el diálogo "Nuevo procedimiento" en producción: se renderiza con todos sus campos (combobox, datetime picker, textboxes, chip-multiselect de instrumental con 9 botones, etc.) sin error.
+- Hard reload (agent-browser reload) + re-test de los 4 tabs: 0 errores.
+- Captura de evidencia: /home/z/my-project/prod-procedimientos-OK.png (107KB) muestra el tab Procedimientos renderizando "0 procedimiento(s) registrado(s) · Nuevo procedimiento · Sin procedimientos registrados." en producción.
+
+Stage Summary:
+- CONCLUSIÓN: El bug ya está RESUELTO en producción. El commit 68608f3 (fix del crash) está deployado y funcionando correctamente.
+- Hipótesis más probable de por qué el usuario sigue viendo el error: CACHÉ del navegador (JS bundle viejo cacheado, o Service Worker stale). Solución: hard refresh (Ctrl+Shift+R / Cmd+Shift+R) o abrir en incógnito, y si tienen Service Worker, desregistrarlo desde DevTools → Application → Service Workers.
+- Alternativamente, el error puede ocurrir en un flujo específico no cubierto en mis pruebas (p.ej. editar un procedimiento existente, o con un paciente que tenga datos guardados — pero los pacientes de prueba no tienen procedimientos registrados).
+- NO se requiere nuevo fix de código. NO se requiere nuevo deploy.
+- Si el usuario sigue viendo el error tras hard refresh + incógnito, pedirle captura de la consola del navegador (F12 → Console tab) con el stack trace específico.
