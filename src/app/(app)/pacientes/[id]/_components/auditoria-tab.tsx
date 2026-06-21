@@ -11,7 +11,6 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
-import { ScrollArea } from '@/components/ui/scroll-area'
 import { Loader2, History, Eye, Pencil, Trash2, FilePlus, FileDown, FileSearch } from 'lucide-react'
 import { fmtDateTime } from '@/lib/format'
 import type { Patient, AuditLogRow } from './types'
@@ -78,17 +77,17 @@ export function AuditoriaTab({ patient }: { patient: Patient }) {
           </CardContent>
         </Card>
       ) : (
-        <Card>
-          <ScrollArea className="max-h-[600px]">
-            <Table>
-              <TableHeader className="sticky top-0 bg-muted/50">
+        <Card className="overflow-hidden">
+          <div className="overflow-auto max-h-[600px] rounded-md">
+            <Table className="min-w-[900px]">
+              <TableHeader className="sticky top-0 z-10 bg-muted/95 backdrop-blur supports-[backdrop-filter]:bg-muted/80">
                 <TableRow>
-                  <TableHead className="w-44">Fecha/hora</TableHead>
-                  <TableHead>Usuario</TableHead>
-                  <TableHead>Acción</TableHead>
-                  <TableHead>Sección</TableHead>
-                  <TableHead>Detalles</TableHead>
-                  <TableHead>IP</TableHead>
+                  <TableHead className="w-36 whitespace-nowrap">Fecha/hora</TableHead>
+                  <TableHead className="w-44 whitespace-nowrap">Usuario</TableHead>
+                  <TableHead className="w-32 whitespace-nowrap">Acción</TableHead>
+                  <TableHead className="w-32 whitespace-nowrap">Sección</TableHead>
+                  <TableHead className="min-w-[280px] max-w-[420px]">Detalles</TableHead>
+                  <TableHead className="w-24 whitespace-nowrap">IP</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -96,22 +95,22 @@ export function AuditoriaTab({ patient }: { patient: Patient }) {
                   const Icon = ACTION_ICON[log.action] || Eye
                   return (
                     <TableRow key={log.id}>
-                      <TableCell className="text-xs">{fmtDateTime(log.createdAt)}</TableCell>
-                      <TableCell className="text-xs">{log.userName || '—'}</TableCell>
+                      <TableCell className="text-xs whitespace-nowrap">{fmtDateTime(log.createdAt)}</TableCell>
+                      <TableCell className="text-xs whitespace-nowrap">{log.userName || '—'}</TableCell>
                       <TableCell>
                         <Badge
                           variant="outline"
-                          className={`text-[10px] gap-1 ${ACTION_COLOR[log.action] || ''}`}
+                          className={`text-[10px] gap-1 whitespace-nowrap ${ACTION_COLOR[log.action] || ''}`}
                         >
                           <Icon className="h-3 w-3" />
                           {log.action}
                         </Badge>
                       </TableCell>
-                      <TableCell className="text-xs">{log.section || '—'}</TableCell>
-                      <TableCell className="text-xs text-muted-foreground">
+                      <TableCell className="text-xs whitespace-nowrap">{log.section || '—'}</TableCell>
+                      <TableCell className="text-xs text-muted-foreground break-words">
                         {log.details || '—'}
                       </TableCell>
-                      <TableCell className="text-xs text-muted-foreground font-mono">
+                      <TableCell className="text-xs text-muted-foreground font-mono whitespace-nowrap">
                         {log.ip || '—'}
                       </TableCell>
                     </TableRow>
@@ -119,7 +118,7 @@ export function AuditoriaTab({ patient }: { patient: Patient }) {
                 })}
               </TableBody>
             </Table>
-          </ScrollArea>
+          </div>
         </Card>
       )}
     </div>
