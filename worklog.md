@@ -1039,3 +1039,70 @@ Stage Summary:
 - Alternativamente, el error puede ocurrir en un flujo específico no cubierto en mis pruebas (p.ej. editar un procedimiento existente, o con un paciente que tenga datos guardados — pero los pacientes de prueba no tienen procedimientos registrados).
 - NO se requiere nuevo fix de código. NO se requiere nuevo deploy.
 - Si el usuario sigue viendo el error tras hard refresh + incógnito, pedirle captura de la consola del navegador (F12 → Console tab) con el stack trace específico.
+
+---
+Task ID: FIX-MAP-NOT-A-FUNCTION-2026-06-21
+Agent: main (post-recovery — fix production crash)
+Task: Fix "Application error: client-side exception has occurred" en expediente del paciente
+
+Work Log:
+- Usuario reportó error en https://sistema-cenpod.vercel.app/ al abrir ficha de cualquier paciente y navegar a tabs Procedimientos/Consentimientos/Referencias/Auditoría.
+- Captura de pantalla del usuario mostraba error en consola: "Uncaught TypeError: C.map is not a function" en chunk 97234c7f75d0c5c7.js:236:9164.
+- Inspeccioné commit anterior 68608f3 "fix: crash en procedimientos/..." — solo cambiaba isLoading por isPending:isLoading (alias), no atacaba la causa raíz.
+- Reproducción local inicial con pacientes del seed (María González, Pedro López, Rosa Martínez): NO reproducía el error. Los pacientes del seed tienen historiaClinicaInicial=null y todos los arrays vacíos.
+- Hipótesis: el error solo ocurre con datos reales del usuario (pacientes creados en producción con historia clínica capturada). El ID del paciente del usuario (cmql7jm2z...) no existe en mi DB → no podía reproducir con sus datos exactos.
+- REPRODUCCIÓN FORZADA: hice PATCH a María González inyectando historiaClinicaInicial.diagnosticos.secundarios = 'diabético, hipertensión' (STRING en lugar de array). Al recargar la ficha, se reprodujo EXACTAMENTE el error del usuario:
+  "Runtime TypeError: hc.diagnosticos.secundarios.map is not a function
+   > 317 | {hc.diagnosticos.secundarios.map((d) => ("
+- CAUSA RAÍZ confirmada: el guard `secundarios && secundarios.length > 0` pasa para strings (tienen .length), pero `string.map()` lanza TypeError. Mismo patrón en los 4 tabs problemáticos.
+
+FIX FRONTEND (defensivo, Array.isArray):
+- src/app/(app)/pacientes/[id]/_components/resumen-tab.tsx:
+  * Línea 73: `diagnosticosActivos` ahora usa `Array.isArray(hc?.diagnosticos?.secundarios) ? hc.diagnosticos.secundarios.length : 0`
+  * Línea 313: guard cambiado a `Array.isArray(hc?.diagnosticos?.secundarios) && hc.diagnosticos.secundarios.length > 0`
+  * Línea 331: guard cambiado a `Array.isArray(alertas) && alertas.length > 0`
+- src/app/(app)/pacientes/[id]/_components/procedimientos-tab.tsx: `const procs = Array.isArray(data) ? data : Array.isArray(patient.procedures) ? patient.procedures : []`
+- src/app/(app)/pacientes/[id]/_components/consentimientos-tab.tsx:
+  * `const consents` con Array.isArray (igual patrón que procs)
+  * `openEdit`: riesgos parseado con Array.isArray check
+  * Línea 401: JSON.parse(viewing.riesgosJson) protegido con try/catch + Array.isArray
+- src/app/(app)/pacientes/[id]/_components/referencias-tab.tsx: `const refs` con Array.isArray
+- src/app/(app)/pacientes/[id]/_components/auditoria-tab.tsx: `const logs` con Array.isArray
+
+FIX BACKEND (normalización al devolver):
+- src/app/api/pacientes/[id]/route.ts:
+  * historiaClinicaInicial: si diagnosticos.secundarios viene como string no vacío, se parsea a array via split(',').map(trim).filter(Boolean). Si viene como otra cosa, se reemplaza con [].
+  * consents.riesgosJson: siempre se devuelve como array (si JSON.parse no da array, se retorna [])
+  * referrals.motivoClinicoJson: igual que riesgosJson
+
+VERIFICACIÓN LOCAL con Agent Browser (datos malformados inyectados):
+- Antes del fix: PATCH con secundarios='diabético, hipertensión' → reload → TypeError: map is not a function → Application error.
+- Después del fix: misma data → reload → carga OK, tab Resumen muestra badges 'diabético' e 'hipertensión' separadas (parseo exitoso). Los 4 tabs problemáticos (Proced/Consent/Refer/Auditoría) todos cargan sin error.
+
+Limpieza: restablecí historiaClinicaInicial de María González a null para no dejar basura en la DB.
+
+DEPLOY:
+- Commit: 2d5951b "fix: crash C.map is not a function en expediente del paciente"
+- Push a GitHub: exitoso (68608f3..2d5951b main -> main)
+- Vercel deploy automático disparado por webhook GitHub→Vercel.
+
+VERIFICACIÓN EN PRODUCCIÓN (https://sistema-cenpod.vercel.app) con Agent Browser:
+- Login dueno@cenpod.com: OK
+- /pacientes: OK (lista pacientes)
+- /pacientes/cmqj2sqm0001knnxfx3ilj2ry (María González): OK, sin errores en consola
+- Click en los 4 tabs problemáticos (Proced/Consent/Refer/Auditoría): TODOS cargan sin error
+- Contenido renderiza correctamente:
+  * Resumen: "Diagnósticos activos / Sin diagnósticos capturados en la historia clínica inicial"
+  * Procedimientos: "0 procedimiento(s) registrado(s)"
+  * Consentimientos: "0 consentimiento(s) registrado(s) / Sin consentimientos registrados"
+  * Referencias: "0 referencia(s) / Sin referencias registradas"
+  * Auditoría: tab panel carga
+- Captura de evidencia: /home/z/my-project/prod-fix-verify.png (248KB)
+- 0 errores en consola, 0 page errors.
+
+Stage Summary:
+- BUG RESUELTO en producción. El fix es doble: frontend defensivo (Array.isArray) + backend normaliza datos malformados al devolverlos.
+- Cualquier paciente con datos malformados (secundarios como string, etc.) ahora carga correctamente sin crashear.
+- Los pacientes con datos correctos siguen funcionando igual (sin regresión).
+- El fix también protege contra futuros edge cases (campos null, undefined, string, objeto en lugar de array).
+- El commit 2d5951b está deployado y verificado end-to-end en https://sistema-cenpod.vercel.app
