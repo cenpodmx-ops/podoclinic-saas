@@ -955,3 +955,30 @@ Stage Summary:
 - API extendida: PATCH /api/config/plantillas ya aceptaba prescriptionDesign (no requirió cambios).
 - API extendida: GET /api/recetas/[id]/print respeta TODOS los campos del diseño (paperSize, colores, tipografía, toggles, márgenes, logo, watermark, signatureLabel).
 - Sin errores de lint/TS en mis archivos. Sin errores de runtime en dev.log. Funcionalidad existente (recetas list, receta detail, consulta flow) NO rota — solo extendida.
+
+---
+Task ID: RECOVERY-2026-06-21
+Agent: main (post-crash recovery)
+Task: Recuperación del sistema CENPOD tras crasheo del chat anterior
+
+Work Log:
+- Chat anterior se crasheó; el entorno sandbox local /home/z/my-project se había reiniciado (solo quedaba el scaffold inicial con SQLite).
+- Usuario proporcionó token de GitHub (ghp_***, ya rotado/revocado por seguridad).
+- Descubiertos 2 repos en cuenta `cenpodmx-ops`: `sistema-cenpod` (privado, push 20-jun-2026) y `cenpod` (público, push 9-may-2026).
+- Clonado `sistema-cenpod` a /tmp/cenpod-recovery con --depth 50 (historial completo: 50 commits del 18-20 jun 2026).
+- Restaurados TODOS los archivos a /home/z/my-project vía rsync (excluyendo node_modules). .git copiado aparte para preservar historial.
+- bun install exitoso: 856 paquetes en 3.7s.
+- prisma generate exitoso (v6.19.2) — cliente generado desde schema.prisma (PostgreSQL/Supabase).
+- .env temporal creado con PLACEHOLDERS (DATABASE_URL, DIRECT_URL, NEXTAUTH_SECRET, NEXTAUTH_URL, SUPABASE_URL, SUPABASE_ANON_KEY). Pendiente: usuario debe proporcionar credenciales reales de Supabase (project: lvmillaexhmehrjoouca).
+- Backup del .env SQLite anterior en /tmp/old-env-backup.txt.
+- Backup del dev.log anterior en /tmp/dev-log-backup.log.
+
+Stage Summary:
+- CÓDIGO 100% recuperado del repositorio GitHub `cenpodmx-ops/sistema-cenpod` (commit 68608f3 "fix: crash en procedimientos/consentimientos/referencias/auditoría").
+- 50 commits de historial preservados.
+- 19 módulos restaurados: agenda, caja, config, consulta, crm, dashboard, equipos, evaluacion, facturas, finanzas, inventario, mi-agenda, operaciones, pacientes, recetas, red, reserva, seguimiento, servicios.
+- Mini-service `red-service` (WebSocket para Red CENPOD) restaurado en mini-services/red-service.
+- Documentación de subagentes preservada en agent-ctx/ (9 archivos).
+- worklog.md (957 líneas) preservado con TODO el contexto conversacional previo.
+- PENDIENTE ÚNICO: credenciales reales de Supabase para reconectar la base de datos (los datos en la nube están intactos: 3 clínicas, 4 usuarios, 3 podólogos, 7 servicios, 6 pacientes, 7 citas, 8 productos, 2 equipos).
+- Una vez recibidas las credenciales, el sistema quedará 100% operativo.
