@@ -11,6 +11,7 @@ import { Switch } from '@/components/ui/switch'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Skeleton } from '@/components/ui/skeleton'
+import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
 import {
   AlertDialog,
   AlertDialogAction,
@@ -32,6 +33,7 @@ import {
   AlertTriangle,
   History,
   PackageX,
+  BookOpen,
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { fmtMoney } from '@/lib/format'
@@ -39,6 +41,7 @@ import { ProductFormDialog } from './_components/product-form-dialog'
 import { MovimientosDialog } from './_components/movimientos-dialog'
 import { ImportDialog } from './_components/import-dialog'
 import { PosDialog } from './_components/pos-dialog'
+import { VademecumTab } from './_components/vademecum-tab'
 import {
   CATEGORIES,
   CATEGORY_LABELS,
@@ -63,6 +66,7 @@ export default function InventarioPage() {
   const [category, setCategory] = useState<string>(SENTINEL_ALL)
   const [stockBajo, setStockBajo] = useState(false)
   const [includeInactive, setIncludeInactive] = useState(false)
+  const [tab, setTab] = useState<'productos' | 'vademecum'>('productos')
 
   useEffect(() => {
     const t = setTimeout(() => setDebouncedSearch(search), 300)
@@ -189,60 +193,74 @@ export default function InventarioPage() {
             Catálogo de productos, control de stock y venta de mostrador
           </p>
         </div>
-        <div className="flex flex-wrap items-center gap-2">
-          <Button
-            onClick={() => setPosOpen(true)}
-            size="sm"
-            variant="outline"
-            style={{ borderColor: '#0a3143', color: '#0a3143' }}
-          >
-            <ShoppingCart className="h-4 w-4 mr-1" /> Venta mostrador
-          </Button>
-          {canEdit && (
-            <>
-              <Button onClick={() => setImportOpen(true)} size="sm" variant="outline">
-                <FileSpreadsheet className="h-4 w-4 mr-1" /> Importar Excel
-              </Button>
-              <Button onClick={onNew} size="sm" style={{ backgroundColor: '#0a3143' }}>
-                <Plus className="h-4 w-4 mr-1" /> Nuevo producto
-              </Button>
-            </>
-          )}
-        </div>
+        {tab === 'productos' && (
+          <div className="flex flex-wrap items-center gap-2">
+            <Button
+              onClick={() => setPosOpen(true)}
+              size="sm"
+              variant="outline"
+              style={{ borderColor: '#0a3143', color: '#0a3143' }}
+            >
+              <ShoppingCart className="h-4 w-4 mr-1" /> Venta mostrador
+            </Button>
+            {canEdit && (
+              <>
+                <Button onClick={() => setImportOpen(true)} size="sm" variant="outline">
+                  <FileSpreadsheet className="h-4 w-4 mr-1" /> Importar Excel
+                </Button>
+                <Button onClick={onNew} size="sm" style={{ backgroundColor: '#0a3143' }}>
+                  <Plus className="h-4 w-4 mr-1" /> Nuevo producto
+                </Button>
+              </>
+            )}
+          </div>
+        )}
       </div>
 
-      {/* Stock bajo alert */}
-      {bajoProducts.length > 0 && (
-        <Card className="border-red-300 bg-red-50">
-          <CardContent className="p-3">
-            <div className="flex items-start gap-2">
-              <AlertTriangle className="h-5 w-5 text-red-600 shrink-0 mt-0.5" />
-              <div className="flex-1 min-w-0">
-                <div className="font-semibold text-red-800 text-sm">
-                  {bajoProducts.length} producto(s) con stock bajo
+      {/* Sub-pestañas: Productos / Vademécum */}
+      <Tabs value={tab} onValueChange={setTab} className="w-full">
+        <TabsList className="grid grid-cols-2 w-full max-w-md">
+          <TabsTrigger value="productos" className="flex items-center gap-1.5">
+            <Package className="h-3.5 w-3.5" /> Productos
+          </TabsTrigger>
+          <TabsTrigger value="vademecum" className="flex items-center gap-1.5">
+            <BookOpen className="h-3.5 w-3.5" /> Vademécum
+          </TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="productos" className="mt-4 space-y-4">
+          {/* Stock bajo alert */}
+          {bajoProducts.length > 0 && (
+            <Card className="border-red-300 bg-red-50">
+              <CardContent className="p-3">
+                <div className="flex items-start gap-2">
+                  <AlertTriangle className="h-5 w-5 text-red-600 shrink-0 mt-0.5" />
+                  <div className="flex-1 min-w-0">
+                    <div className="font-semibold text-red-800 text-sm">
+                      {bajoProducts.length} producto(s) con stock bajo
+                    </div>
+                    <div className="flex flex-wrap gap-1.5 mt-1.5 max-h-24 overflow-y-auto">
+                      {bajoProducts.slice(0, 12).map((p) => (
+                        <Badge
+                          key={p.id}
+                          variant="outline"
+                          className="bg-white border-red-300 text-red-700 cursor-pointer hover:bg-red-100"
+                          onClick={() => onMovimientos(p)}
+                        >
+                          {p.name} <span className="font-mono ml-1">({p.stock}/{p.minStock})</span>
+                        </Badge>
+                      ))}
+                      {bajoProducts.length > 12 && (
+                        <Badge variant="outline" className="bg-white border-red-300 text-red-700">
+                          +{bajoProducts.length - 12} más
+                        </Badge>
+                      )}
+                    </div>
+                  </div>
                 </div>
-                <div className="flex flex-wrap gap-1.5 mt-1.5 max-h-24 overflow-y-auto">
-                  {bajoProducts.slice(0, 12).map((p) => (
-                    <Badge
-                      key={p.id}
-                      variant="outline"
-                      className="bg-white border-red-300 text-red-700 cursor-pointer hover:bg-red-100"
-                      onClick={() => onMovimientos(p)}
-                    >
-                      {p.name} <span className="font-mono ml-1">({p.stock}/{p.minStock})</span>
-                    </Badge>
-                  ))}
-                  {bajoProducts.length > 12 && (
-                    <Badge variant="outline" className="bg-white border-red-300 text-red-700">
-                      +{bajoProducts.length - 12} más
-                    </Badge>
-                  )}
-                </div>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      )}
+              </CardContent>
+            </Card>
+          )}
 
       {/* Toolbar */}
       <Card className="shadow-sm">
@@ -434,6 +452,12 @@ export default function InventarioPage() {
           </div>
         </div>
       )}
+        </TabsContent>
+
+        <TabsContent value="vademecum" className="mt-4">
+          <VademecumTab canEdit={canEdit} />
+        </TabsContent>
+      </Tabs>
 
       {/* Dialogs */}
       <ProductFormDialog
