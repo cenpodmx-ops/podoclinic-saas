@@ -1315,3 +1315,62 @@ Stage Summary:
 - Causa raíz: Switch de shadcn envía "on" (string) en vez de boolean, Prisma no puede castearlo.
 - Fix doble: frontend normaliza el valor antes de enviar, backend también lo normaliza al recibir (defensivo).
 - Commit bbff096 deployado en Vercel.
+
+---
+Task ID: FIX-AGENDA-PRINT-2026-06-22
+Agent: main (fix impresión agenda)
+Task: Arreglar impresión de agenda — márgenes + nombre del podólogo en negritas
+
+Work Log:
+- Usuario reportó: "al querer imprimir la agenda, se ve así, sin márgenes, y no dice el nombre del podólogo, es importante que diga, en negritas llamativo, en la parte superior, y que la impresión sea correcta".
+- Captura del usuario mostraba: header decía "CENPOD Ocotillo" (nombre de la CLÍNICA, no del podólogo), y el contenido estaba pegado a los bordes sin márgenes.
+- Diagnóstico del código:
+  * En globals.css @media print, .print-agenda tenía 'padding: 0 !important' — eliminaba el padding al imprimir.
+  * No existía regla @page para márgenes de impresión.
+  * En agenda/page.tsx, el header mostraba 'data?.clinic?.name' (clínica) en vez del nombre del podólogo.
+- Fix aplicado en 2 archivos:
+
+  1. src/app/globals.css:
+     * Cambiado '.print-agenda { padding: 0 !important; }' a 'padding: 12mm 14mm !important;'
+     * Añadidos estilos para .podologo-header:
+       - background: #0a3143 (azul oscuro CENPOD)
+       - color: #ffffff
+       - font-size: 18px, font-weight: 800 (extra bold)
+       - padding: 10px 14px, border-radius: 4px
+       - Label 'PODÓLOGO' encima (uppercase, 10px, opacity 0.85)
+     * Añadidos estilos para .info-grid:
+       - Grid 2 columnas con fondo gris claro y borde izquierdo azul
+       - Muestra clínica, fecha, total citas, confirmadas/pendientes/finalizadas
+     * Añadida regla @page { margin: 14mm; } al final del archivo
+
+  2. src/app/(app)/agenda/page.tsx:
+     * Reescrito el header del print:
+       - Título 'AGENDA DIARIA' centrado
+       - Fecha debajo (sin clínica)
+       - .podologo-header: recuadro azul con label 'PODÓLOGO' + nombre del podólogo filtrado (o 'Todos los podólogos' si no hay filtro)
+       - .info-grid: clínica, fecha, total citas, estadísticas
+     * El nombre del podólogo se obtiene del state podologistId + lista podologos:
+       - Si podologistId='all' → 'Todos los podólogos'
+       - Si hay podólogo seleccionado → busca en podologos.find(p => p.id === podologistId).name
+
+- Verificación local con agent-browser pdf:
+  * PDF generado correctamente (62KB, 2 páginas)
+  * Convertido a PNG con pdftoppm
+  * VLM análisis confirmó:
+    - 'Márgenes apropiados (suficiente espacio en los bordes)'
+    - 'Recuadro azul oscuro con label PODÓLOGO y nombre Todos los podólogos en negrita (font-weight 800, 14-16pt)'
+    - 'Info de clínica (CENPOD OCOTILLO), fecha y estadísticas visibles'
+    - 'Layout profesional, estructura clara, columnas bien definidas'
+
+- Lint: 0 errores.
+- Commit 644f6f1 con email correcto.
+- Push exitoso (4c7d362..644f6f1).
+- Verificación en producción: sesión expiró al ir a /agenda, no se pudo generar PDF de producción, pero el fix es solo CSS+JSX y se verificó localmente con el mismo código.
+
+Stage Summary:
+- BUG RESUELTO. Impresión de agenda ahora:
+  1. Tiene márgenes apropiados (14mm en @page + 12mm 14mm padding en .print-agenda)
+  2. Muestra el nombre del PODÓLOGO en negritas llamativas (font-weight 800, 18px) en un recuadro azul oscuro con label 'PODÓLOGO' encima
+  3. Incluye info grid con clínica, fecha y estadísticas (total, confirmadas, pendientes, finalizadas)
+  4. Layout profesional con jerarquía clara: título → fecha → header podólogo → info grid → tabla de citas
+- Commit 644f6f1 deployado en Vercel.
