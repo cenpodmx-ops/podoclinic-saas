@@ -1428,3 +1428,75 @@ Stage Summary:
 - Autocompletado funcional: al escribir nombre en receta, se buscan en paralelo inventario y vademécum, y al seleccionar se autocompletan dosis/vía/duración/indicación.
 - 3 medicamentos de prueba creados en la BD de Supabase (visibles en producción después del deploy).
 - Commit 4df4138 deployado en Vercel.
+
+---
+Task ID: VADEMECUM-IMPORT-EXCEL-2026-06-22
+Agent: main (importar Excel al vademécum)
+Task: Añadir opción para importar medicamentos al vademécum desde Excel + plantilla descargable
+
+Work Log:
+- Usuario solicitó: "Debería tener la opción para subir un excel, porque ya tengo uno, además de poder agregar así individualmente".
+- Revisé el patrón existente del inventario (ImportDialog + /api/inventario/importar + /api/inventario/plantilla) y lo repliqué para vademécum.
+
+- Creé src/app/api/vademecum/importar/route.ts (249 líneas):
+  * POST multipart/form-data con campo 'file' (.xlsx, .xls, .csv)
+  * Headers reconocidos (case-insensitive, español/inglés):
+    - name | nombre | nombre comercial (obligatorio)
+    - genericName | generico | nombre generico
+    - category | categoria
+    - dose | dosis
+    - via
+    - defaultDuration | duracion
+    - indication | indicacion
+    - notes | notas
+  * Normalización: vía se capitaliza (oral → Oral, tópica → Tópica)
+  * Validaciones: nombre obligatorio, no duplicados en archivo, no duplicados en BD (case-insensitive)
+  * Usa XLSX.read para Excel, parser CSV custom (acepta , y ; como separador, soporta comillas)
+  * Retorna {imported, skipped, errors:[{row, error}]}
+
+- Creé src/app/api/vademecum/plantilla/route.ts (70 líneas):
+  * GET devuelve plantilla .xlsx con headers correctos + 2 filas de ejemplo
+    (Ibuprofeno 400mg, Amoxicilina 500mg)
+  * Anchos de columna optimizados (indication: 70 chars, notes: 40 chars)
+  * Content-Disposition: attachment; filename=plantilla_vademecum.xlsx
+
+- Creé src/app/(app)/inventario/_components/import-vademecum-dialog.tsx (297 líneas):
+  * Dialog completo con:
+    - Botón 'Descargar plantilla' (descarga el .xlsx de ejemplo)
+    - Headers reconocidos mostrados como badges (name marcado como obligatorio)
+    - Zona de drag-and-drop + botón 'Seleccionar archivo'
+    - Resumen tras importar: 3 cards (importados / omitidos / errores)
+    - Tabla de errores con número de fila y mensaje
+    - Alert de éxito al final
+  * Soporta .xlsx, .xls, .csv
+  * Invalida query 'vademecum' al importar para refrescar la lista
+
+- Modifiqué src/app/(app)/inventario/_components/vademecum-tab.tsx:
+  * Añadido botón 'Importar Excel' al lado de 'Nuevo medicamento'
+  * Añadido state importOpen + ImportVademecumDialog al final
+
+- Verificación local con curl + Agent Browser:
+  1. Plantilla: GET /api/vademecum/plantilla → 200, .xlsx válido (17KB, Microsoft Excel 2007+)
+  2. Creé test-vademecum.xlsx con 3 medicamentos (Ketoconazol 2% crema, Paracetamol 500mg, Aciclovir 200mg)
+  3. Subir archivo: POST /api/vademecum/importar → {imported:3, skipped:0, errors:[]} ✅
+  4. Re-subir mismo archivo: {imported:0, skipped:3, errors:[3 filas con mensaje claro de duplicado]} ✅
+  5. Lista final: 6 medicamentos (Ibuprofeno, Amoxicilina, Terbinafina, Ketoconazol, Paracetamol, Aciclovir)
+  6. Dialog Importar Excel visible en /inventario → Vademécum
+  7. Lint: 0 errores
+
+- Commit d12484c con email correcto.
+- Push exitoso (a295896..d12484c).
+
+- Verificación en PRODUCCIÓN con Agent Browser:
+  * Login dueno@cenpod.com
+  * /inventario → Vademécum: 6 medicamentos visibles (Aciclovir, Amoxicilina, Ibuprofeno, Ketoconazol, Paracetamol, Terbinafina)
+  * Botón 'Importar Excel' presente
+  * Click → dialog abre con 'Descargar plantilla', 'Seleccionar archivo', headers reconocidos
+  * 0 errores en consola
+
+Stage Summary:
+- FEATURE COMPLETA. Importar Excel al vademécum funcionando en producción.
+- El usuario puede: descargar plantilla → llenarla con sus medicamentos → subirla → verlos en la lista y en las sugerencias de recetas.
+- Medicamentos duplicados (en el archivo o ya en la BD) se omiten con mensaje claro, no se duplican.
+- 3 medicamentos de prueba importados: Ketoconazol 2% crema, Paracetamol 500mg, Aciclovir 200mg.
+- Commit d12484c deployado en Vercel.
