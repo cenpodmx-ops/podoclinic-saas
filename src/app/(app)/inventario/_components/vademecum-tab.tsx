@@ -30,8 +30,9 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
-import { Plus, Pencil, Trash2, BookOpen, Search, Pill } from 'lucide-react'
+import { Plus, Pencil, Trash2, BookOpen, Search, Pill, FileSpreadsheet } from 'lucide-react'
 import { toast } from 'sonner'
+import { ImportVademecumDialog } from './import-vademecum-dialog'
 
 // ============================================================
 // VademecumTab
@@ -98,6 +99,7 @@ export function VademecumTab({ canEdit }: { canEdit: boolean }) {
   const [editing, setEditing] = useState<VademecumItem | null>(null)
   const [form, setForm] = useState<typeof EMPTY_FORM>(EMPTY_FORM)
   const [deleteTarget, setDeleteTarget] = useState<VademecumItem | null>(null)
+  const [importOpen, setImportOpen] = useState(false)
 
   useEffect(() => {
     const t = setTimeout(() => setDebouncedSearch(search), 300)
@@ -199,9 +201,14 @@ export function VademecumTab({ canEdit }: { canEdit: boolean }) {
           </div>
         </div>
         {canEdit && (
-          <Button onClick={openNew} size="sm" style={{ backgroundColor: '#0a3143' }}>
-            <Plus className="h-4 w-4 mr-1" /> Nuevo medicamento
-          </Button>
+          <div className="flex flex-wrap items-center gap-2">
+            <Button onClick={() => setImportOpen(true)} size="sm" variant="outline">
+              <FileSpreadsheet className="h-4 w-4 mr-1" /> Importar Excel
+            </Button>
+            <Button onClick={openNew} size="sm" style={{ backgroundColor: '#0a3143' }}>
+              <Plus className="h-4 w-4 mr-1" /> Nuevo medicamento
+            </Button>
+          </div>
         )}
       </div>
 
@@ -466,6 +473,9 @@ export function VademecumTab({ canEdit }: { canEdit: boolean }) {
           </form>
         </DialogContent>
       </Dialog>
+
+      {/* Importar Excel */}
+      <ImportVademecumDialog open={importOpen} onOpenChange={setImportOpen} />
 
       {/* Confirmar desactivar */}
       <AlertDialog open={!!deleteTarget} onOpenChange={(o) => !o && setDeleteTarget(null)}>
