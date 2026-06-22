@@ -23,6 +23,9 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     if (body[k] !== undefined) {
       if (['commissionPct', 'monthlyGoalConsults', 'monthlyGoalRevenue', 'slotMinutes'].includes(k)) {
         data[k] = body[k] === null ? null : Number(body[k])
+      } else if (k === 'active') {
+        // Switch envía "on" vía FormData — convertir a boolean real
+        data[k] = body[k] === 'on' || body[k] === true || body[k] === 'true' || body[k] === 1
       } else {
         data[k] = body[k]
       }

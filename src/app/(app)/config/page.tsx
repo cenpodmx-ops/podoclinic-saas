@@ -328,6 +328,13 @@ function PodologoDialog({ open, onOpenChange, editing, onSave, saving }: any) {
             // openingTime/closingTime vacíos = null
             if (!body.openingTime) delete body.openingTime
             if (!body.closingTime) delete body.closingTime
+            // active: Switch envía "on" vía FormData, convertir a boolean real
+            // Si no está en el form (podólogo nuevo), defaultar a true
+            if (editing) {
+              body.active = body.active === 'on' || body.active === true || body.active === 'true'
+            } else {
+              delete body.active // nuevos podólogos se crean como active=true por default del schema
+            }
             onSave(body)
           }}
           className="space-y-3"
