@@ -267,7 +267,7 @@
   .print-agenda * { visibility: visible !important; }
   .print-agenda {
     position: absolute; left: 0; top: 0;
-    width: 100%; padding: 0 !important;
+    width: 100%; padding: 12mm 14mm !important;
   }
 
   /* Factura resumen */
@@ -548,6 +548,39 @@
 .print-agenda { font-family: Arial, sans-serif; color: #1a1a1a; }
 .print-agenda h1 { text-align: center; font-size: 22px; margin: 0; letter-spacing: 0.05em; }
 .print-agenda .sub { text-align: center; font-size: 13px; margin: 4px 0 16px; color: #555; }
+.print-agenda .podologo-header {
+  background: #0a3143;
+  color: #ffffff;
+  font-size: 18px;
+  font-weight: 800;
+  padding: 10px 14px;
+  margin: 0 0 12px;
+  border-radius: 4px;
+  letter-spacing: 0.03em;
+  text-align: left;
+}
+.print-agenda .podologo-header .podologo-label {
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  opacity: 0.85;
+  display: block;
+  margin-bottom: 2px;
+}
+.print-agenda .info-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 4px 16px;
+  margin: 0 0 16px;
+  padding: 8px 12px;
+  background: #f5f7fa;
+  border-left: 4px solid #0a3143;
+  border-radius: 3px;
+  font-size: 11px;
+  color: #333;
+}
+.print-agenda .info-grid b { color: #0a3143; }
 .print-agenda table { width: 100%; border-collapse: collapse; font-size: 12px; }
 .print-agenda th { background: #0a3143; color: white; padding: 8px 10px; text-align: left; font-size: 11px; text-transform: uppercase; letter-spacing: 0.04em; }
 .print-agenda td { border: 1px solid #ddd; padding: 8px 10px; vertical-align: top; }
@@ -564,3 +597,8 @@
 .print-agenda .motivo-col { width: 25%; }
 .print-agenda .status-col { width: 100px; }
 .print-agenda .notas-col { width: 25%; }
+
+/* Regla @page para márgenes de impresión */
+@page {
+  margin: 14mm;
+}
