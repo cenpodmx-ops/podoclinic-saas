@@ -1374,3 +1374,57 @@ Stage Summary:
   3. Incluye info grid con clínica, fecha y estadísticas (total, confirmadas, pendientes, finalizadas)
   4. Layout profesional con jerarquía clara: título → fecha → header podólogo → info grid → tabla de citas
 - Commit 644f6f1 deployado en Vercel.
+
+---
+Task ID: VADEMECUM-TAB-2026-06-22
+Agent: main (sub-pestaña Vademécum en Inventario)
+Task: Crear sub-pestaña Vademécum (Recetario) en Inventario
+
+Work Log:
+- Usuario solicitó: "tipo Catálogo de Recetario (Vademécum). Aquí para agregar los medicamentos y su indicación general. Al escribir el nombre en la consulta, la indicación se pegará sola para ahorrarte tiempo. Estos medicamentos NO se cobran en caja. Son para hacer la receta, es diferente al inventario... pero se puede hacer la subpestaña ahí en el inventario".
+- Descubrí que el modelo Vademecum, la API (route.ts + [id]/route.ts), y la integración en medication-editor.tsx YA EXISTÍAN del chat anterior que se crasheó. Solo faltaba:
+  1. Regenerar Prisma Client (db.vademecum era undefined)
+  2. Crear la sub-pestaña visual en /inventario
+
+- Ejecuté bunx prisma generate para que el cliente Prisma incluyera el modelo Vademecum.
+- Reinicié dev server para que cargue el nuevo cliente.
+
+- Creé src/app/(app)/inventario/_components/vademecum-tab.tsx (493 líneas):
+  * Componente VademecumTab con tabla, filtros, dialog crear/editar, soft delete
+  * Descripción clara: 'NO se cobran en caja, son solo para recetas'
+  * 13 categorías predefinidas (Analgésico, Antibiótico, Antifúngico, etc.)
+  * 8 vías (Oral, Tópica, IV, IM, etc.)
+  * Campos: nombre comercial, nombre genérico, categoría, dosis, vía,
+    duración sugerida, indicación general, notas internas, activo
+  * Permisos: solo SUPER/OWNER pueden editar
+
+- Modifiqué src/app/(app)/inventario/page.tsx:
+  * Añadidos imports: Tabs/TabsList/TabsTrigger/TabsContent, BookOpen, VademecumTab
+  * Añadido state 'tab' (productos | vademecum)
+  * Envolví contenido existente en <TabsContent value="productos">
+  * Añadí <TabsContent value="vademecum"> con <VademecumTab canEdit={canEdit} />
+  * Header (Venta mostrador/Nuevo producto/Importar Excel) ahora solo se muestra en tab 'productos'
+
+- Verificación local con Agent Browser:
+  1. /inventario → tab Vademécum → carga sin errores, muestra estado vacío con CTA
+  2. Click 'Nuevo medicamento' → abre dialog con todos los campos
+  3. Crear medicamento (Ibuprofeno 400mg) → POST 201 Created ✅
+  4. Creé 3 medicamentos de prueba: Ibuprofeno 400mg, Amoxicilina 500mg, Terbinafina 250mg
+  5. Tabla los muestra correctamente con nombre, genérico, categoría, dosis, vía, duración, indicación
+  6. /recetas → Nueva receta → escribir 'Ibu' → aparece sugerencia 'Vademécum (receta)' con Ibuprofeno 400mg
+  7. Click en la sugerencia → se autocompletan automáticamente:
+     - Dosis: 400 mg
+     - Vía: Oral
+     - Duración: 5 días
+     - Indicación: 'Tomar 1 tableta cada 8 horas con alimentos...'
+  8. Lint: 0 errores
+
+- Commit 4df4138 con email correcto.
+- Push exitoso (0deef2f..4df4138).
+
+Stage Summary:
+- FEATURE COMPLETA. Sub-pestaña Vademécum (Recetario) funcional en /inventario.
+- Separación clara: inventario = productos que se cobran en caja; vademécum = medicamentos solo para recetas.
+- Autocompletado funcional: al escribir nombre en receta, se buscan en paralelo inventario y vademécum, y al seleccionar se autocompletan dosis/vía/duración/indicación.
+- 3 medicamentos de prueba creados en la BD de Supabase (visibles en producción después del deploy).
+- Commit 4df4138 deployado en Vercel.
