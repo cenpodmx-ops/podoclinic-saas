@@ -3,7 +3,9 @@ export type MedicationInput = {
   dose: string
   via: string
   duration: string
+  indication?: string
   productId?: string
+  vademecumId?: string
 }
 
 export type MedicationRow = MedicationInput & { _key: string }

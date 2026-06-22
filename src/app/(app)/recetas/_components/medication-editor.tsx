@@ -16,7 +16,7 @@ function newKey() {
 }
 
 export function emptyMedication(): MedicationRow {
-  return { name: '', dose: '', via: 'Oral', duration: '', _key: newKey() }
+  return { name: '', dose: '', via: 'Oral', duration: '', indication: '', _key: newKey() }
 }
 
 export function MedicationEditor({
@@ -96,7 +96,16 @@ function MedicationRowCard({
       </div>
       <ProductNameInput
         value={row.name}
-        onChange={(name, productId) => onUpdate({ name, productId })}
+        onChange={(name, productId, vademecumId) => onUpdate({ name, productId, vademecumId })}
+        onSelectVademecum={(v) => onUpdate({
+          name: v.name,
+          dose: v.dose || row.dose,
+          via: v.via || row.via,
+          duration: v.defaultDuration || row.duration,
+          indication: v.indication || row.indication,
+          vademecumId: v.id,
+          productId: undefined,
+        })}
       />
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
         <div>
@@ -133,16 +142,38 @@ function MedicationRowCard({
           />
         </div>
       </div>
+      <div>
+        <label className="text-[10px] uppercase tracking-wide text-muted-foreground">Indicación</label>
+        <Input
+          value={row.indication || ''}
+          onChange={(e) => onUpdate({ indication: e.target.value })}
+          placeholder="Indicación general (ej. Tomar con alimentos)"
+          className="h-9"
+        />
+      </div>
     </div>
   )
+}
+
+type VademecumItem = {
+  id: string
+  name: string
+  genericName?: string | null
+  category?: string | null
+  dose?: string | null
+  via?: string | null
+  defaultDuration?: string | null
+  indication?: string | null
 }
 
 function ProductNameInput({
   value,
   onChange,
+  onSelectVademecum,
 }: {
   value: string
-  onChange: (name: string, productId?: string) => void
+  onChange: (name: string, productId?: string, vademecumId?: string) => void
+  onSelectVademecum: (v: VademecumItem) => void
 }) {
   const [focused, setFocused] = useState(false)
   const [localValue, setLocalValue] = useState(value)
@@ -152,9 +183,15 @@ function ProductNameInput({
     setLocalValue(value)
   }, [value])
 
-  const { data, isLoading } = useQuery<{ rows: ProductLite[] }>({
+  // Búsqueda paralela en inventario y vademécum
+  const { data: invData, isLoading: invLoading } = useQuery<{ rows: ProductLite[] }>({
     queryKey: ['inv-search', localValue.trim()],
     queryFn: () => fetch(`/api/inventario?q=${encodeURIComponent(localValue.trim())}`).then((r) => r.json()),
+    enabled: localValue.trim().length > 0 && focused,
+  })
+  const { data: vadData, isLoading: vadLoading } = useQuery<{ data: VademecumItem[] }>({
+    queryKey: ['vademecum-search', localValue.trim()],
+    queryFn: () => fetch(`/api/vademecum?q=${encodeURIComponent(localValue.trim())}`).then((r) => r.json()),
     enabled: localValue.trim().length > 0 && focused,
   })
 
@@ -168,7 +205,11 @@ function ProductNameInput({
     return () => document.removeEventListener('mousedown', onDoc)
   }, [])
 
-  const showSuggestions = focused && localValue.trim().length > 0 && (isLoading || (data && data.rows.length > 0))
+  const invRows = invData?.rows || []
+  const vadRows = vadData?.data || []
+  const hasAny = invRows.length > 0 || vadRows.length > 0
+  const isLoading = invLoading || vadLoading
+  const showSuggestions = focused && localValue.trim().length > 0 && (isLoading || hasAny)
 
   return (
     <div ref={containerRef} className="relative">
@@ -176,26 +217,74 @@ function ProductNameInput({
         value={localValue}
         onChange={(e) => {
           setLocalValue(e.target.value)
-          onChange(e.target.value, undefined)
+          onChange(e.target.value, undefined, undefined)
           setFocused(true)
         }}
         onFocus={() => setFocused(true)}
-        placeholder="Nombre del medicamento o producto del inventario"
+        placeholder="Nombre del medicamento — busca en vademécum e inventario"
         className="h-9"
       />
       {showSuggestions && (
-        <div className="absolute z-50 mt-1 w-full max-h-56 overflow-y-auto rounded-md border bg-background shadow-lg">
+        <div className="absolute z-50 mt-1 w-full max-h-64 overflow-y-auto rounded-md border bg-background shadow-lg">
           {isLoading ? (
-            <div className="p-2 text-xs text-muted-foreground">Buscando en inventario…</div>
+            <div className="p-2 text-xs text-muted-foreground">Buscando…</div>
+          ) : !hasAny ? (
+            <div className="p-2 text-xs text-muted-foreground">
+              Sin coincidencias. Puedes agregarlo manualmente o crearlo en Inventario → Vademécum.
+            </div>
           ) : (
             <ul className="divide-y">
-              {data!.rows.map((p) => (
+              {vadRows.length > 0 && (
+                <li className="px-3 py-1 bg-emerald-50 text-[10px] uppercase tracking-wide text-emerald-800 font-semibold">
+                  Vademécum (receta)
+                </li>
+              )}
+              {vadRows.map((v) => (
+                <li key={v.id}>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setLocalValue(v.name)
+                      onSelectVademecum(v)
+                      setFocused(false)
+                    }}
+                    className="w-full text-left px-3 py-1.5 hover:bg-muted/50 text-xs"
+                  >
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="font-medium">{v.name}</span>
+                      {v.category && (
+                        <Badge variant="outline" className="text-[10px] text-emerald-700 border-emerald-300">
+                          {v.category}
+                        </Badge>
+                      )}
+                    </div>
+                    <div className="text-[10px] text-muted-foreground">
+                      {v.genericName && <span>{v.genericName}</span>}
+                      {v.genericName && (v.dose || v.via) && ' · '}
+                      {v.dose && <span>{v.dose}</span>}
+                      {v.dose && v.via && ' · '}
+                      {v.via && <span>{v.via}</span>}
+                    </div>
+                    {v.indication && (
+                      <div className="text-[10px] text-emerald-700 mt-0.5 italic">
+                        ℹ {v.indication}
+                      </div>
+                    )}
+                  </button>
+                </li>
+              ))}
+              {invRows.length > 0 && (
+                <li className="px-3 py-1 bg-blue-50 text-[10px] uppercase tracking-wide text-blue-800 font-semibold">
+                  Inventario (se cobra en caja)
+                </li>
+              )}
+              {invRows.map((p) => (
                 <li key={p.id}>
                   <button
                     type="button"
                     onClick={() => {
                       setLocalValue(p.name)
-                      onChange(p.name, p.id)
+                      onChange(p.name, p.id, undefined)
                       setFocused(false)
                     }}
                     className="w-full text-left px-3 py-1.5 hover:bg-muted/50 text-xs"

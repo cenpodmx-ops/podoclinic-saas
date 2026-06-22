@@ -61,6 +61,7 @@ model Clinic {
   dailyOps     DailyOperation[]
   appointmentsBlocked AppointmentBlock[]
   config       ClinicConfig?
+  vademecum    Vademecum[]
 }
 
 model User {
@@ -790,4 +791,29 @@ model AuditLog {
   @@index([patientId])
   @@index([clinicId])
   @@index([userId])
+}
+
+// ============================================================
+// VADEMÉCUM — Catálogo de medicamentos para recetas
+// Diferente al inventario: estos medicamentos NO se cobran en caja,
+// son solo para construir la receta con indicación general pre-cargada.
+// ============================================================
+model Vademecum {
+  id          String   @id @default(cuid())
+  clinicId    String
+  clinic      Clinic   @relation(fields: [clinicId], references: [id], onDelete: Cascade)
+  name        String                  // nombre del medicamento
+  genericName String?                 // nombre genérico (ej. Ibuprofeno)
+  category    String?                 // categoría: Análgesico, Antibiótico, Antifúngico, etc.
+  dose        String?                 // dosis sugerida (ej. "500 mg")
+  via         String?                 // vía: Oral, Tópica, Intravenosa, etc.
+  defaultDuration String?             // duración sugerida (ej. "7 días")
+  indication  String?                 // indicación general pre-cargada (ej. "Tomar cada 8 horas con alimentos")
+  notes       String?                 // notas adicionales
+  active      Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([clinicId])
+  @@index([name])
 }
