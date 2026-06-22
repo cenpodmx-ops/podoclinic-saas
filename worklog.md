@@ -1272,3 +1272,46 @@ Stage Summary:
 - 6 secciones numeradas collapsibles organizan todos los controles.
 - Preview en vivo con controles de zoom refleja todos los cambios en tiempo real.
 - Commit 14a6de7 deployado en Vercel con email correcto del autor (cenpodmx@gmail.com).
+
+---
+Task ID: FIX-PODOLOGO-EDIT-500-2026-06-22
+Agent: main (fix error al guardar edición de podólogo)
+Task: Fix error 500 al editar podólogo en Configuración → Equipo
+
+Work Log:
+- Usuario reportó: "al querer editar a alguien en el equipo de podólogos me dice 'Error al guardar'".
+- Reproduje el error en producción con Agent Browser: click Editar → Guardar (sin cambiar nada) → toast "Error al guardar".
+- Capturé el network: PATCH /api/podologos/pod-001 → 500.
+- Instalé interceptor de fetch en el browser para capturar el body exacto:
+  {"name":"Dr. Ricardo Méndez",...,"active":"on"}
+- Causa raíz identificada:
+  * El componente <Switch name="active"> de shadcn/Radix envía el valor "on" (string) vía FormData cuando está checked.
+  * El schema de Prisma define active como Boolean.
+  * Al hacer prisma.podologist.update({ data: { active: "on" } }), Prisma no puede castear el string "on" a Boolean y lanza error.
+- Fix frontend (src/app/(app)/config/page.tsx):
+  * En el onSubmit del formulario de podólogo, normalizar active:
+    body.active = body.active === 'on' || body.active === true || body.active === 'true'
+  * Para podólogos nuevos, delete body.active (el schema defaulta a true).
+- Fix backend (src/app/api/podologos/[id]/route.ts):
+  * En el loop de allowed fields, añadir caso especial para 'active':
+    data[k] = body[k] === 'on' || body[k] === true || body[k] === 'true' || body[k] === 1
+  * Esto hace la API defensiva contra otros formularios que envíen 'on'.
+- Verificación local con curl:
+  * Antes: PATCH con body.active="on" → 500
+  * Después: PATCH con body.active="on" → 200, active=true guardado correctamente
+  * PATCH con body.active=false → 200, active=false
+- Lint: 0 errores.
+- Commit bbff096 con email correcto (cenpodmx@gmail.com).
+- Hubo que hacer git stash + pull --rebase + stash pop porque había cambios remotos (del worklog anterior).
+- Push exitoso (6c25938..bbff096).
+- Verificación en PRODUCCIÓN con Agent Browser:
+  * Login dueno@cenpod.com
+  * /config → Equipo → click editar Dr. Ricardo Méndez → Guardar
+  * Toast: "Podólogo actualizado" ✅ (antes: "Error al guardar")
+  * 0 errores en consola
+
+Stage Summary:
+- BUG RESUELTO en producción. Editar podólogos funciona correctamente.
+- Causa raíz: Switch de shadcn envía "on" (string) en vez de boolean, Prisma no puede castearlo.
+- Fix doble: frontend normaliza el valor antes de enviar, backend también lo normaliza al recibir (defensivo).
+- Commit bbff096 deployado en Vercel.
