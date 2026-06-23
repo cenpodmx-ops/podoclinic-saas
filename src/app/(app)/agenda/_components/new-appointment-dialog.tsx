@@ -32,9 +32,11 @@ type Props = {
     reason?: string
     notes?: string
   }
+  /** Duración de cita por defecto de la clínica (o del podólogo seleccionado) */
+  defaultSlotMinutes?: number
 }
 
-export function NewAppointmentDialog({ open, onOpenChange, podologos, initial, reschedule }: Props) {
+export function NewAppointmentDialog({ open, onOpenChange, podologos, initial, reschedule, defaultSlotMinutes }: Props) {
   const qc = useQueryClient()
   const [patient, setPatient] = useState<PatientSearchResult | null>(null)
   const [podologistId, setPodologistId] = useState<string>('')
@@ -95,16 +97,18 @@ export function NewAppointmentDialog({ open, onOpenChange, podologos, initial, r
   }, [serviceId, startTime, servicios])
 
   // Auto-adjust end time when start time changes (if no service selected)
+  // Usa el slotMinutes configurado de la clínica (o 30 por defecto)
   useEffect(() => {
     if (serviceId) return // service effect handles it
+    const slotMin = defaultSlotMinutes || 30
     const [h, m] = startTime.split(':').map(Number)
     const start = new Date()
     start.setHours(h, m, 0, 0)
-    start.setMinutes(start.getMinutes() + 30)
+    start.setMinutes(start.getMinutes() + slotMin)
     const eh = String(start.getHours()).padStart(2, '0')
     const em = String(start.getMinutes()).padStart(2, '0')
     setEndTime(`${eh}:${em}`)
-  }, [startTime, serviceId])
+  }, [startTime, serviceId, defaultSlotMinutes])
 
   async function save() {
     if (!patient) {

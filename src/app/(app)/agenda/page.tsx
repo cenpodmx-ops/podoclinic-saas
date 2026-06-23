@@ -434,6 +434,7 @@ export default function AgendaPage() {
         onOpenChange={setNewOpen}
         podologos={podologos}
         initial={newInitial}
+        defaultSlotMinutes={data?.clinic?.slotMinutes || 30}
         reschedule={rescheduleAppt ? {
           appointmentId: rescheduleAppt.id,
           patient: rescheduleAppt.patient,
