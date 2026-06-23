@@ -1545,3 +1545,24 @@ Stage Summary:
 - BUG RESUELTO. Buscador de pacientes ahora funciona case-insensitive en PostgreSQL.
 - El paciente que el usuario creó (Uziel Montaño Cordova) ahora aparece al buscarlo en Recetas → Nueva receta.
 - Advertencia adicional: hay 2 clínicas OCOTILLO duplicadas en la BD que podrían causar confusión.
+
+---
+Task ID: FIX-RECETA-PRINT-MARGINS-2026-06-23
+Agent: main (fix márgenes impresión de receta)
+Task: Arreglar márgenes de impresión de receta médica
+
+Work Log:
+- Usuario reportó: "Al imprimir la receta se ve sin márgenes y se ve muy mal".
+- Revisé src/app/api/recetas/[id]/print/route.ts — el HTML generado NO tenía:
+  * Regla @page (navegador usaba márgenes por defecto, que varían)
+  * Regla @media print (estilos de pantalla —fondo gris #f4f4f4, box-shadow, margin 16px— se aplicaban también al imprimir)
+- Fix: añadidas 21 líneas al CSS del HTML de impresión:
+  * @page { margin: 0 } — elimina márgenes extra del navegador
+  * @media print — fondo blanco, sin box-shadow, margin 0, page-break-inside: avoid
+  * El padding de .rx-sheet (marginsMm = 16mm por default) proporciona los márgenes reales
+- Commit 19b2ed5, push exitoso.
+
+Stage Summary:
+- BUG RESUELTO. Impresión de receta ahora tiene márgenes consistentes.
+- @page margin:0 + padding de .rx-sheet = márgenes uniformes en cualquier navegador.
+- @media print elimina fondo gris y sombras de pantalla.
