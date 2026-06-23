@@ -193,27 +193,27 @@ export function PatientFormDialog({ open, onOpenChange, patient, onSaved }: Prop
             </h4>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
-                <Label>Nombre(s) *</Label>
+                <Label className="mb-1.5 block">Nombre(s) *</Label>
                 <Input value={form.firstName || ''} onChange={(e) => set('firstName', e.target.value)} />
               </div>
               <div>
-                <Label>Apellido(s) *</Label>
+                <Label className="mb-1.5 block">Apellido(s) *</Label>
                 <Input value={form.lastName || ''} onChange={(e) => set('lastName', e.target.value)} />
               </div>
               <div>
-                <Label>Teléfono *</Label>
+                <Label className="mb-1.5 block">Teléfono *</Label>
                 <Input value={form.phone || ''} onChange={(e) => set('phone', e.target.value)} placeholder="6621234567" />
               </div>
               <div>
-                <Label>Correo</Label>
+                <Label className="mb-1.5 block">Correo</Label>
                 <Input type="email" value={form.email || ''} onChange={(e) => set('email', e.target.value)} />
               </div>
               <div>
-                <Label>Fecha de nacimiento</Label>
+                <Label className="mb-1.5 block">Fecha de nacimiento</Label>
                 <Input type="date" value={form.birthDate || ''} onChange={(e) => set('birthDate', e.target.value)} />
               </div>
               <div>
-                <Label>Sexo</Label>
+                <Label className="mb-1.5 block">Sexo</Label>
                 <Select value={form.sex || ''} onValueChange={(v) => set('sex', v)}>
                   <SelectTrigger className="w-full">
                     <SelectValue placeholder="Selecciona..." />
@@ -228,7 +228,7 @@ export function PatientFormDialog({ open, onOpenChange, patient, onSaved }: Prop
                 </Select>
               </div>
               <div>
-                <Label>CURP</Label>
+                <Label className="mb-1.5 block">CURP</Label>
                 <Input
                   value={form.curp || ''}
                   onChange={(e) => set('curp', e.target.value.toUpperCase())}
@@ -237,7 +237,7 @@ export function PatientFormDialog({ open, onOpenChange, patient, onSaved }: Prop
                 />
               </div>
               <div>
-                <Label>RFC</Label>
+                <Label className="mb-1.5 block">RFC</Label>
                 <Input
                   value={form.rfc || ''}
                   onChange={(e) => set('rfc', e.target.value.toUpperCase())}
@@ -246,7 +246,7 @@ export function PatientFormDialog({ open, onOpenChange, patient, onSaved }: Prop
                 />
               </div>
               <div className="sm:col-span-2">
-                <Label>Dirección</Label>
+                <Label className="mb-1.5 block">Dirección</Label>
                 <Input value={form.address || ''} onChange={(e) => set('address', e.target.value)} />
               </div>
             </div>
@@ -263,11 +263,11 @@ export function PatientFormDialog({ open, onOpenChange, patient, onSaved }: Prop
             <CollapsibleContent className="space-y-3 pt-3">
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div className="sm:col-span-2">
-                  <Label>Razón social</Label>
+                  <Label className="mb-1.5 block">Razón social</Label>
                   <Input value={form.razonSocial || ''} onChange={(e) => set('razonSocial', e.target.value)} />
                 </div>
                 <div className="sm:col-span-2">
-                  <Label>Régimen fiscal</Label>
+                  <Label className="mb-1.5 block">Régimen fiscal</Label>
                   <Select value={form.regimenFiscal || ''} onValueChange={(v) => set('regimenFiscal', v)}>
                     <SelectTrigger className="w-full">
                       <SelectValue placeholder="Selecciona..." />
@@ -282,7 +282,7 @@ export function PatientFormDialog({ open, onOpenChange, patient, onSaved }: Prop
                   </Select>
                 </div>
                 <div className="sm:col-span-2">
-                  <Label>Uso CFDI</Label>
+                  <Label className="mb-1.5 block">Uso CFDI</Label>
                   <Select value={form.cfdiUso || ''} onValueChange={(v) => set('cfdiUso', v)}>
                     <SelectTrigger className="w-full">
                       <SelectValue placeholder="Selecciona..." />
@@ -297,7 +297,7 @@ export function PatientFormDialog({ open, onOpenChange, patient, onSaved }: Prop
                   </Select>
                 </div>
                 <div className="sm:col-span-2">
-                  <Label>Correo para factura</Label>
+                  <Label className="mb-1.5 block">Correo para factura</Label>
                   <Input type="email" value={form.emailFactura || ''} onChange={(e) => set('emailFactura', e.target.value)} />
                 </div>
               </div>
@@ -317,7 +317,7 @@ export function PatientFormDialog({ open, onOpenChange, patient, onSaved }: Prop
               <Switch checked={!!form.isDiabetic} onCheckedChange={(v) => set('isDiabetic', v)} />
             </div>
             <div>
-              <Label>Alergias</Label>
+              <Label className="mb-1.5 block">Alergias</Label>
               <Textarea
                 value={form.allergies || ''}
                 onChange={(e) => set('allergies', e.target.value)}
@@ -326,7 +326,7 @@ export function PatientFormDialog({ open, onOpenChange, patient, onSaved }: Prop
               />
             </div>
             <div>
-              <Label>Medicamentos actuales</Label>
+              <Label className="mb-1.5 block">Medicamentos actuales</Label>
               <Textarea
                 value={form.currentMeds || ''}
                 onChange={(e) => set('currentMeds', e.target.value)}
@@ -335,7 +335,7 @@ export function PatientFormDialog({ open, onOpenChange, patient, onSaved }: Prop
               />
             </div>
             <div>
-              <Label>Enfermedades crónicas</Label>
+              <Label className="mb-1.5 block">Enfermedades crónicas</Label>
               <Textarea
                 value={form.chronicConditions || ''}
                 onChange={(e) => set('chronicConditions', e.target.value)}
@@ -344,7 +344,7 @@ export function PatientFormDialog({ open, onOpenChange, patient, onSaved }: Prop
               />
             </div>
             <div>
-              <Label>Nivel de riesgo podológico</Label>
+              <Label className="mb-1.5 block">Nivel de riesgo podológico</Label>
               <Select value={form.riskLevel || ''} onValueChange={(v) => set('riskLevel', v)}>
                 <SelectTrigger className="w-full">
                   <SelectValue placeholder="Selecciona..." />
