@@ -21,7 +21,8 @@ export const metadata: Metadata = {
   title: "Sistema CENPOD · Gestión Clínica",
   description: "Plataforma de gestión clínica del Grupo CENPOD",
   icons: {
-    icon: "/logo-dark.png",
+    icon: "/logopagina.png",
+    apple: "/logopagina.png",
   },
 };
 
