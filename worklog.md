@@ -1500,3 +1500,48 @@ Stage Summary:
 - Medicamentos duplicados (en el archivo o ya en la BD) se omiten con mensaje claro, no se duplican.
 - 3 medicamentos de prueba importados: Ketoconazol 2% crema, Paracetamol 500mg, Aciclovir 200mg.
 - Commit d12484c deployado en Vercel.
+
+---
+Task ID: FIX-PACIENTES-SEARCH-2026-06-22
+Agent: main (fix buscador de pacientes en recetas)
+Task: Arreglar bug: buscador de pacientes en Recetas no encontraba resultados
+
+Work Log:
+- Usuario reportó: "en recetas, al darle nueva receta en buscar paciente, no me aparece el paciente que creé".
+- Revisé PatientSearcher en src/app/(app)/recetas/_components/patient-searcher.tsx: hace fetch a /api/pacientes?q=...&limit=15&global=1.
+- Revisé API /api/pacientes/route.ts: usaba Prisma 'contains' sin 'mode: insensitive'.
+  El código tenía un comentario admitiendo: 'En PostgreSQL hace case-sensitive — aceptable para MVP'.
+  En SQLite (dev) esto funciona porque SQLite LIKE es case-insensitive por defecto, pero en PostgreSQL (prod) NO.
+- Reproducción local:
+  * Buscar 'maria' → 0 resultados (aunque María González existe)
+  * Buscar 'María' → 0 resultados
+  * Buscar 'Miguel' → 0 resultados
+- Fix: añadido mode: 'insensitive' a firstName, lastName y expNumber:
+    where.OR = [
+      { firstName: { contains: q, mode: 'insensitive' } },
+      { lastName: { contains: q, mode: 'insensitive' } },
+      { phone: { contains: q } },
+      { expNumber: { contains: q, mode: 'insensitive' } },
+    ]
+- Verificación local con curl:
+  * 'uziel' → 1 ✅
+  * 'UZIEL' → 1 ✅
+  * 'monta' → 1 ✅
+  * 'Montaño' → 1 ✅
+  * 'C0-00001' → 1 ✅
+- Lint: 0 errores.
+- Commit b83e98d.
+- Push exitoso (25c21fe..b83e98d).
+
+Hallazgo adicional importante:
+- Detecté que hay DUPLICACIÓN de clínicas en la BD de Supabase:
+  * 'CENPOD OCOTILLO' (slug: clinica-1) id: cmqj2s6w3... — donde está logueado dueno@cenpod.com
+  * 'CENPOD Ocotillo' (slug: cenpod-ocotillo) id: cmql78grf... — donde se creó el paciente 'Uziel Montaño Cordova'
+- Ambas tienen isDistributor=false y isMatrix=false, así que el modo global=1 SÍ las incluye a ambas en la búsqueda.
+- Con el fix aplicado, el paciente Uziel SÍ aparece al buscarlo, aunque esté en otra clínica.
+- El usuario debería considerar consolidar las clínicas duplicadas (CENPOD OCOTILLO vs CENPOD Ocotillo) para evitar confusión.
+
+Stage Summary:
+- BUG RESUELTO. Buscador de pacientes ahora funciona case-insensitive en PostgreSQL.
+- El paciente que el usuario creó (Uziel Montaño Cordova) ahora aparece al buscarlo en Recetas → Nueva receta.
+- Advertencia adicional: hay 2 clínicas OCOTILLO duplicadas en la BD que podrían causar confusión.
