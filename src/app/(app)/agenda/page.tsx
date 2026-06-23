@@ -300,7 +300,7 @@ export default function AgendaPage() {
       </div>
 
       {/* ===== VISTA NORMAL (pantalla) ===== */}
-      <div className="print:hidden">
+      <div className="print:hidden space-y-5">
         {/* Row 1: Date + view + actions */}
         <div className="flex flex-wrap items-center gap-2">
           <div className="flex items-center gap-1">
@@ -384,7 +384,7 @@ export default function AgendaPage() {
         </div>
 
         {/* KPIs row */}
-        <div className="flex flex-wrap gap-1.5 text-xs">
+        <div className="flex flex-wrap gap-2 text-xs">
           <Badge variant="outline">Total: {stats.total}</Badge>
           <Badge className={`text-[10px] ${STATUS_COLORS.PENDIENTE}`}>Pendientes: {stats.pendientes}</Badge>
           <Badge className={`text-[10px] ${STATUS_COLORS.CONFIRMADA}`}>Confirmadas: {stats.confirmadas}</Badge>
@@ -392,20 +392,20 @@ export default function AgendaPage() {
           <Badge className={`text-[10px] ${STATUS_COLORS.FINALIZADA}`}>Finalizadas: {stats.finalizadas}</Badge>
           {stats.canceladas > 0 && <Badge className={`text-[10px] ${STATUS_COLORS.CANCELADA}`}>Canceladas: {stats.canceladas}</Badge>}
         </div>
-      </div>
 
-      {/* Grid */}
-      <AgendaGrid
-        view={view}
-        date={date}
-        data={data}
-        isPending={isPending}
-        podologos={podologos}
-        selectedPodologistId={podologistId}
-        onSlotClick={openNewFromSlot}
-        onAppointmentClick={openPanel}
-        onBlockClick={(b) => setBlockToDelete(b)}
-      />
+        {/* Grid */}
+        <AgendaGrid
+          view={view}
+          date={date}
+          data={data}
+          isPending={isPending}
+          podologos={podologos}
+          selectedPodologistId={podologistId}
+          onSlotClick={openNewFromSlot}
+          onAppointmentClick={openPanel}
+          onBlockClick={(b) => setBlockToDelete(b)}
+        />
+      </div>
 
       {/* Legend */}
       <div className="flex flex-wrap gap-3 text-[10px] text-muted-foreground">
