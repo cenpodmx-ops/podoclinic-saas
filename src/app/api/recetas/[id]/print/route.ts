@@ -514,9 +514,8 @@ export async function GET(_req: NextRequest, ctx: { params: Promise<{ id: string
     }
   }
   if (showDoctorInfo) {
-    metaCells.push(`<div><strong>Profesional</strong> ${esc(doctorName)}</div>`)
-    if (doctorCedula) metaCells.push(`<div><strong>Cédula</strong> ${esc(doctorCedula)}</div>`)
-    if (doctorSpecialty) metaCells.push(`<div><strong>Especialidad</strong> ${esc(doctorSpecialty)}</div>`)
+    // No mostrar Profesional/Cédula/Especialidad aquí — ya están en el encabezado superior.
+    // (mantenemos showDoctorInfo en true para compatibilidad, pero no agregamos celdas)
   }
 
   const metaHtml = metaCells.length > 0

@@ -436,9 +436,7 @@ export function PrescriptionLivePreview({
     if (patient?.phone) metaCells.push({ label: 'Teléfono', value: patient.phone })
   }
   if (showDoctorInfo) {
-    metaCells.push({ label: 'Profesional', value: doctorName })
-    if (doctorCedula) metaCells.push({ label: 'Cédula', value: doctorCedula })
-    if (doctorSpecialty) metaCells.push({ label: 'Especialidad', value: doctorSpecialty })
+    // No mostrar Profesional/Cédula/Especialidad aquí — ya están en el encabezado superior.
   }
 
   // Footer pieces
