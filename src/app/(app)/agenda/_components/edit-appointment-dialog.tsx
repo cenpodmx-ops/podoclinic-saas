@@ -102,7 +102,7 @@ export function EditAppointmentDialog({ open, onOpenChange, appointment, podolog
             </Select>
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
               <Label className="text-xs">Inicio</Label>
               <Input type="time" value={startTime} onChange={(e) => setStartTime(e.target.value)} className="h-9" />

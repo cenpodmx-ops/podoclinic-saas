@@ -190,7 +190,7 @@ export function NewAppointmentDialog({ open, onOpenChange, podologos, initial, r
             <PatientSearcher onSelect={setPatient} initial={patient} />
           )}
 
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
               <Label className="text-xs">Podólogo</Label>
               <Select value={podologistId} onValueChange={setPodologistId}>
@@ -217,7 +217,7 @@ export function NewAppointmentDialog({ open, onOpenChange, podologos, initial, r
             </div>
           </div>
 
-          <div className="grid grid-cols-3 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             <div>
               <Label className="text-xs">Fecha*</Label>
               <Input type="date" value={date} onChange={(e) => setDate(e.target.value)} className="h-9" />
