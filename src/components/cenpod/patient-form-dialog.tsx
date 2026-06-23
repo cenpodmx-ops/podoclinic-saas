@@ -228,15 +228,6 @@ export function PatientFormDialog({ open, onOpenChange, patient, onSaved }: Prop
                 </Select>
               </div>
               <div>
-                <Label className="mb-1.5 block">CURP</Label>
-                <Input
-                  value={form.curp || ''}
-                  onChange={(e) => set('curp', e.target.value.toUpperCase())}
-                  placeholder="XXXX000000XXXXXX00"
-                  maxLength={18}
-                />
-              </div>
-              <div>
                 <Label className="mb-1.5 block">RFC</Label>
                 <Input
                   value={form.rfc || ''}

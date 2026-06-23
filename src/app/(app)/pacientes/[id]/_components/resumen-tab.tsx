@@ -121,7 +121,6 @@ export function ResumenTab({
           />
           <DataField label="Teléfono" value={patient.phone} icon={Phone} />
           <DataField label="Correo" value={patient.email} icon={Mail} />
-          <DataField label="CURP" value={patient.curp} />
           <DataField label="RFC" value={patient.rfc} />
           <DataField label="Dirección" value={patient.address} icon={MapPin} />
           <DataField label="Paciente desde" value={fmtDate(patient.createdAt)} icon={Calendar} />
