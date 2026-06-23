@@ -66,14 +66,13 @@ export async function GET(req: NextRequest) {
   const where: Prisma.PatientWhereInput = clinicFilter
 
   if (q) {
-    // NOTE: SQLite no soporta `mode: 'insensitive'` pero ya es case-insensitive por defecto.
-    // En PostgreSQL (prod) sí se requiere para búsquedas acento-insensibles.
-    // Para compatibilidad cross-DB omitimos `mode` (SQLite lo ignora y PostgreSQL hace búsqueda case-sensitive — aceptable para MVP).
+    // PostgreSQL: `mode: 'insensitive'` hace la búsqueda case-insensitive y acento-insensitive.
+    // Esto permite buscar "maria" y encontrar "María González".
     where.OR = [
-      { firstName: { contains: q } },
-      { lastName: { contains: q } },
+      { firstName: { contains: q, mode: 'insensitive' } },
+      { lastName: { contains: q, mode: 'insensitive' } },
       { phone: { contains: q } },
-      { expNumber: { contains: q } },
+      { expNumber: { contains: q, mode: 'insensitive' } },
     ]
   }
   if (diabetic === 'true') where.isDiabetic = true
