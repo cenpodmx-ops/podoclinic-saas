@@ -103,31 +103,34 @@ export async function GET(req: NextRequest) {
   if (clinicId) where.clinicId = clinicId
   if (podFilter) where.podologistId = podFilter
 
-  const appointments = await db.appointment.findMany({
-    where,
-    include: {
-      patient: { select: { id: true, firstName: true, lastName: true, phone: true, expNumber: true } },
-      podologist: { select: { id: true, name: true } },
-    },
-    orderBy: { startTime: 'asc' },
-  })
-
   const blockWhere: any = { date: { gte: rangeStart, lte: rangeEnd } }
   if (clinicId) blockWhere.clinicId = clinicId
   if (podFilter) blockWhere.podologistId = podFilter
 
-  const blocks = await db.appointmentBlock.findMany({
-    where: blockWhere,
-    orderBy: { startTime: 'asc' },
-  })
+  // Ejecutar las 3 queries en paralelo (1 sola ida a la DB en vez de 3 secuenciales)
+  const [appointments, blocks, clinicData] = await Promise.all([
+    db.appointment.findMany({
+      where,
+      include: {
+        patient: { select: { id: true, firstName: true, lastName: true, phone: true, expNumber: true } },
+        podologist: { select: { id: true, name: true } },
+      },
+      orderBy: { startTime: 'asc' },
+    }),
+    db.appointmentBlock.findMany({
+      where: blockWhere,
+      orderBy: { startTime: 'asc' },
+    }),
+    clinicId
+      ? db.clinic.findUnique({
+          where: { id: clinicId },
+          select: { id: true, name: true, openingTime: true, closingTime: true, slotMinutes: true },
+        })
+      : Promise.resolve(null),
+  ])
 
-  let clinic: any = null
-  if (clinicId) {
-    clinic = await db.clinic.findUnique({
-      where: { id: clinicId },
-      select: { id: true, name: true, openingTime: true, closingTime: true, slotMinutes: true },
-    })
-  } else if (user!.role === 'SUPER' && !clinicId) {
+  let clinic: any = clinicData
+  if (!clinic && user!.role === 'SUPER' && !clinicId) {
     clinic = { name: 'Todas las clínicas', openingTime: '08:00', closingTime: '20:00', slotMinutes: 30 }
   }
 
