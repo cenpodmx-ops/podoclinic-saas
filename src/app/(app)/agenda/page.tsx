@@ -177,7 +177,7 @@ export default function AgendaPage() {
   }
 
   return (
-    <div className="p-3 md:p-6 space-y-4 max-w-[1600px] mx-auto">
+    <div className="p-3 md:p-6 space-y-6 max-w-[1600px] mx-auto">
       {/* ===== VISTA DE IMPRESIÓN ===== */}
       <div className="hidden print:block">
         <div className="print-agenda">

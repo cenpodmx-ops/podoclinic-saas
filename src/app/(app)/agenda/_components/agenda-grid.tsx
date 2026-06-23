@@ -19,7 +19,7 @@ type Props = {
   onBlockClick: (block: BlockItem) => void
 }
 
-const SLOT_HEIGHT = 56 // px per 30-min slot
+const SLOT_HEIGHT = 72 // px per 30-min slot — más aire entre filas
 const REASON_LABELS: Record<string, string> = {
   VACACIONES: 'Vacaciones',
   CAPACITACION: 'Capacitación',
@@ -103,7 +103,7 @@ function AppointmentCard({
   return (
     <button
       onClick={(e) => { e.stopPropagation(); onClick() }}
-      className={`absolute left-1 right-1 rounded-md px-2 py-1 text-left overflow-hidden ${cls} hover:shadow-md transition-shadow`}
+      className={`absolute left-1 right-1 rounded-md px-2 py-1.5 text-left overflow-hidden ${cls} hover:shadow-md transition-shadow`}
       style={{ top, height }}
     >
       <p className={`text-xs font-semibold truncate ${isDark ? 'text-white' : ''}`}>
@@ -134,7 +134,7 @@ function BlockCard({
   return (
     <button
       onClick={(e) => { e.stopPropagation(); onClick() }}
-      className="absolute left-1 right-1 rounded-md px-2 py-1 text-left appt-bloqueada hover:shadow-md transition-shadow"
+      className="absolute left-1 right-1 rounded-md px-2 py-1.5 text-left appt-bloqueada hover:shadow-md transition-shadow"
       style={{ top, height }}
     >
       <p className="text-[11px] font-semibold truncate">
