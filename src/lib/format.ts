@@ -20,13 +20,33 @@ export function fmtDate(d: Date | string) {
 }
 
 export function fmtDateTime(d: Date | string) {
+  // Extraer fecha y hora del ISO string sin convertir a timezone local.
+  // Las fechas/horas se guardan como UTC, pero representan la hora local
+  // del usuario, así que no debemos convertir (ver comentario en fmtTime).
+  if (typeof d === 'string') {
+    const match = d.match(/^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})/)
+    if (match) return `${match[3]}/${match[2]}/${match[1]} ${match[4]}:${match[5]}`
+  }
   const date = typeof d === 'string' ? new Date(d) : d
-  return format(date, 'dd/MM/yyyy HH:mm')
+  const dd = String(date.getUTCDate()).padStart(2, '0')
+  const mm = String(date.getUTCMonth() + 1).padStart(2, '0')
+  const yyyy = date.getUTCFullYear()
+  const hh = String(date.getUTCHours()).padStart(2, '0')
+  const min = String(date.getUTCMinutes()).padStart(2, '0')
+  return `${dd}/${mm}/${yyyy} ${hh}:${min}`
 }
 
 export function fmtTime(d: Date | string) {
+  // Extraer la hora directamente del ISO string sin convertir a timezone local.
+  // Las horas se guardan como UTC (ej. "08:00:00.000Z" representa las 8:00 AM
+  // locales del usuario), así que NO debemos convertir a la zona horaria del
+  // navegador (que mostraría "01:00" en Hermosillo UTC-7).
+  if (typeof d === 'string') {
+    const match = d.match(/T(\d{2}):(\d{2})/)
+    if (match) return `${match[1]}:${match[2]}`
+  }
   const date = typeof d === 'string' ? new Date(d) : d
-  return format(date, 'HH:mm')
+  return `${String(date.getUTCHours()).padStart(2, '0')}:${String(date.getUTCMinutes()).padStart(2, '0')}`
 }
 
 export function toInputDate(d: Date) {
