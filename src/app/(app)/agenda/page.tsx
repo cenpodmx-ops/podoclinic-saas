@@ -20,7 +20,7 @@ import { NewAppointmentDialog } from './_components/new-appointment-dialog'
 import { EditAppointmentDialog } from './_components/edit-appointment-dialog'
 import { BlockDialog } from './_components/block-dialog'
 import type { AppointmentItem, BlockItem, PodologistOption } from './_components/types'
-import { STATUS_COLORS, STATUS_LABELS } from '@/lib/format'
+import { STATUS_COLORS, STATUS_LABELS, fmtTime } from '@/lib/format'
 
 export default function AgendaPage() {
   const router = useRouter()
@@ -113,7 +113,7 @@ export default function AgendaPage() {
   }
   function openReschedule(a: AppointmentItem) {
     setRescheduleAppt(a)
-    setNewInitial({ date: format(new Date(a.date), 'yyyy-MM-dd'), startTime: format(new Date(a.startTime), 'HH:mm') })
+    setNewInitial({ date: format(new Date(a.date), 'yyyy-MM-dd'), startTime: fmtTime(a.startTime) })
     setPanelOpen(false)
     setNewOpen(true)
   }

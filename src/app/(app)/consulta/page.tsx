@@ -62,7 +62,7 @@ import {
   type AppointmentListItem,
   type PatientSummary,
 } from './_lib/types'
-import { fmtMoney, fmtDateTime, METHOD_LABELS, STATUS_LABELS, STATUS_COLORS } from '@/lib/format'
+import { fmtMoney, fmtDateTime, fmtTime, METHOD_LABELS, STATUS_LABELS, STATUS_COLORS } from '@/lib/format'
 import { PrescriptionFormDialog } from '../recetas/_components/prescription-form-dialog'
 import { PrescriptionViewDialog } from '../recetas/_components/prescription-view-dialog'
 import type { PatientLite } from '../recetas/_lib/types'
@@ -434,7 +434,7 @@ function ConsultasList({ onPick }: { onPick: (id: string) => void }) {
                   className="w-full text-left p-3 rounded-md border hover:border-foreground/30 hover:bg-accent/50 transition-colors flex items-center gap-3"
                 >
                   <div className="text-center min-w-[56px]">
-                    <div className="text-sm font-mono font-bold">{format(new Date(a.startTime), 'HH:mm')}</div>
+                    <div className="text-sm font-mono font-bold">{fmtTime(a.startTime)}</div>
                     <div className="text-[10px] text-muted-foreground">
                       {format(new Date(a.startTime), 'dd/MM')}
                     </div>
@@ -508,7 +508,7 @@ function ConfirmStart({
 
           <div className="grid grid-cols-2 gap-3 text-sm">
             <Info label="Fecha" value={format(new Date(appointment.startTime), 'dd/MM/yyyy')} />
-            <Info label="Hora" value={format(new Date(appointment.startTime), 'HH:mm')} />
+            <Info label="Hora" value={fmtTime(appointment.startTime)} />
             <Info label="Podólogo" value={podologist?.name || '—'} />
             <Info label="Servicio" value={appointment.serviceName || '—'} />
             <Info label="Motivo" value={appointment.reason || '—'} />

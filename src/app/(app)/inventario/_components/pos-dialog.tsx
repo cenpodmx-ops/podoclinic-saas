@@ -10,7 +10,7 @@ import { Badge } from '@/components/ui/badge'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Search, Plus, X, ShoppingCart, Printer, Package2 } from 'lucide-react'
 import { toast } from 'sonner'
-import { fmtMoney } from '@/lib/format'
+import { fmtMoney, fmtDate, fmtTime } from '@/lib/format'
 import { format } from 'date-fns'
 import { PAYMENT_METHODS, PAYMENT_METHOD_LABELS, type CartItem, type VentaMostradorResponse } from './types'
 
@@ -379,7 +379,7 @@ function TicketView({ data }: { data: VentaMostradorResponse }) {
       </div>
       <div className="ticket-row">
         <span>Fecha:</span>
-        <span>{format(new Date(data.date), 'dd/MM/yyyy HH:mm')}</span>
+        <span>{fmtDate(data.date)} {fmtTime(data.date)}</span>
       </div>
       <div className="ticket-row">
         <span>Cajero:</span>

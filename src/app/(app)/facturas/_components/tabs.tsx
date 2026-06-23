@@ -54,7 +54,7 @@ import {
   XCircle as XIcon,
   Receipt,
 } from 'lucide-react'
-import { fmtMoney, fmtDate } from '@/lib/format'
+import { fmtMoney, fmtDate, fmtTime } from '@/lib/format'
 import {
   STATUS_LABELS,
   STATUS_BADGE_CLASSES,
@@ -199,7 +199,7 @@ export function TabPorFacturar({ facturapiConfigured, onFacturar }: TabPorFactur
                       <TableRow key={c.id} className={c.patientRfc ? '' : 'bg-amber-50/50'}>
                         <TableCell className="text-xs whitespace-nowrap">
                           {format(new Date(c.date), 'dd/MM/yyyy')}
-                          <div className="text-[10px] text-muted-foreground">{format(new Date(c.date), 'HH:mm')}</div>
+                          <div className="text-[10px] text-muted-foreground">{fmtTime(c.date)}</div>
                         </TableCell>
                         <TableCell>
                           <div className="font-medium">{c.patientName}</div>
