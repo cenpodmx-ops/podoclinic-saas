@@ -194,7 +194,7 @@ export function NewAppointmentDialog({ open, onOpenChange, podologos, initial, r
             <div>
               <Label className="text-xs">Podólogo</Label>
               <Select value={podologistId} onValueChange={setPodologistId}>
-                <SelectTrigger className="h-9"><SelectValue placeholder="Sin asignar" /></SelectTrigger>
+                <SelectTrigger className="h-9 w-full"><SelectValue placeholder="Sin asignar" /></SelectTrigger>
                 <SelectContent>
                   {podologos.map((p) => (
                     <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>
@@ -205,7 +205,7 @@ export function NewAppointmentDialog({ open, onOpenChange, podologos, initial, r
             <div>
               <Label className="text-xs">Servicio</Label>
               <Select value={serviceId} onValueChange={setServiceId}>
-                <SelectTrigger className="h-9"><SelectValue placeholder="Opcional" /></SelectTrigger>
+                <SelectTrigger className="h-9 w-full"><SelectValue placeholder="Opcional" /></SelectTrigger>
                 <SelectContent>
                   {servicios.map((s) => (
                     <SelectItem key={s.id} value={s.id}>
