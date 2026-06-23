@@ -560,6 +560,27 @@ export async function GET(_req: NextRequest, ctx: { params: Promise<{ id: string
     position: relative;
     overflow: hidden;
   }
+
+  /* ===== IMPRESIÓN ===== */
+  @page {
+    margin: 0;
+  }
+  @media print {
+    html, body {
+      margin: 0;
+      padding: 0;
+      background: #ffffff !important;
+    }
+    .rx-sheet {
+      margin: 0 auto;
+      box-shadow: none;
+      width: ${paper.widthMm};
+      min-height: ${paper.heightMm};
+      padding: ${marginsMm};
+      page-break-after: avoid;
+      page-break-inside: avoid;
+    }
+  }
   .rx-watermark {
     position: absolute;
     pointer-events: none;
