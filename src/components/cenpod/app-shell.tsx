@@ -280,7 +280,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                 <X className="h-4 w-4" />
               </Button>
             </div>
-            <div onClick={() => setMobileOpen(false)}>
+            <div className="flex-1 overflow-y-auto cenpod-sidebar-scroll" onClick={() => setMobileOpen(false)}>
               <SidebarContent collapsed={false} />
             </div>
           </SheetContent>
