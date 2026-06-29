@@ -1366,13 +1366,16 @@ function TicketDialog({
   consultationId: string | null
 }) {
   const { patient, podologist, consultation } = data
-  if (!consultation) return null
 
   // Cargar configuración del ticket (logo, datos empresa — independiente de receta)
+  // Debe ir antes del return para respetar las reglas de hooks
   const { data: ticketConfigData } = useQuery<{ ticketConfig: any }>({
     queryKey: ['ticket-config'],
     queryFn: () => fetch('/api/config/ticket').then((r) => r.json()),
+    enabled: !!consultation,
   })
+
+  if (!consultation) return null
 
   function handlePrint() {
     // Abrir una ventana nueva con el HTML del ticket para impresión limpia.
