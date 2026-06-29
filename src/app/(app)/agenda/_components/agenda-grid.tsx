@@ -84,18 +84,20 @@ function slotOverlapsBlock(slotMinutes: number, blocks: BlockItem[]): boolean {
 function AppointmentCard({
   appt,
   gridStart,
+  slotMin,
   onClick,
   compact,
 }: {
   appt: AppointmentItem
   gridStart: number
+  slotMin: number
   onClick: () => void
   compact?: boolean
 }) {
   const startMin = minutesOf(appt.startTime)
   const endMin = minutesOf(appt.endTime)
-  const top = ((startMin - gridStart) / 30) * SLOT_HEIGHT
-  const height = Math.max(((endMin - startMin) / 30) * SLOT_HEIGHT - 2, 24)
+  const top = ((startMin - gridStart) / slotMin) * SLOT_HEIGHT
+  const height = Math.max(((endMin - startMin) / slotMin) * SLOT_HEIGHT - 2, 24)
   const cls = `appt-${appt.status.toLowerCase()}`
   const patientName = `${appt.patient.firstName} ${appt.patient.lastName}`
   const isDark = appt.status === 'EN_CONSULTA' || appt.status === 'CANCELADA'
@@ -121,16 +123,18 @@ function AppointmentCard({
 function BlockCard({
   block,
   gridStart,
+  slotMin,
   onClick,
 }: {
   block: BlockItem
   gridStart: number
+  slotMin: number
   onClick: () => void
 }) {
   const startMin = minutesOf(block.startTime)
   const endMin = minutesOf(block.endTime)
-  const top = ((startMin - gridStart) / 30) * SLOT_HEIGHT
-  const height = Math.max(((endMin - startMin) / 30) * SLOT_HEIGHT - 2, 24)
+  const top = ((startMin - gridStart) / slotMin) * SLOT_HEIGHT
+  const height = Math.max(((endMin - startMin) / slotMin) * SLOT_HEIGHT - 2, 24)
   return (
     <button
       onClick={(e) => { e.stopPropagation(); onClick() }}
@@ -257,11 +261,11 @@ export function AgendaGrid({
                   })}
                   {/* Blocks first (so they appear under appts) */}
                   {blocks.map((b) => (
-                    <BlockCard key={b.id} block={b} gridStart={gridStart} onClick={() => onBlockClick(b)} />
+                    <BlockCard key={b.id} block={b} gridStart={gridStart} slotMin={slotMin} onClick={() => onBlockClick(b)} />
                   ))}
                   {/* Appointments */}
                   {appts.map((a) => (
-                    <AppointmentCard key={a.id} appt={a} gridStart={gridStart} onClick={() => onAppointmentClick(a)} />
+                    <AppointmentCard key={a.id} appt={a} gridStart={gridStart} slotMin={slotMin} onClick={() => onAppointmentClick(a)} />
                   ))}
                 </div>
               )
@@ -335,10 +339,10 @@ export function AgendaGrid({
                   )
                 })}
                 {dayBlocks.map((b) => (
-                  <BlockCard key={b.id} block={b} gridStart={gridStart} onClick={() => onBlockClick(b)} />
+                  <BlockCard key={b.id} block={b} gridStart={gridStart} slotMin={slotMin} onClick={() => onBlockClick(b)} />
                 ))}
                 {dayAppts.map((a) => (
-                  <AppointmentCard key={a.id} appt={a} gridStart={gridStart} onClick={() => onAppointmentClick(a)} compact />
+                  <AppointmentCard key={a.id} appt={a} gridStart={gridStart} slotMin={slotMin} onClick={() => onAppointmentClick(a)} compact />
                 ))}
               </div>
             )
