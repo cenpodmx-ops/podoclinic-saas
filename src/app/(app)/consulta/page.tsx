@@ -1369,18 +1369,98 @@ function TicketDialog({
   if (!consultation) return null
 
   function handlePrint() {
-    // Inyectar @page 80mm dinámicamente para impresoras térmicas
-    const style = document.createElement('style')
-    style.id = 'ticket-page-size'
-    style.textContent = '@media print { @page { size: 80mm auto; margin: 0; } }'
-    document.head.appendChild(style)
-    document.body.classList.add('printing-ticket')
-    window.print()
-    // Limpiar después de imprimir
-    setTimeout(() => {
-      document.body.classList.remove('printing-ticket')
-      document.getElementById('ticket-page-size')?.remove()
-    }, 1000)
+    // Abrir una ventana nueva con el HTML del ticket para impresión limpia.
+    // Esto evita problemas con Dialog position:fixed y @media print del globals.css
+    // que oculta todo por defecto.
+    const ticketEl = document.querySelector('.ticket-print') as HTMLElement | null
+    if (!ticketEl) {
+      toast.error('No se pudo encontrar el ticket para imprimir')
+      return
+    }
+    const ticketHtml = ticketEl.outerHTML
+
+    const printWindow = window.open('', '_blank', 'width=400,height=600')
+    if (!printWindow) {
+      toast.error('El navegador bloqueó la ventana emergente. Permite popups para imprimir.')
+      return
+    }
+
+    printWindow.document.write(`<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8"/>
+<title>Ticket de consulta</title>
+<style>
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; background: #fff; }
+  body { font-family: 'Courier New', ui-monospace, monospace; color: #111; }
+  @page { size: 80mm auto; margin: 0; }
+  .ticket-print {
+    width: 80mm;
+    padding: 2mm;
+    font-size: 12px;
+    line-height: 1.35;
+  }
+  .ticket-print .ticket-header {
+    text-align: center;
+    border-bottom: 1px dashed #999;
+    padding-bottom: 6px;
+    margin-bottom: 6px;
+  }
+  .ticket-print .ticket-header img { max-height: 48px; margin: 0 auto 4px; }
+  .ticket-print .ticket-row {
+    display: flex;
+    justify-content: space-between;
+    gap: 8px;
+  }
+  .ticket-print table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 6px 0;
+    font-size: 11px;
+  }
+  .ticket-print table th,
+  .ticket-print table td {
+    padding: 2px 0;
+    text-align: left;
+    vertical-align: top;
+  }
+  .ticket-print table th {
+    border-bottom: 1px dashed #999;
+    font-weight: 700;
+  }
+  .ticket-print .ticket-totals {
+    border-top: 1px dashed #999;
+    padding-top: 4px;
+    margin-top: 4px;
+  }
+  .ticket-print .ticket-footer {
+    text-align: center;
+    margin-top: 8px;
+    border-top: 1px dashed #999;
+    padding-top: 6px;
+    font-size: 10px;
+  }
+  @media print {
+    .no-print { display: none !important; }
+  }
+</style>
+</head>
+<body>
+${ticketHtml}
+<div class="no-print" style="text-align:center;padding:10px;">
+  <button onclick="window.print()" style="padding:8px 16px;font-size:14px;cursor:pointer;">Imprimir ticket</button>
+</div>
+</body>
+</html>`)
+    printWindow.document.close()
+
+    // Auto-imprimir después de que cargue
+    printWindow.onload = () => {
+      setTimeout(() => {
+        printWindow.print()
+      }, 300)
+    }
   }
 
   // Marcar ticket como impreso (no crítico)

@@ -4,6 +4,7 @@ import { requireSession, ok, bad } from '@/lib/api'
 import { randomUUID } from 'crypto'
 import path from 'path'
 import { mkdir, writeFile } from 'fs/promises'
+import { uploadToSupabase } from '@/lib/supabase-storage'
 
 const ALLOWED_EXT = ['pdf', 'jpg', 'jpeg', 'png', 'docx']
 const MAX_SIZE = 20 * 1024 * 1024 // 20MB
@@ -96,18 +97,33 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
   }
 
   const uuid = randomUUID()
-  const relDir = `/uploads/${id}`
-  const absDir = path.join(process.cwd(), 'public', relDir)
-  await mkdir(absDir, { recursive: true })
-
   const storedName = `${uuid}.${ext}`
-  const relPath = `${relDir}/${storedName}`
-  const absPath = path.join(absDir, storedName)
-
   const arrayBuf = await file.arrayBuffer()
-  await writeFile(absPath, Buffer.from(arrayBuf))
-
+  const buffer = Buffer.from(arrayBuf)
   const mimeType = file.type || 'application/octet-stream'
+
+  // Intentar Supabase Storage primero (necesario en Vercel — filesystem read-only)
+  // En dev, fallback a /public/uploads (solo funciona localmente)
+  let fileUrl: string | null = null
+  const bucketPath = `patients/${id}/${storedName}`
+  const { url: supabaseUrl } = await uploadToSupabaseRaw(
+    bucketPath,
+    buffer,
+    mimeType,
+  )
+  if (supabaseUrl) {
+    fileUrl = supabaseUrl
+  } else {
+    // Fallback: guardar en /public (solo dev local, no funciona en Vercel)
+    const relDir = `/uploads/${id}`
+    const absDir = path.join(process.cwd(), 'public', relDir)
+    await mkdir(absDir, { recursive: true })
+    const relPath = `${relDir}/${storedName}`
+    const absPath = path.join(absDir, storedName)
+    await writeFile(absPath, buffer)
+    fileUrl = relPath
+  }
+
   const name = customName || filename.replace(/\.[^.]+$/, '')
 
   const created = await db.patientFile.create({
@@ -115,7 +131,7 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
       patientId: id,
       name,
       type,
-      fileUrl: relPath,
+      fileUrl: fileUrl,
       mimeType,
       sizeBytes: file.size,
       // Metadatos exclusivos para fotos clínicas (sección 19 NOM-004)
