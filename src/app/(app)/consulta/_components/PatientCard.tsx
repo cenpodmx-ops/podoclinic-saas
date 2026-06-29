@@ -123,15 +123,19 @@ export function TicketPreview({
   return (
     <div className="ticket-print mx-auto">
       <div className="ticket-header">
-        {clinic?.logoUrl && <img src={clinic.logoUrl} alt={clinic.name} />}
-        <div style={{ fontWeight: 700, fontSize: 14 }}>{clinic?.name || 'CENPOD'}</div>
+        {clinic?.logoUrl && (
+          <div className="ticket-logo-bar">
+            <img src={clinic.logoUrl} alt={clinic.name} />
+          </div>
+        )}
+        <div className="ticket-clinic-name">{clinic?.name || 'CENPOD'}</div>
         {clinic?.address && <div>{clinic.address}</div>}
         {clinic?.phone && <div>Tel: {clinic.phone}</div>}
       </div>
 
       <div className="ticket-row">
         <span>Folio:</span>
-        <span style={{ fontWeight: 700 }}>{date.getTime().toString().slice(-8)}</span>
+        <span className="ticket-bold">{date.getTime().toString().slice(-8)}</span>
       </div>
       <div className="ticket-row">
         <span>Fecha:</span>
@@ -139,7 +143,7 @@ export function TicketPreview({
       </div>
       <div className="ticket-row">
         <span>Paciente:</span>
-        <span style={{ fontWeight: 700 }}>{patientName}</span>
+        <span className="ticket-bold">{patientName}</span>
       </div>
       <div className="ticket-row">
         <span>Expediente:</span>
@@ -187,7 +191,7 @@ export function TicketPreview({
             <span>-${discount.toFixed(2)}</span>
           </div>
         )}
-        <div className="ticket-row" style={{ fontWeight: 700, fontSize: 14, marginTop: 4 }}>
+        <div className="ticket-total-row">
           <span>TOTAL:</span>
           <span>${total.toFixed(2)}</span>
         </div>
@@ -206,7 +210,7 @@ export function TicketPreview({
       </div>
 
       <div className="ticket-footer">
-        <div style={{ fontWeight: 700 }}>¡Gracias por su visita!</div>
+        <div className="ticket-bold">¡Gracias por su visita!</div>
         <div style={{ marginTop: 2 }}>CENPOD · Salud podológica</div>
       </div>
 

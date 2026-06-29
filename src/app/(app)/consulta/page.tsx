@@ -1393,53 +1393,87 @@ function TicketDialog({
 <style>
   * { box-sizing: border-box; }
   html, body { margin: 0; padding: 0; background: #fff; }
-  body { font-family: 'Courier New', ui-monospace, monospace; color: #111; }
+  body { font-family: 'Segoe UI', 'Helvetica Neue', Arial, sans-serif; color: #000; }
   @page { size: 80mm auto; margin: 0; }
   .ticket-print {
     width: 80mm;
-    padding: 2mm;
-    font-size: 12px;
-    line-height: 1.35;
+    padding: 10px 8px;
+    font-size: 13px;
+    line-height: 1.5;
+    font-weight: 600;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
   }
   .ticket-print .ticket-header {
     text-align: center;
-    border-bottom: 1px dashed #999;
-    padding-bottom: 6px;
-    margin-bottom: 6px;
+    border-bottom: 2px solid #000;
+    padding-bottom: 8px;
+    margin-bottom: 8px;
   }
-  .ticket-print .ticket-header img { max-height: 48px; margin: 0 auto 4px; }
+  .ticket-print .ticket-logo-bar {
+    background: #000;
+    padding: 8px 4px;
+    margin: -10px -8px 8px;
+    text-align: center;
+  }
+  .ticket-print .ticket-logo-bar img {
+    max-height: 72px;
+    max-width: 140px;
+    margin: 0 auto;
+    display: block;
+    filter: brightness(0) invert(1);
+  }
+  .ticket-print .ticket-clinic-name {
+    font-weight: 800;
+    font-size: 16px;
+    letter-spacing: 0.02em;
+  }
+  .ticket-print .ticket-bold { font-weight: 800; }
   .ticket-print .ticket-row {
     display: flex;
     justify-content: space-between;
     gap: 8px;
+    font-weight: 600;
   }
   .ticket-print table {
     width: 100%;
     border-collapse: collapse;
-    margin: 6px 0;
-    font-size: 11px;
+    margin: 8px 0;
+    font-size: 12px;
+    font-weight: 600;
   }
   .ticket-print table th,
   .ticket-print table td {
-    padding: 2px 0;
+    padding: 3px 0;
     text-align: left;
     vertical-align: top;
   }
   .ticket-print table th {
-    border-bottom: 1px dashed #999;
-    font-weight: 700;
+    border-bottom: 2px solid #000;
+    font-weight: 800;
+    font-size: 11px;
+    text-transform: uppercase;
   }
   .ticket-print .ticket-totals {
-    border-top: 1px dashed #999;
-    padding-top: 4px;
+    border-top: 2px solid #000;
+    padding-top: 6px;
+    margin-top: 6px;
+  }
+  .ticket-print .ticket-total-row {
+    display: flex;
+    justify-content: space-between;
+    gap: 8px;
+    font-weight: 800;
+    font-size: 15px;
     margin-top: 4px;
   }
   .ticket-print .ticket-footer {
     text-align: center;
-    margin-top: 8px;
-    border-top: 1px dashed #999;
-    padding-top: 6px;
-    font-size: 10px;
+    margin-top: 10px;
+    border-top: 2px solid #000;
+    padding-top: 8px;
+    font-size: 12px;
+    font-weight: 600;
   }
   @media print {
     .no-print { display: none !important; }
