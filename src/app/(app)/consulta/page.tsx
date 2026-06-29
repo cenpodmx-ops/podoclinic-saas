@@ -1368,6 +1368,12 @@ function TicketDialog({
   const { patient, podologist, consultation } = data
   if (!consultation) return null
 
+  // Cargar configuración del ticket (logo, datos empresa — independiente de receta)
+  const { data: ticketConfigData } = useQuery<{ ticketConfig: any }>({
+    queryKey: ['ticket-config'],
+    queryFn: () => fetch('/api/config/ticket').then((r) => r.json()),
+  })
+
   function handlePrint() {
     // Abrir una ventana nueva con el HTML del ticket para impresión limpia.
     // Esto evita problemas con Dialog position:fixed y @media print del globals.css
@@ -1518,6 +1524,7 @@ ${ticketHtml}
         </DialogHeader>
         <div className="bg-white p-3 flex justify-center">
           <TicketPreview
+            ticketConfig={ticketConfigData?.ticketConfig}
             data={{
               clinic: config?.clinic || null,
               date: new Date(consultation.date),

@@ -100,6 +100,7 @@ export function PatientCard({ patient }: { patient: PatientSummary }) {
 
 export function TicketPreview({
   data,
+  ticketConfig,
   onClose,
 }: {
   data: {
@@ -116,21 +117,46 @@ export function TicketPreview({
     paymentMethod?: string | null
     followUpDays?: number | null
   }
+  ticketConfig?: {
+    logoUrl?: string | null
+    logoSize?: number
+    clinicName?: string
+    address?: string
+    phone?: string
+    showLogo?: boolean
+    showAddress?: boolean
+    showPhone?: boolean
+    showClinicName?: boolean
+    footerMessage?: string
+  } | null
   onClose?: () => void
 }) {
   const { clinic, date, patientName, expNumber, podologistName, items, consultPrice, productsTotal, discount, total, paymentMethod, followUpDays } = data
 
+  // Si hay ticketConfig, usar sus valores; si no, usar los de clinic
+  const tc = ticketConfig
+  const showLogo = tc?.showLogo ?? true
+  const showClinicName = tc?.showClinicName ?? true
+  const showAddress = tc?.showAddress ?? true
+  const showPhone = tc?.showPhone ?? true
+  const logoUrl = tc?.logoUrl || clinic?.logoUrl || null
+  const logoSize = tc?.logoSize || 60
+  const clinicName = tc?.clinicName || clinic?.name || 'CENPOD'
+  const address = tc?.address || clinic?.address || ''
+  const phone = tc?.phone || clinic?.phone || ''
+  const footerMessage = tc?.footerMessage || '¡Gracias por su visita!'
+
   return (
     <div className="ticket-print mx-auto">
       <div className="ticket-header">
-        {clinic?.logoUrl && (
-          <div className="ticket-logo-bar">
-            <img src={clinic.logoUrl} alt={clinic.name} />
+        {showLogo && logoUrl && (
+          <div className="ticket-logo-wrapper">
+            <img src={logoUrl} alt={clinicName} style={{ maxHeight: logoSize }} />
           </div>
         )}
-        <div className="ticket-clinic-name">{clinic?.name || 'CENPOD'}</div>
-        {clinic?.address && <div>{clinic.address}</div>}
-        {clinic?.phone && <div>Tel: {clinic.phone}</div>}
+        {showClinicName && <div className="ticket-clinic-name">{clinicName}</div>}
+        {showAddress && address && <div>{address}</div>}
+        {showPhone && phone && <div>Tel: {phone}</div>}
       </div>
 
       <div className="ticket-row">
@@ -210,7 +236,7 @@ export function TicketPreview({
       </div>
 
       <div className="ticket-footer">
-        <div className="ticket-bold">¡Gracias por su visita!</div>
+        <div className="ticket-bold">{footerMessage}</div>
         <div style={{ marginTop: 2 }}>CENPOD · Salud podológica</div>
       </div>
 
