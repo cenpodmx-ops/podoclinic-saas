@@ -4,7 +4,7 @@ import { requireSession, ok, bad } from '@/lib/api'
 import { randomUUID } from 'crypto'
 import path from 'path'
 import { mkdir, writeFile } from 'fs/promises'
-import { uploadToSupabase } from '@/lib/supabase-storage'
+import { uploadToSupabaseRaw } from '@/lib/supabase-storage'
 
 const ALLOWED_EXT = ['pdf', 'jpg', 'jpeg', 'png', 'docx']
 const MAX_SIZE = 20 * 1024 * 1024 // 20MB
