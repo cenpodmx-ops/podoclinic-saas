@@ -57,3 +57,39 @@ export async function uploadToSupabase(
   const { data } = supabase.storage.from('clinics').getPublicUrl(path)
   return { url: data.publicUrl, error: null }
 }
+
+/**
+ * Sube un archivo a Supabase Storage usando una ruta arbitraria dentro del bucket 'clinics'.
+ * A diferencia de uploadToSupabase (que usa clinicId/filename), esta función acepta
+ * cualquier path (ej. 'patients/{patientId}/{uuid}.jpg').
+ *
+ * Usada para subir fotos/archivos del expediente de pacientes.
+ */
+export async function uploadToSupabaseRaw(
+  path: string,
+  buffer: Buffer,
+  mimeType: string,
+): Promise<{ url: string | null; error: string | null }> {
+  const supabase = getSupabaseAdmin()
+  if (!supabase) {
+    return {
+      url: null,
+      error: 'SUPABASE_URL o SUPABASE_SERVICE_ROLE_KEY no configuradas',
+    }
+  }
+
+  const { error } = await supabase.storage
+    .from('clinics')
+    .upload(path, buffer, {
+      contentType: mimeType,
+      upsert: true,
+    })
+
+  if (error) {
+    console.error('[SUPABASE STORAGE] upload error:', error.message)
+    return { url: null, error: error.message }
+  }
+
+  const { data } = supabase.storage.from('clinics').getPublicUrl(path)
+  return { url: data.publicUrl, error: null }
+}

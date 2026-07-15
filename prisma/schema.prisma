@@ -679,6 +679,8 @@ model ClinicConfig {
   tplFollowUp     String?
   // Diseño de receta (JSON)
   prescriptionDesign String?
+  // Diseño del ticket de consulta (JSON) — logo, tamaño, datos empresa
+  ticketConfig    String?
   // Lista de diagnósticos predefinidos (JSON)
   diagnosesList   String?
   // Días festivos / descanso (JSON)

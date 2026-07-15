@@ -14,10 +14,11 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Skeleton } from '@/components/ui/skeleton'
-import { Save, Plus, Pencil, Building2, Users, MessageSquare, FileText, KeyRound, UserCog, Pill } from 'lucide-react'
+import { Save, Plus, Pencil, Building2, Users, MessageSquare, FileText, KeyRound, UserCog, Pill, Receipt } from 'lucide-react'
 import { toast } from 'sonner'
 import { fmtMoney } from '@/lib/format'
 import { PrescriptionEditor } from '@/components/cenpod/prescription-editor'
+import { TicketConfigTab } from './_components/ticket-config-tab'
 
 const TPL_VARS = [
   '{{nombre_paciente}}', '{{fecha}}', '{{hora}}', '{{podologo}}',
@@ -38,6 +39,7 @@ export default function ConfigPage() {
           <TabsTrigger value="equipo" className="gap-1"><Users className="h-3.5 w-3.5" /> Equipo</TabsTrigger>
           <TabsTrigger value="plantillas" className="gap-1"><MessageSquare className="h-3.5 w-3.5" /> Plantillas WhatsApp</TabsTrigger>
           <TabsTrigger value="recetas" className="gap-1"><Pill className="h-3.5 w-3.5" /> Recetas</TabsTrigger>
+          <TabsTrigger value="ticket" className="gap-1"><Receipt className="h-3.5 w-3.5" /> Ticket</TabsTrigger>
           <TabsTrigger value="facturacion" className="gap-1"><KeyRound className="h-3.5 w-3.5" /> FacturAPI</TabsTrigger>
           <TabsTrigger value="diagnosticos" className="gap-1"><FileText className="h-3.5 w-3.5" /> Diagnósticos</TabsTrigger>
           <TabsTrigger value="usuarios" className="gap-1"><UserCog className="h-3.5 w-3.5" /> Usuarios</TabsTrigger>
@@ -47,6 +49,7 @@ export default function ConfigPage() {
         <TabsContent value="equipo"><EquipoTab /></TabsContent>
         <TabsContent value="plantillas"><PlantillasTab /></TabsContent>
         <TabsContent value="recetas"><RecetasTab /></TabsContent>
+        <TabsContent value="ticket"><TicketConfigTab /></TabsContent>
         <TabsContent value="facturacion"><FacturacionTab /></TabsContent>
         <TabsContent value="diagnosticos"><DiagnosticosTab /></TabsContent>
         <TabsContent value="usuarios"><UsuariosTab /></TabsContent>
