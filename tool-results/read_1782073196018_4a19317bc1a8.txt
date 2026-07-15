@@ -1,0 +1,855 @@
+     1→'use client'
+     2→
+     3→import { useState, useRef } from 'react'
+     4→import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+     5→import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+     6→import { Button } from '@/components/ui/button'
+     7→import { Label } from '@/components/ui/label'
+     8→import { Input } from '@/components/ui/input'
+     9→import { Switch } from '@/components/ui/switch'
+    10→import { Slider } from '@/components/ui/slider'
+    11→import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+    12→import { Badge } from '@/components/ui/badge'
+    13→import { Separator } from '@/components/ui/separator'
+    14→import { Skeleton } from '@/components/ui/skeleton'
+    15→import { Save, Printer, Upload, RotateCcw, Image as ImageIcon } from 'lucide-react'
+    16→import { toast } from 'sonner'
+    17→import {
+    18→  PrescriptionLivePreview,
+    19→  type PrescriptionDesign,
+    20→  type PrescriptionPreviewData,
+    21→} from './prescription-preview'
+    22→
+    23→// ============================================================
+    24→// PrescriptionEditor
+    25→// Editor visual del diseño de recetas con preview en vivo.
+    26→// Guarda en ClinicConfig.prescriptionDesign vía PATCH /api/config/plantillas.
+    27→// Sube logo vía POST /api/config/logo.
+    28→// Imprime una receta de prueba abriendo /api/recetas/test/print?design=...
+    29→// ============================================================
+    30→
+    31→const DEFAULT_DESIGN: PrescriptionDesign = {
+    32→  logoPosition: 'left',
+    33→  logoUrl: 'auto',
+    34→  fontFamily: "'Times New Roman', Georgia, serif",
+    35→  fontFamilyCategory: 'serif',
+    36→  primaryColor: '#0a3143',
+    37→  accentColor: '#0a3143',
+    38→  showHeader: true,
+    39→  showFooter: true,
+    40→  showRxSymbol: true,
+    41→  signatureLabel: 'Cédula profesional',
+    42→  paperSize: 'A4',
+    43→  fontSize: 13,
+    44→  textColor: '#111111',
+    45→  backgroundColor: '#ffffff',
+    46→  lineHeight: 1.5,
+    47→  margins: 16,
+    48→  logoSize: 78,
+    49→  logoOpacity: 100,
+    50→  watermarkEnabled: false,
+    51→  watermarkOpacity: 10,
+    52→  watermarkSize: 60,
+    53→  watermarkPosition: 'center',
+    54→  showPatientInfo: true,
+    55→  showDoctorInfo: true,
+    56→  showDiagnosis: true,
+    57→  showMedications: true,
+    58→  showIndications: true,
+    59→  showSignature: true,
+    60→  doctorNameMode: 'podologist',
+    61→  doctorFixedName: '',
+    62→}
+    63→
+    64→const SAMPLE_DATA: PrescriptionPreviewData = {
+    65→  id: 'PREVIEW-RX-0001',
+    66→  date: new Date().toISOString(),
+    67→  diagnosis: 'Onicomicosis en primer dedo del pie derecho',
+    68→  medications: [
+    69→    { name: 'Terbinafina 250 mg', dose: '1 tableta cada 24h', via: 'Oral', duration: '6 semanas' },
+    70→    { name: 'Crema ketoconazol 2%', dose: 'Aplicar 2 veces al día', via: 'Tópica', duration: '4 semanas' },
+    71→    { name: 'Ibuprofeno 400 mg', dose: '1 cada 8 horas', via: 'Oral', duration: '5 días' },
+    72→  ],
+    73→  indications: 'Reposo relativo, control en una semana, evitar humedad en pies, uso de calzado amplio y transpirable.',
+    74→  patient: {
+    75→    firstName: 'María',
+    76→    lastName: 'González Pérez',
+    77→    name: 'María González Pérez',
+    78→    expNumber: 'C1-00001',
+    79→    birthDate: '1980-05-15',
+    80→    sex: 'F',
+    81→    phone: '6621234567',
+    82→  },
+    83→  podologist: {
+    84→    name: 'Dr. Juan Carlos Méndez',
+    85→    specialty: 'Podología',
+    86→    cedula: '1234567',
+    87→    certNumber: 'CONPOD-456',
+    88→  },
+    89→  clinic: null, // se rellena desde useConfig
+    90→}
+    91→
+    92→export function PrescriptionEditor() {
+    93→  const qc = useQueryClient()
+    94→  const fileInputRef = useRef<HTMLInputElement>(null)
+    95→
+    96→  // Cargar configuración existente
+    97→  const { data: configData, isLoading } = useQuery<any>({
+    98→    queryKey: ['config'],
+    99→    queryFn: () => fetch('/api/config').then((r) => r.json()),
+   100→  })
+   101→
+   102→  const clinic = configData?.clinic
+   103→
+   104→  // Estado del diseño. Se inicializa una sola vez cuando llega la data.
+   105→  const [design, setDesign] = useState<PrescriptionDesign | null>(null)
+   106→  const [uploadedLogoUrl, setUploadedLogoUrl] = useState<string | null>(null)
+   107→
+   108→  // Inicializar diseño desde config (una sola vez)
+   109→  if (!isLoading && configData && !design) {
+   110→    let parsed: PrescriptionDesign = DEFAULT_DESIGN
+   111→    const raw = configData?.config?.prescriptionDesign
+   112→    if (raw) {
+   113→      try {
+   114→        parsed = { ...DEFAULT_DESIGN, ...(JSON.parse(raw) as Partial<PrescriptionDesign>) }
+   115→      } catch {
+   116→        parsed = DEFAULT_DESIGN
+   117→      }
+   118→    }
+   119→    // Si la clínica ya tiene logo, mostrarlo por defecto (logoUrl='auto')
+   120→    if (clinic?.logoUrl && parsed.logoUrl === undefined) {
+   121→      parsed.logoUrl = 'auto'
+   122→    }
+   123→    setDesign(parsed)
+   124→  }
+   125→
+   126→  function update(patch: Partial<PrescriptionDesign>) {
+   127→    setDesign((d) => (d ? { ...d, ...patch } : d))
+   128→  }
+   129→
+   130→  // Guardar diseño
+   131→  const saveMut = useMutation({
+   132→    mutationFn: async (body: PrescriptionDesign) => {
+   133→      const r = await fetch('/api/config/plantillas', {
+   134→        method: 'PATCH',
+   135→        headers: { 'Content-Type': 'application/json' },
+   136→        body: JSON.stringify({ prescriptionDesign: JSON.stringify(body) }),
+   137→      })
+   138→      if (!r.ok) {
+   139→        const e = await r.json().catch(() => ({}))
+   140→        throw new Error(e.error || 'Error al guardar')
+   141→      }
+   142→      return r.json()
+   143→    },
+   144→    onSuccess: () => {
+   145→      toast.success('Diseño de receta guardado')
+   146→      qc.invalidateQueries({ queryKey: ['config'] })
+   147→    },
+   148→    onError: (e: Error) => toast.error(e.message),
+   149→  })
+   150→
+   151→  // Subir logo
+   152→  const uploadMut = useMutation({
+   153→    mutationFn: async (file: File) => {
+   154→      const fd = new FormData()
+   155→      fd.append('file', file)
+   156→      const r = await fetch('/api/config/logo', { method: 'POST', body: fd })
+   157→      if (!r.ok) {
+   158→        const e = await r.json().catch(() => ({}))
+   159→        throw new Error(e.error || 'Error al subir el logo')
+   160→      }
+   161→      return r.json() as Promise<{ url: string }>
+   162→    },
+   163→    onSuccess: (data) => {
+   164→      toast.success('Logo subido correctamente')
+   165→      setUploadedLogoUrl(data.url)
+   166→      update({ logoUrl: data.url })
+   167→      qc.invalidateQueries({ queryKey: ['config'] })
+   168→    },
+   169→    onError: (e: Error) => toast.error(e.message),
+   170→  })
+   171→
+   172→  function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
+   173→    const f = e.target.files?.[0]
+   174→    if (!f) return
+   175→    uploadMut.mutate(f)
+   176→  }
+   177→
+   178→  function handleReset() {
+   179→    if (!confirm('¿Restablecer el diseño a los valores por defecto? Se perderán los cambios no guardados.')) return
+   180→    setDesign({ ...DEFAULT_DESIGN, logoUrl: clinic?.logoUrl ? 'auto' : 'none' })
+   181→    toast.info('Diseño restablecido. Recuerda guardar.')
+   182→  }
+   183→
+   184→  function handlePrintTest() {
+   185→    // Abre una ventana con una receta de muestra usando el diseño actual.
+   186→    // Usamos una URL temporal que escribe el diseño en localStorage y luego
+   187→    // la página de print-test lo lee. Pero como solo tenemos /api/recetas/[id]/print,
+   188→    // usamos una alternativa: abrimos una ventana nueva y escribimos HTML inline
+   189→    // que simula la receta con el diseño actual.
+   190→    if (!design) return
+   191→    const html = buildTestPrintHtml(design, {
+   192→      ...SAMPLE_DATA,
+   193→      clinic: clinic || null,
+   194→    })
+   195→    const w = window.open('', '_blank', 'width=900,height=1000')
+   196→    if (!w) {
+   197→      toast.error('Habilita las ventanas emergentes para imprimir la prueba.')
+   198→      return
+   199→    }
+   200→    w.document.open()
+   201→    w.document.write(html)
+   202→    w.document.close()
+   203→    setTimeout(() => {
+   204→      try {
+   205→        w.focus()
+   206→        w.print()
+   207→      } catch {}
+   208→    }, 400)
+   209→  }
+   210→
+   211→  if (isLoading || !design) {
+   212→    return <Skeleton className="h-96" />
+   213→  }
+   214→
+   215→  return (
+   216→    <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+   217→      {/* Columna izquierda: controles */}
+   218→      <div className="space-y-4">
+   219→        {/* Papel y logo */}
+   220→        <Card>
+   221→          <CardHeader>
+   222→            <CardTitle className="text-base flex items-center gap-2">
+   223→              <ImageIcon className="h-4 w-4 text-primary" /> Papel y logo
+   224→            </CardTitle>
+   225→          </CardHeader>
+   226→          <CardContent className="space-y-4">
+   227→            {/* Logo upload */}
+   228→            <div className="space-y-2">
+   229→              <Label className="text-xs">Logo de la clínica</Label>
+   230→              <div className="flex items-center gap-3 flex-wrap">
+   231→                <input
+   232→                  ref={fileInputRef}
+   233→                  type="file"
+   234→                  accept="image/png,image/jpeg,image/webp,image/svg+xml"
+   235→                  onChange={handleFileChange}
+   236→                  className="hidden"
+   237→                />
+   238→                <Button
+   239→                  type="button"
+   240→                  variant="outline"
+   241→                  size="sm"
+   242→                  onClick={() => fileInputRef.current?.click()}
+   243→                  disabled={uploadMut.isPending}
+   244→                >
+   245→                  <Upload className="h-3.5 w-3.5" />
+   246→                  {uploadMut.isPending ? 'Subiendo…' : 'Subir logo'}
+   247→                </Button>
+   248→                {clinic?.logoUrl && (
+   249→                  <Badge className="bg-emerald-100 text-emerald-700 text-xs">✓ Logo subido</Badge>
+   250→                )}
+   251→              </div>
+   252→              {uploadedLogoUrl && (
+   253→                <Badge className="bg-emerald-100 text-emerald-700 text-xs">Logo nuevo subido ✓</Badge>
+   254→              )}
+   255→            </div>
+   256→
+   257→            {/* Logo source */}
+   258→            <div className="grid grid-cols-2 gap-3">
+   259→              <div>
+   260→                <Label className="text-xs">Fuente del logo</Label>
+   261→                <Select
+   262→                  value={design.logoUrl === 'none' ? 'none' : design.logoUrl === 'auto' || !design.logoUrl ? 'auto' : 'custom'}
+   263→                  onValueChange={(v) => {
+   264→                    if (v === 'none') update({ logoUrl: 'none' })
+   265→                    else if (v === 'auto') update({ logoUrl: 'auto' })
+   266→                    else if (uploadedLogoUrl) update({ logoUrl: uploadedLogoUrl })
+   267→                    else update({ logoUrl: clinic?.logoUrl || 'auto' })
+   268→                  }}
+   269→                >
+   270→                  <SelectTrigger className="h-9"><SelectValue /></SelectTrigger>
+   271→                  <SelectContent>
+   272→                    <SelectItem value="auto">Automático (logo de la clínica)</SelectItem>
+   273→                    <SelectItem value="custom">Logo subido</SelectItem>
+   274→                    <SelectItem value="none">Sin logo</SelectItem>
+   275→                  </SelectContent>
+   276→                </Select>
+   277→              </div>
+   278→              <div>
+   279→                <Label className="text-xs">Posición del logo</Label>
+   280→                <Select value={design.logoPosition || 'left'} onValueChange={(v) => update({ logoPosition: v as any })}>
+   281→                  <SelectTrigger className="h-9"><SelectValue /></SelectTrigger>
+   282→                  <SelectContent>
+   283→                    <SelectItem value="left">Izquierda</SelectItem>
+   284→                    <SelectItem value="center">Centro</SelectItem>
+   285→                    <SelectItem value="right">Derecha</SelectItem>
+   286→                  </SelectContent>
+   287→                </Select>
+   288→              </div>
+   289→            </div>
+   290→
+   291→            <SliderControl
+   292→              label="Tamaño del logo"
+   293→              value={design.logoSize ?? 78}
+   294→              min={40}
+   295→              max={400}
+   296→              unit="px"
+   297→              onChange={(v) => update({ logoSize: v })}
+   298→            />
+   299→            <SliderControl
+   300→              label="Opacidad del logo"
+   301→              value={design.logoOpacity ?? 100}
+   302→              min={10}
+   303→              max={100}
+   304→              unit="%"
+   305→              onChange={(v) => update({ logoOpacity: v })}
+   306→            />
+   307→
+   308→            <Separator />
+   309→
+   310→            {/* Watermark */}
+   311→            <div className="space-y-3">
+   312→              <div className="flex items-center justify-between">
+   313→                <Label className="text-xs">Marca de agua (watermark)</Label>
+   314→                <Switch
+   315→                  checked={design.watermarkEnabled === true}
+   316→                  onCheckedChange={(v) => update({ watermarkEnabled: v })}
+   317→                />
+   318→              </div>
+   319→              {design.watermarkEnabled && (
+   320→                <>
+   321→                  <SliderControl
+   322→                    label="Tamaño watermark"
+   323→                    value={design.watermarkSize ?? 60}
+   324→                    min={20}
+   325→                    max={100}
+   326→                    unit="%"
+   327→                    onChange={(v) => update({ watermarkSize: v })}
+   328→                  />
+   329→                  <SliderControl
+   330→                    label="Opacidad watermark"
+   331→                    value={design.watermarkOpacity ?? 10}
+   332→                    min={5}
+   333→                    max={30}
+   334→                    unit="%"
+   335→                    onChange={(v) => update({ watermarkOpacity: v })}
+   336→                  />
+   337→                  <div>
+   338→                    <Label className="text-xs">Posición watermark</Label>
+   339→                    <Select
+   340→                      value={design.watermarkPosition || 'center'}
+   341→                      onValueChange={(v) => update({ watermarkPosition: v as any })}
+   342→                    >
+   343→                      <SelectTrigger className="h-9"><SelectValue /></SelectTrigger>
+   344→                      <SelectContent>
+   345→                        <SelectItem value="center">Centro</SelectItem>
+   346→                        <SelectItem value="top-right">Superior derecha</SelectItem>
+   347→                        <SelectItem value="bottom-right">Inferior derecha</SelectItem>
+   348→                      </SelectContent>
+   349→                    </Select>
+   350→                  </div>
+   351→                </>
+   352→              )}
+   353→            </div>
+   354→
+   355→            <Separator />
+   356→
+   357→            {/* Paper size */}
+   358→            <div>
+   359→              <Label className="text-xs">Tamaño de papel</Label>
+   360→              <Select value={design.paperSize || 'A4'} onValueChange={(v) => update({ paperSize: v as any })}>
+   361→                <SelectTrigger><SelectValue /></SelectTrigger>
+   362→                <SelectContent>
+   363→                  <SelectItem value="MediaCarta">Media carta (140 × 216 mm)</SelectItem>
+   364→                  <SelectItem value="Carta">Carta (216 × 279 mm)</SelectItem>
+   365→                  <SelectItem value="A4">A4 (210 × 297 mm)</SelectItem>
+   366→                </SelectContent>
+   367→              </Select>
+   368→            </div>
+   369→
+   370→            <SliderControl
+   371→              label="Márgenes"
+   372→              value={design.margins ?? 16}
+   373→              min={10}
+   374→              max={40}
+   375→              unit="mm"
+   376→              onChange={(v) => update({ margins: v })}
+   377→            />
+   378→          </CardContent>
+   379→        </Card>
+   380→
+   381→        {/* Colores */}
+   382→        <Card>
+   383→          <CardHeader>
+   384→            <CardTitle className="text-base">Colores</CardTitle>
+   385→          </CardHeader>
+   386→          <CardContent className="space-y-3">
+   387→            <ColorControl
+   388→              label="Color primario (encabezados, acentos)"
+   389→              value={design.primaryColor || '#0a3143'}
+   390→              onChange={(v) => update({ primaryColor: v, accentColor: v })}
+   391→            />
+   392→            <ColorControl
+   393→              label="Color de acento"
+   394→              value={design.accentColor || design.primaryColor || '#0a3143'}
+   395→              onChange={(v) => update({ accentColor: v })}
+   396→            />
+   397→            <ColorControl
+   398→              label="Color del texto"
+   399→              value={design.textColor || '#111111'}
+   400→              onChange={(v) => update({ textColor: v })}
+   401→            />
+   402→            <ColorControl
+   403→              label="Color de fondo"
+   404→              value={design.backgroundColor || '#ffffff'}
+   405→              onChange={(v) => update({ backgroundColor: v })}
+   406→            />
+   407→            <button
+   408→              type="button"
+   409→              onClick={() => update({ primaryColor: '#0a3143', accentColor: '#0a3143', textColor: '#111111', backgroundColor: '#ffffff' })}
+   410→              className="text-[10px] text-muted-foreground underline hover:text-foreground"
+   411→            >
+   412→              Restablecer colores CENPOD
+   413→            </button>
+   414→          </CardContent>
+   415→        </Card>
+   416→
+   417→        {/* Tipografía */}
+   418→        <Card>
+   419→          <CardHeader>
+   420→            <CardTitle className="text-base">Tipografía</CardTitle>
+   421→          </CardHeader>
+   422→          <CardContent className="space-y-3">
+   423→            <div>
+   424→              <Label className="text-xs">Familia tipográfica</Label>
+   425→              <Select
+   426→                value={design.fontFamilyCategory || 'serif'}
+   427→                onValueChange={(v) => {
+   428→                  const cat = v as 'serif' | 'sans-serif' | 'system'
+   429→                  const fam = cat === 'serif'
+   430→                    ? "'Times New Roman', Georgia, serif"
+   431→                    : cat === 'sans-serif'
+   432→                      ? "Arial, Helvetica, sans-serif"
+   433→                      : "ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif"
+   434→                  update({ fontFamilyCategory: cat, fontFamily: fam })
+   435→                }}
+   436→              >
+   437→                <SelectTrigger><SelectValue /></SelectTrigger>
+   438→                <SelectContent>
+   439→                  <SelectItem value="serif">Serif (Times / Georgia)</SelectItem>
+   440→                  <SelectItem value="sans-serif">Sans-serif (Arial / Helvetica)</SelectItem>
+   441→                  <SelectItem value="system">System (UI)</SelectItem>
+   442→                </SelectContent>
+   443→              </Select>
+   444→            </div>
+   445→            <SliderControl
+   446→              label="Tamaño de fuente"
+   447→              value={design.fontSize ?? 13}
+   448→              min={10}
+   449→              max={18}
+   450→              unit="px"
+   451→              onChange={(v) => update({ fontSize: v })}
+   452→            />
+   453→            <SliderControl
+   454→              label="Interlineado"
+   455→              value={Math.round((design.lineHeight ?? 1.5) * 10) / 10}
+   456→              min={12}
+   457→              max={20}
+   458→              step={1}
+   459→              unit=""
+   460→              transform={(v) => v / 10}
+   461→              onChange={(v) => update({ lineHeight: Math.round(v * 10) / 10 })}
+   462→            />
+   463→          </CardContent>
+   464→        </Card>
+   465→
+   466→        {/* Layout */}
+   467→        <Card>
+   468→          <CardHeader>
+   469→            <CardTitle className="text-base">Layout</CardTitle>
+   470→          </CardHeader>
+   471→          <CardContent className="space-y-3">
+   472→            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+   473→              <ToggleRow label="Encabezado (datos clínica)" value={design.showHeader !== false} onChange={(v) => update({ showHeader: v })} />
+   474→              <ToggleRow label="Pie de página" value={design.showFooter !== false} onChange={(v) => update({ showFooter: v })} />
+   475→              <ToggleRow label="Símbolo ℞" value={design.showRxSymbol !== false} onChange={(v) => update({ showRxSymbol: v })} />
+   476→              <ToggleRow label="Info del paciente" value={design.showPatientInfo !== false} onChange={(v) => update({ showPatientInfo: v })} />
+   477→              <ToggleRow label="Info del doctor" value={design.showDoctorInfo !== false} onChange={(v) => update({ showDoctorInfo: v })} />
+   478→              <ToggleRow label="Diagnóstico" value={design.showDiagnosis !== false} onChange={(v) => update({ showDiagnosis: v })} />
+   479→              <ToggleRow label="Tabla de medicamentos o productos" value={design.showMedications !== false} onChange={(v) => update({ showMedications: v })} />
+   480→              <ToggleRow label="Indicaciones" value={design.showIndications !== false} onChange={(v) => update({ showIndications: v })} />
+   481→              <ToggleRow label="Línea de firma" value={design.showSignature !== false} onChange={(v) => update({ showSignature: v })} />
+   482→            </div>
+   483→            <Separator />
+   484→            <div className="space-y-3">
+   485→              <div className="space-y-1">
+   486→                <Label className="text-xs">Nombre del profesional en la receta</Label>
+   487→                <Select
+   488→                  value={design.doctorNameMode || 'podologist'}
+   489→                  onValueChange={(v) => update({ doctorNameMode: v as any })}
+   490→                >
+   491→                  <SelectTrigger className="h-9"><SelectValue /></SelectTrigger>
+   492→                  <SelectContent>
+   493→                    <SelectItem value="podologist">Nombre del podólogo que receta</SelectItem>
+   494→                    <SelectItem value="fixed">Nombre fijo (responsable de la clínica)</SelectItem>
+   495→                  </SelectContent>
+   496→                </Select>
+   497→                {design.doctorNameMode === 'fixed' && (
+   498→                  <Input
+   499→                    value={design.doctorFixedName || ''}
+   500→                    onChange={(e) => update({ doctorFixedName: e.target.value })}
+   501→                    placeholder="Nombre del responsable"
+   502→                    className="h-9 mt-1"
+   503→                  />
+   504→                )}
+   505→                <p className="text-[10px] text-muted-foreground">
+   506→                  La cédula profesional siempre es la misma (se configura en Equipo → Podólogo).
+   507→                </p>
+   508→              </div>
+   509→              <Separator />
+   510→              <div className="space-y-1">
+   511→                <Label className="text-xs">Texto bajo la firma (etiqueta)</Label>
+   512→                <Input
+   513→                  value={design.signatureLabel || ''}
+   514→                  onChange={(e) => update({ signatureLabel: e.target.value })}
+   515→                  placeholder="Cédula profesional"
+   516→                  className="h-9"
+   517→                />
+   518→                <p className="text-[10px] text-muted-foreground">
+   519→                  Ejemplos: &ldquo;Cédula profesional&rdquo;, &ldquo;Número de certificación&rdquo;, &ldquo;Matrícula&rdquo;
+   520→                </p>
+   521→              </div>
+   522→            </div>
+   523→          </CardContent>
+   524→        </Card>
+   525→
+   526→        {/* Acciones */}
+   527→        <div className="flex flex-wrap gap-2 justify-end">
+   528→          <Button variant="outline" onClick={handleReset}>
+   529→            <RotateCcw className="h-4 w-4" /> Restablecer
+   530→          </Button>
+   531→          <Button variant="outline" onClick={handlePrintTest}>
+   532→            <Printer className="h-4 w-4" /> Imprimir prueba
+   533→          </Button>
+   534→          <Button
+   535→            onClick={() => saveMut.mutate(design)}
+   536→            disabled={saveMut.isPending}
+   537→            style={{ backgroundColor: '#0a3143' }}
+   538→          >
+   539→            <Save className="h-4 w-4" />
+   540→            {saveMut.isPending ? 'Guardando…' : 'Guardar diseño'}
+   541→          </Button>
+   542→        </div>
+   543→      </div>
+   544→
+   545→      {/* Columna derecha: preview en vivo */}
+   546→      <div className="lg:sticky lg:top-4 self-start">
+   547→        <Card>
+   548→          <CardHeader className="pb-3">
+   549→            <div className="flex items-center justify-between">
+   550→              <CardTitle className="text-base">Vista previa en vivo</CardTitle>
+   551→              <Badge variant="outline" className="text-[10px]">
+   552→                {design.paperSize === 'MediaCarta' ? 'Media carta' : design.paperSize === 'Letter' ? 'Carta' : 'A4'}
+   553→              </Badge>
+   554→            </div>
+   555→          </CardHeader>
+   556→          <CardContent>
+   557→            <div className="bg-muted/40 rounded-md p-3 max-h-[80vh] overflow-y-auto">
+   558→              <PrescriptionLivePreview
+   559→                design={design}
+   560→                data={{ ...SAMPLE_DATA, clinic: clinic || null }}
+   561→              />
+   562→            </div>
+   563→            <p className="text-[10px] text-muted-foreground mt-2 text-center">
+   564→              Esta es una vista previa con datos de ejemplo. La receta real usará los datos del paciente y la consulta.
+   565→            </p>
+   566→          </CardContent>
+   567→        </Card>
+   568→      </div>
+   569→    </div>
+   570→  )
+   571→}
+   572→
+   573→// ───────────────────────────────────────────────────────────
+   574→//  Sub-componentes
+   575→// ───────────────────────────────────────────────────────────
+   576→
+   577→function SliderControl({
+   578→  label,
+   579→  value,
+   580→  min,
+   581→  max,
+   582→  step = 1,
+   583→  unit,
+   584→  transform,
+   585→  onChange,
+   586→}: {
+   587→  label: string
+   588→  value: number
+   589→  min: number
+   590→  max: number
+   591→  step?: number
+   592→  unit: string
+   593→  transform?: (v: number) => number
+   594→  onChange: (v: number) => void
+   595→}) {
+   596→  const displayValue = transform ? transform(value) : value
+   597→  return (
+   598→    <div className="space-y-1.5">
+   599→      <div className="flex items-center justify-between">
+   600→        <Label className="text-xs">{label}</Label>
+   601→        <span className="text-xs font-mono text-muted-foreground">
+   602→          {displayValue}
+   603→          {unit}
+   604→        </span>
+   605→      </div>
+   606→      <Slider
+   607→        value={[value]}
+   608→        min={min}
+   609→        max={max}
+   610→        step={step}
+   611→        onValueChange={(v) => onChange(v[0])}
+   612→      />
+   613→    </div>
+   614→  )
+   615→}
+   616→
+   617→function ColorControl({
+   618→  label,
+   619→  value,
+   620→  onChange,
+   621→}: {
+   622→  label: string
+   623→  value: string
+   624→  onChange: (v: string) => void
+   625→}) {
+   626→  return (
+   627→    <div className="flex items-center justify-between gap-3">
+   628→      <Label className="text-xs flex-1">{label}</Label>
+   629→      <div className="flex items-center gap-2">
+   630→        <input
+   631→          type="color"
+   632→          value={value}
+   633→          onChange={(e) => onChange(e.target.value)}
+   634→          className="h-8 w-10 rounded border border-border cursor-pointer bg-transparent p-0.5"
+   635→          aria-label={label}
+   636→        />
+   637→        <Input
+   638→          type="text"
+   639→          value={value}
+   640→          onChange={(e) => onChange(e.target.value)}
+   641→          className="h-8 w-20 font-mono text-xs"
+   642→        />
+   643→      </div>
+   644→    </div>
+   645→  )
+   646→}
+   647→
+   648→function ToggleRow({
+   649→  label,
+   650→  value,
+   651→  onChange,
+   652→}: {
+   653→  label: string
+   654→  value: boolean
+   655→  onChange: (v: boolean) => void
+   656→}) {
+   657→  return (
+   658→    <div className="flex items-center justify-between gap-2 rounded-md border p-2">
+   659→      <span className="text-xs">{label}</span>
+   660→      <Switch checked={value} onCheckedChange={onChange} />
+   661→    </div>
+   662→  )
+   663→}
+   664→
+   665→// ───────────────────────────────────────────────────────────
+   666→//  HTML para impresión de prueba
+   667→//  Genera el mismo HTML que /api/recetas/[id]/print pero con datos
+   668→//  de ejemplo y el diseño actual, sin necesidad de crear una receta.
+   669→// ───────────────────────────────────────────────────────────
+   670→
+   671→function buildTestPrintHtml(design: PrescriptionDesign, data: PrescriptionPreviewData): string {
+   672→  const d = { ...DEFAULT_DESIGN, ...design }
+   673→  const primary = d.primaryColor!
+   674→  const accent = d.accentColor || primary
+   675→  const textColor = d.textColor!
+   676→  const bgColor = d.backgroundColor!
+   677→  const fontSize = d.fontSize!
+   678→  const lineHeight = d.lineHeight!
+   679→  const margins = d.margins!
+   680→  const logoSize = d.logoSize!
+   681→
+   682→  const paperSize = d.paperSize || 'A4'
+   683→  const paperCss = paperSize === 'Letter' ? 'Letter' : paperSize === 'MediaCarta' ? '140mm 216mm' : 'A4'
+   684→  const paperW = paperSize === 'Letter' ? '216mm' : paperSize === 'MediaCarta' ? '140mm' : '210mm'
+   685→  const paperH = paperSize === 'Letter' ? '279mm' : paperSize === 'MediaCarta' ? '216mm' : '297mm'
+   686→
+   687→  const fontFamily =
+   688→    d.fontFamily ||
+   689→    (d.fontFamilyCategory === 'sans-serif'
+   690→      ? "Arial, Helvetica, sans-serif"
+   691→      : d.fontFamilyCategory === 'system'
+   692→        ? "ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif"
+   693→        : "'Times New Roman', Georgia, serif")
+   694→
+   695→  const clinic = data.clinic
+   696→  const patient = data.patient
+   697→  const pod = data.podologist
+   698→
+   699→  let logoUrl = ''
+   700→  if (d.logoUrl === 'none') logoUrl = ''
+   701→  else if (d.logoUrl && d.logoUrl !== 'auto') logoUrl = d.logoUrl
+   702→  else if (clinic?.logoUrl) logoUrl = clinic.logoUrl
+   703→
+   704→  const patientName = patient?.name || (patient ? `${patient.firstName} ${patient.lastName}` : 'Paciente de ejemplo')
+   705→  // Doctor name: usar nombre fijo si está configurado, sino el del podólogo
+   706→  const doctorNameMode = d.doctorNameMode || 'podologist'
+   707→  const podName = doctorNameMode === 'fixed' && d.doctorFixedName
+   708→    ? d.doctorFixedName
+   709→    : (pod?.name || 'Dr. Ejemplo')
+   710→  const podCed = pod?.cedula || '1234567'
+   711→  const podSpec = pod?.specialty || 'Podología'
+   712→  const podCert = pod?.certNumber || ''
+   713→
+   714→  const showHeader = d.showHeader !== false
+   715→  const showFooter = d.showFooter !== false
+   716→  const showRx = d.showRxSymbol !== false
+   717→  const showPatientInfo = d.showPatientInfo !== false
+   718→  const showDoctorInfo = d.showDoctorInfo !== false
+   719→  const showDiagnosis = d.showDiagnosis !== false
+   720→  const showMedications = d.showMedications !== false
+   721→  const showIndications = d.showIndications !== false
+   722→  const showSignature = d.showSignature !== false
+   723→  const sigLabel = d.signatureLabel || 'Cédula profesional'
+   724→
+   725→  const wmEnabled = d.watermarkEnabled === true
+   726→  const wmOpacity = (d.watermarkOpacity ?? 10) / 100
+   727→  const wmPos = d.watermarkPosition || 'center'
+   728→
+   729→  const metaCells: string[] = []
+   730→  if (showPatientInfo) {
+   731→    metaCells.push(`<div><strong>Paciente</strong> ${patientName}</div>`)
+   732→    metaCells.push(`<div><strong>Fecha</strong> ${new Date(data.date).toLocaleDateString('es-MX')}</div>`)
+   733→    metaCells.push(`<div><strong>Expediente</strong> ${patient?.expNumber || 'C1-00001'}</div>`)
+   734→    metaCells.push(`<div><strong>Edad</strong> 45 años</div>`)
+   735→  }
+   736→  if (showDoctorInfo) {
+   737→    metaCells.push(`<div><strong>Podólogo</strong> ${podName}</div>`)
+   738→    metaCells.push(`<div><strong>Cédula</strong> ${podCed}</div>`)
+   739→  }
+   740→
+   741→  const esc = (s: string | null | undefined) =>
+   742→    !s ? '' : String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+   743→
+   744→  const meds = (data.medications && data.medications.length > 0 ? data.medications : [
+   745→    { name: 'Terbinafina 250 mg', dose: '1 tableta cada 24h', via: 'Oral', duration: '6 semanas' },
+   746→  ])
+   747→
+   748→  const medsRows = meds.map((m, i) => `
+   749→    <tr>
+   750→      <td class="rx-num">${i + 1}</td>
+   751→      <td class="rx-med-name">${esc(m.name)}</td>
+   752→      <td>${esc(m.dose) || '—'}</td>
+   753→      <td>${esc(m.via) || '—'}</td>
+   754→      <td>${esc(m.duration) || '—'}</td>
+   755→    </tr>
+   756→  `).join('')
+   757→
+   758→  const logoHtml = logoUrl
+   759→    ? `<img src="${esc(logoUrl)}" alt="logo" class="rx-logo" style="opacity:${(d.logoOpacity ?? 100) / 100};"/>`
+   760→    : ''
+   761→
+   762→  const watermarkHtml = wmEnabled && logoUrl
+   763→    ? `<div class="rx-watermark rx-wm-${wmPos}" style="opacity:${wmOpacity};"><img src="${esc(logoUrl)}" alt=""/></div>`
+   764→    : ''
+   765→
+   766→  return `<!DOCTYPE html>
+   767→<html lang="es">
+   768→<head>
+   769→<meta charset="UTF-8"/>
+   770→<title>Receta de prueba</title>
+   771→<style>
+   772→  * { box-sizing: border-box; }
+   773→  html, body { margin: 0; padding: 0; }
+   774→  body {
+   775→    font-family: ${fontFamily};
+   776→    color: ${textColor};
+   777→    background: #f4f4f4;
+   778→    font-size: ${fontSize}px;
+   779→    line-height: ${lineHeight};
+   780→  }
+   781→  .rx-sheet {
+   782→    width: ${paperW};
+   783→    min-height: ${paperH};
+   784→    margin: 16px auto;
+   785→    padding: ${margins}mm;
+   786→    background: ${bgColor};
+   787→    box-shadow: 0 4px 18px rgba(0,0,0,.08);
+   788→    position: relative;
+   789→    overflow: hidden;
+   790→  }
+   791→  .rx-watermark { position: absolute; pointer-events: none; z-index: 0; display: flex; align-items: center; justify-content: center; }
+   792→  .rx-watermark img { object-fit: contain; }
+   793→  .rx-wm-center { top: 0; left: 0; right: 0; bottom: 0; width: 100%; height: 100%; }
+   794→  .rx-wm-center img { max-width: ${d.watermarkSize ?? 60}%; max-height: ${d.watermarkSize ?? 60}%; }
+   795→  .rx-wm-top-right { top: ${margins}mm; right: ${margins}mm; }
+   796→  .rx-wm-top-right img { max-width: ${(d.watermarkSize ?? 60) * 2}px; max-height: ${(d.watermarkSize ?? 60) * 2}px; }
+   797→  .rx-wm-bottom-right { bottom: ${margins}mm; right: ${margins}mm; }
+   798→  .rx-wm-bottom-right img { max-width: ${(d.watermarkSize ?? 60) * 2}px; max-height: ${(d.watermarkSize ?? 60) * 2}px; }
+   799→  .rx-sheet > * { position: relative; z-index: 1; }
+   800→  .rx-header { border-bottom: 2.5px solid ${primary}; padding-bottom: 10px; margin-bottom: 14px; }
+   801→  .rx-header-inner { display: flex; align-items: center; gap: 18px; }
+   802→  .rx-header-inner.rx-pos-center { flex-direction: column; text-align: center; align-items: center; }
+   803→  .rx-header-inner.rx-pos-right { flex-direction: row-reverse; text-align: right; }
+   804→  .rx-logo { max-height: ${logoSize}px; max-width: ${Math.round(logoSize * 2.3)}px; object-fit: contain; }
+   805→  .rx-clinic-name { font-size: 22px; font-weight: 700; color: ${primary}; letter-spacing: 0.04em; line-height: 1.15; }
+   806→  .rx-clinic-sub { font-size: 12px; color: #555; margin-top: 2px; }
+   807→  .rx-clinic-line { font-size: 11.5px; color: #666; margin-top: 1px; }
+   808→  .rx-title-row { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 10px; }
+   809→  .rx-title { font-size: 20px; font-weight: 700; color: ${primary}; letter-spacing: 0.1em; text-transform: uppercase; }
+   810→  .rx-folio { font-size: 11px; color: #888; font-family: 'Courier New', monospace; }
+   811→  .rx-meta-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px 18px; padding: 10px 12px; background: ${accent}0F; border-left: 3px solid ${primary}; border-radius: 4px; margin-bottom: 14px; font-size: 12.5px; }
+   812→  .rx-meta-grid > div { line-height: 1.6; }
+   813→  .rx-meta-grid strong { color: ${primary}; font-weight: 600; text-transform: uppercase; font-size: 10px; letter-spacing: 0.06em; display: inline-block; min-width: 78px; }
+   814→  .rx-section { margin-top: 14px; }
+   815→  .rx-section-title { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.12em; border-bottom: 1px solid #ddd; padding-bottom: 3px; margin-bottom: 6px; color: ${primary}; }
+   816→  .rx-section-body { font-size: 13px; line-height: ${lineHeight}; }
+   817→  .rx-rx-symbol { font-size: 38px; color: ${primary}; font-family: serif; line-height: 1; margin: 8px 0 4px; font-weight: 700; }
+   818→  .rx-meds-table { width: 100%; border-collapse: collapse; margin-top: 4px; font-size: 12.5px; }
+   819→  .rx-meds-table th, .rx-meds-table td { border: 1px solid #e0e0e0; padding: 6px 8px; text-align: left; vertical-align: top; }
+   820→  .rx-meds-table th { font-weight: 700; text-transform: uppercase; font-size: 10px; letter-spacing: 0.08em; color: ${primary}; }
+   821→  .rx-meds-table .rx-num { text-align: center; width: 28px; color: #777; }
+   822→  .rx-meds-table .rx-med-name { font-weight: 600; min-width: 38%; }
+   823→  .rx-meds-table tr:nth-child(even) td { background: #fafafa; }
+   824→  .rx-indications { white-space: pre-wrap; padding: 8px 10px; background: #fafafa; border-radius: 4px; border-left: 3px solid ${accent}; }
+   825→  .rx-signature { margin-top: 38mm; text-align: center; }
+   826→  .rx-sig-line { border-top: 1.5px solid ${textColor}; width: 260px; margin: 0 auto 6px; }
+   827→  .rx-sig-name { font-weight: 700; font-size: 13px; color: ${primary}; }
+   828→  .rx-sig-meta { font-size: 11px; color: #555; margin-top: 1px; }
+   829→  .rx-sig-label { font-size: 10px; color: #999; margin-top: 2px; text-transform: uppercase; letter-spacing: 0.08em; }
+   830→  .rx-footer { position: absolute; bottom: ${Math.max(8, Math.round(margins / 2))}mm; left: ${margins}mm; right: ${margins}mm; border-top: 1px solid #ddd; padding-top: 6px; display: flex; justify-content: space-between; font-size: 10px; color: #888; }
+   831→  @media print {
+   832→    body { background: #fff; }
+   833→    .rx-sheet { width: auto; min-height: auto; margin: 0; padding: 0; box-shadow: none; }
+   834→    @page { size: ${paperCss}; margin: ${margins}mm; }
+   835→    .rx-footer { position: static; margin-top: 14mm; }
+   836→  }
+   837→</style>
+   838→</head>
+   839→<body>
+   840→  <div class="rx-sheet">
+   841→    ${watermarkHtml}
+   842→    ${showHeader ? `<div class="rx-header"><div class="rx-header-inner rx-pos-${d.logoPosition || 'left'}">${logoHtml}<div class="rx-clinic-info"><div class="rx-clinic-name">${esc(clinic?.name || 'Clínica CENPOD')}</div>${clinic?.address ? `<div class="rx-clinic-line">${esc(clinic.address)}</div>` : ''}<div class="rx-clinic-line">${clinic?.phone ? `Tel. ${esc(clinic.phone)}` : ''}</div></div></div></div>` : ''}
+   843→    <div class="rx-title-row"><div class="rx-folio">Folio: PRUEBA-0001</div></div>
+   844→    ${metaCells.length > 0 ? `<div class="rx-meta-grid">${metaCells.join('')}</div>` : ''}
+   845→    ${showDiagnosis && data.diagnosis ? `<div class="rx-section"><div class="rx-section-title">Diagnóstico</div><div class="rx-section-body">${esc(data.diagnosis)}</div></div>` : ''}
+   846→    ${showRx ? `<div class="rx-rx-symbol">℞</div>` : ''}
+   847→    ${showMedications ? `<div class="rx-section"><div class="rx-section-title">Sugiero</div><table class="rx-meds-table"><thead><tr style="background:${accent}1A;"><th class="rx-num">#</th><th>Medicamento / Producto</th><th>Dosis</th><th>Vía</th><th>Duración</th></tr></thead><tbody>${medsRows}</tbody></table></div>` : ''}
+   848→    ${showIndications && data.indications ? `<div class="rx-section"><div class="rx-section-title">Indicaciones generales</div><div class="rx-section-body rx-indications">${esc(data.indications)}</div></div>` : ''}
+   849→    ${showSignature ? `<div class="rx-signature"><div class="rx-sig-line"></div><div class="rx-sig-name">${esc(podName)}</div><div class="rx-sig-meta">${podSpec} · Cédula: ${podCed}${podCert ? ` · Cert: ${podCert}` : ''}</div><div class="rx-sig-label">${esc(sigLabel)}</div></div>` : ''}
+   850→    ${showFooter ? `<div class="rx-footer"><div>${esc(clinic?.name || 'Clínica CENPOD')} · Receta de prueba</div><div>${new Date().toLocaleDateString('es-MX', { day: '2-digit', month: 'long', year: 'numeric' })}</div></div>` : ''}
+   851→  </div>
+   852→</body>
+   853→</html>`
+   854→}
+   855→

@@ -1366,21 +1366,144 @@ function TicketDialog({
   consultationId: string | null
 }) {
   const { patient, podologist, consultation } = data
+
+  // Cargar configuración del ticket (logo, datos empresa — independiente de receta)
+  // Debe ir antes del return para respetar las reglas de hooks
+  const { data: ticketConfigData } = useQuery<{ ticketConfig: any }>({
+    queryKey: ['ticket-config'],
+    queryFn: () => fetch('/api/config/ticket').then((r) => r.json()),
+    enabled: !!consultation,
+  })
+
   if (!consultation) return null
 
   function handlePrint() {
-    // Inyectar @page 80mm dinámicamente para impresoras térmicas
-    const style = document.createElement('style')
-    style.id = 'ticket-page-size'
-    style.textContent = '@media print { @page { size: 80mm auto; margin: 0; } }'
-    document.head.appendChild(style)
-    document.body.classList.add('printing-ticket')
-    window.print()
-    // Limpiar después de imprimir
-    setTimeout(() => {
-      document.body.classList.remove('printing-ticket')
-      document.getElementById('ticket-page-size')?.remove()
-    }, 1000)
+    // Abrir una ventana nueva con el HTML del ticket para impresión limpia.
+    // Esto evita problemas con Dialog position:fixed y @media print del globals.css
+    // que oculta todo por defecto.
+    const ticketEl = document.querySelector('.ticket-print') as HTMLElement | null
+    if (!ticketEl) {
+      toast.error('No se pudo encontrar el ticket para imprimir')
+      return
+    }
+    const ticketHtml = ticketEl.outerHTML
+
+    const printWindow = window.open('', '_blank', 'width=400,height=600')
+    if (!printWindow) {
+      toast.error('El navegador bloqueó la ventana emergente. Permite popups para imprimir.')
+      return
+    }
+
+    printWindow.document.write(`<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8"/>
+<title>Ticket de consulta</title>
+<style>
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; background: #fff; }
+  body { font-family: 'Segoe UI', 'Helvetica Neue', Arial, sans-serif; color: #000; }
+  @page { size: 80mm auto; margin: 0; }
+  .ticket-print {
+    width: 80mm;
+    padding: 10px 8px;
+    font-size: 13px;
+    line-height: 1.5;
+    font-weight: 600;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+  .ticket-print .ticket-header {
+    text-align: center;
+    border-bottom: 2px solid #000;
+    padding-bottom: 8px;
+    margin-bottom: 8px;
+  }
+  .ticket-print .ticket-logo-bar {
+    background: #000;
+    padding: 8px 4px;
+    margin: -10px -8px 8px;
+    text-align: center;
+  }
+  .ticket-print .ticket-logo-bar img {
+    max-height: 72px;
+    max-width: 140px;
+    margin: 0 auto;
+    display: block;
+    filter: brightness(0) invert(1);
+  }
+  .ticket-print .ticket-clinic-name {
+    font-weight: 800;
+    font-size: 16px;
+    letter-spacing: 0.02em;
+  }
+  .ticket-print .ticket-bold { font-weight: 800; }
+  .ticket-print .ticket-row {
+    display: flex;
+    justify-content: space-between;
+    gap: 8px;
+    font-weight: 600;
+  }
+  .ticket-print table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 8px 0;
+    font-size: 12px;
+    font-weight: 600;
+  }
+  .ticket-print table th,
+  .ticket-print table td {
+    padding: 3px 0;
+    text-align: left;
+    vertical-align: top;
+  }
+  .ticket-print table th {
+    border-bottom: 2px solid #000;
+    font-weight: 800;
+    font-size: 11px;
+    text-transform: uppercase;
+  }
+  .ticket-print .ticket-totals {
+    border-top: 2px solid #000;
+    padding-top: 6px;
+    margin-top: 6px;
+  }
+  .ticket-print .ticket-total-row {
+    display: flex;
+    justify-content: space-between;
+    gap: 8px;
+    font-weight: 800;
+    font-size: 15px;
+    margin-top: 4px;
+  }
+  .ticket-print .ticket-footer {
+    text-align: center;
+    margin-top: 10px;
+    border-top: 2px solid #000;
+    padding-top: 8px;
+    font-size: 12px;
+    font-weight: 600;
+  }
+  @media print {
+    .no-print { display: none !important; }
+  }
+</style>
+</head>
+<body>
+${ticketHtml}
+<div class="no-print" style="text-align:center;padding:10px;">
+  <button onclick="window.print()" style="padding:8px 16px;font-size:14px;cursor:pointer;">Imprimir ticket</button>
+</div>
+</body>
+</html>`)
+    printWindow.document.close()
+
+    // Auto-imprimir después de que cargue
+    printWindow.onload = () => {
+      setTimeout(() => {
+        printWindow.print()
+      }, 300)
+    }
   }
 
   // Marcar ticket como impreso (no crítico)
@@ -1404,6 +1527,7 @@ function TicketDialog({
         </DialogHeader>
         <div className="bg-white p-3 flex justify-center">
           <TicketPreview
+            ticketConfig={ticketConfigData?.ticketConfig}
             data={{
               clinic: config?.clinic || null,
               date: new Date(consultation.date),
