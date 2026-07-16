@@ -162,7 +162,7 @@
 .sticky-scroll-wrapper {
   /* Forzar scrollbar horizontal siempre visible */
   overflow-x: scroll !important;
-  overflow-y: auto !important;
+  overflow-y: visible !important;
 }
 .sticky-scroll-wrapper::-webkit-scrollbar {
   height: 10px;
