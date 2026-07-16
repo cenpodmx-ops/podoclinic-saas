@@ -248,7 +248,7 @@ export function VademecumTab({ canEdit }: { canEdit: boolean }) {
       </Card>
 
       {/* Tabla */}
-      <Card className="shadow-sm">
+      <Card className="shadow-sm overflow-hidden">
         <CardContent className="p-0">
           {isLoading ? (
             <div className="p-4 space-y-2">
@@ -271,18 +271,18 @@ export function VademecumTab({ canEdit }: { canEdit: boolean }) {
               )}
             </div>
           ) : (
-            <div className="overflow-x-auto">
-              <Table>
-                <TableHeader>
+            <div className="overflow-auto max-h-[600px] sticky-scroll-wrapper">
+              <Table className="min-w-[900px]">
+                <TableHeader className="sticky top-0 z-10 bg-muted/95 backdrop-blur">
                   <TableRow>
-                    <TableHead className="w-[280px]">Nombre</TableHead>
-                    <TableHead>Categoría</TableHead>
-                    <TableHead className="w-32">Dosis</TableHead>
-                    <TableHead className="w-28">Vía</TableHead>
-                    <TableHead className="w-32">Duración</TableHead>
-                    <TableHead>Indicación</TableHead>
-                    <TableHead className="w-24">Estado</TableHead>
-                    {canEdit && <TableHead className="w-24 text-right">Acciones</TableHead>}
+                    <TableHead className="w-[280px] whitespace-nowrap">Nombre</TableHead>
+                    <TableHead className="whitespace-nowrap">Categoría</TableHead>
+                    <TableHead className="w-32 whitespace-nowrap">Dosis</TableHead>
+                    <TableHead className="w-28 whitespace-nowrap">Vía</TableHead>
+                    <TableHead className="w-32 whitespace-nowrap">Duración</TableHead>
+                    <TableHead className="min-w-[280px]">Indicación</TableHead>
+                    <TableHead className="w-24 whitespace-nowrap">Estado</TableHead>
+                    {canEdit && <TableHead className="w-24 text-right whitespace-nowrap">Acciones</TableHead>}
                   </TableRow>
                 </TableHeader>
                 <TableBody>
