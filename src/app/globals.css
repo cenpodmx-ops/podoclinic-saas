@@ -158,6 +158,32 @@
 .appt-bloqueada { background-color: oklch(0.30 0 0); border-left: 3px solid oklch(0.18 0 0); color: oklch(0.95 0 0); }
 
 /* ===== Ticket de consulta (impresión) ===== */
+/* ===== Scrollbar siempre visible en tablas con overflow ===== */
+.sticky-scroll-wrapper {
+  /* Forzar scrollbar horizontal siempre visible */
+  overflow-x: scroll !important;
+  overflow-y: auto !important;
+}
+.sticky-scroll-wrapper::-webkit-scrollbar {
+  height: 10px;
+  width: 10px;
+}
+.sticky-scroll-wrapper::-webkit-scrollbar-track {
+  background: #f1f1f1;
+  border-radius: 5px;
+}
+.sticky-scroll-wrapper::-webkit-scrollbar-thumb {
+  background: #888;
+  border-radius: 5px;
+}
+.sticky-scroll-wrapper::-webkit-scrollbar-thumb:hover {
+  background: #555;
+}
+.sticky-scroll-wrapper {
+  scrollbar-width: thin;
+  scrollbar-color: #888 #f1f1f1;
+}
+
 /* ===== Ticket de consulta (impresora térmica 80mm) ===== */
 /* Optimizado para impresión nítida en impresoras térmicas GHIA */
 .ticket-print {
