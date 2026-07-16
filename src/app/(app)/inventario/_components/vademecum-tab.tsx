@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -100,6 +100,36 @@ export function VademecumTab({ canEdit }: { canEdit: boolean }) {
   const [form, setForm] = useState<typeof EMPTY_FORM>(EMPTY_FORM)
   const [deleteTarget, setDeleteTarget] = useState<VademecumItem | null>(null)
   const [importOpen, setImportOpen] = useState(false)
+  const scrollBarRef = useRef<HTMLDivElement>(null)
+  const tableScrollRef = useRef<HTMLDivElement>(null)
+
+  // Sincronizar scroll: barra superior ↔ tabla
+  useEffect(() => {
+    const bar = scrollBarRef.current
+    const table = tableScrollRef.current
+    if (!bar || !table) return
+
+    let syncing = false
+    const syncBarToTable = () => {
+      if (syncing) return
+      syncing = true
+      bar.scrollLeft = table.scrollLeft
+      syncing = false
+    }
+    const syncTableToBar = () => {
+      if (syncing) return
+      syncing = true
+      table.scrollLeft = bar.scrollLeft
+      syncing = false
+    }
+
+    bar.addEventListener('scroll', syncTableToBar)
+    table.addEventListener('scroll', syncBarToTable)
+    return () => {
+      bar.removeEventListener('scroll', syncTableToBar)
+      table.removeEventListener('scroll', syncBarToTable)
+    }
+  }, [items.length])
 
   useEffect(() => {
     const t = setTimeout(() => setDebouncedSearch(search), 300)
@@ -271,11 +301,15 @@ export function VademecumTab({ canEdit }: { canEdit: boolean }) {
               )}
             </div>
           ) : (
-            <div className="overflow-x-auto sticky-scroll-wrapper">
-              <Table className="min-w-[900px]" wrapperClassName="min-w-[900px]">
-                <TableHeader>
-                  <TableRow>
-                    <TableHead className="w-[280px] whitespace-nowrap">Nombre</TableHead>
+            <div className="sticky-scroll-top-wrapper">
+              <div ref={scrollBarRef} className="sticky-scroll-top-bar" aria-hidden="true">
+                <div className="sticky-scroll-top-spacer" />
+              </div>
+              <div ref={tableScrollRef} className="overflow-x-auto sticky-scroll-wrapper">
+                <Table className="min-w-[900px]" wrapperClassName="min-w-[900px]">
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead className="w-[280px] whitespace-nowrap">Nombre</TableHead>
                     <TableHead className="whitespace-nowrap">Categoría</TableHead>
                     <TableHead className="w-32 whitespace-nowrap">Dosis</TableHead>
                     <TableHead className="w-28 whitespace-nowrap">Vía</TableHead>
@@ -340,6 +374,7 @@ export function VademecumTab({ canEdit }: { canEdit: boolean }) {
                   ))}
                 </TableBody>
               </Table>
+              </div>
             </div>
           )}
         </CardContent>
