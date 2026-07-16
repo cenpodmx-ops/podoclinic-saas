@@ -271,8 +271,8 @@ export function VademecumTab({ canEdit }: { canEdit: boolean }) {
               )}
             </div>
           ) : (
-            <div className="overflow-auto max-h-[600px] sticky-scroll-wrapper">
-              <Table className="min-w-[900px]">
+            <div className="overflow-auto max-h-[600px]">
+              <Table className="min-w-[900px]" wrapperClassName="min-w-[900px]">
                 <TableHeader className="sticky top-0 z-10 bg-muted/95 backdrop-blur">
                   <TableRow>
                     <TableHead className="w-[280px] whitespace-nowrap">Nombre</TableHead>
