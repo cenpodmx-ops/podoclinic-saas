@@ -86,18 +86,14 @@ function filterFreeSlots(
   })
 }
 
-/** Selecciona máx 3 slots: primero de la mañana, primero de la tarde, uno más. */
-function pickThree(free: Slot[]): Slot[] {
+/** Selecciona hasta 3 slots por turno (mañana y tarde). */
+function pickByTurn(free: Slot[]): { morning: Slot[]; afternoon: Slot[] } {
   const morning = free.filter((s) => s.start.getHours() < 12)
   const afternoon = free.filter((s) => s.start.getHours() >= 12)
-  const result: Slot[] = []
-  if (morning.length > 0) result.push(morning[0])
-  if (afternoon.length > 0) result.push(afternoon[0])
-  if (result.length < 3) {
-    if (morning.length > 1) result.push(morning[1])
-    else if (afternoon.length > 1) result.push(afternoon[1])
+  return {
+    morning: morning.slice(0, 3),
+    afternoon: afternoon.slice(0, 3),
   }
-  return result.sort((a, b) => a.start.getTime() - b.start.getTime()).slice(0, 3)
 }
 
 function fmtSlot(d: Date): string {
@@ -154,7 +150,8 @@ export async function GET(req: NextRequest) {
       }),
     ])
     const free = filterFreeSlots(allSlots, appts, blocks, isToday)
-    const picked = pickThree(free)
+    const byTurn = pickByTurn(free)
+    const allPicked = [...byTurn.morning, ...byTurn.afternoon]
 
     const pod = await db.podologist.findUnique({
       where: { id: podologistId },
@@ -164,7 +161,9 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({
       podologistId,
       podologistName: pod?.name || null,
-      slots: picked.map((s) => ({ startTime: fmtSlot(s.start), endTime: fmtSlot(s.end) })),
+      slots: allPicked.map((s) => ({ startTime: fmtSlot(s.start), endTime: fmtSlot(s.end) })),
+      morningSlots: byTurn.morning.map((s) => ({ startTime: fmtSlot(s.start), endTime: fmtSlot(s.end) })),
+      afternoonSlots: byTurn.afternoon.map((s) => ({ startTime: fmtSlot(s.start), endTime: fmtSlot(s.end) })),
     })
   }
 
@@ -187,12 +186,15 @@ export async function GET(req: NextRequest) {
       }),
     ])
     const free = filterFreeSlots(allSlots, appts, blocks, isToday)
-    const picked = pickThree(free)
-    if (picked.length > 0) {
+    const byTurn = pickByTurn(free)
+    const allPicked = [...byTurn.morning, ...byTurn.afternoon]
+    if (allPicked.length > 0) {
       return NextResponse.json({
         podologistId: p.id,
         podologistName: p.name,
-        slots: picked.map((s) => ({ startTime: fmtSlot(s.start), endTime: fmtSlot(s.end) })),
+        slots: allPicked.map((s) => ({ startTime: fmtSlot(s.start), endTime: fmtSlot(s.end) })),
+        morningSlots: byTurn.morning.map((s) => ({ startTime: fmtSlot(s.start), endTime: fmtSlot(s.end) })),
+        afternoonSlots: byTurn.afternoon.map((s) => ({ startTime: fmtSlot(s.start), endTime: fmtSlot(s.end) })),
       })
     }
   }
@@ -202,6 +204,8 @@ export async function GET(req: NextRequest) {
     podologistId: null,
     podologistName: null,
     slots: [],
+    morningSlots: [],
+    afternoonSlots: [],
     message: 'Sin horarios disponibles para esta fecha',
   })
 }

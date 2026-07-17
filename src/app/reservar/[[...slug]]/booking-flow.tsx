@@ -22,6 +22,8 @@ import {
   Loader2,
   CalendarDays,
   Building2,
+  Sun,
+  Moon,
 } from 'lucide-react'
 import { format, startOfDay, addDays } from 'date-fns'
 import { es } from 'date-fns/locale'
@@ -86,6 +88,9 @@ export function PublicBookingFlow({ initialClinicSlug }: { initialClinicSlug?: s
   const [date, setDate] = useState<Date | undefined>(undefined)
 
   const [slots, setSlots] = useState<Slot[]>([])
+  const [morningSlots, setMorningSlots] = useState<Slot[]>([])
+  const [afternoonSlots, setAfternoonSlots] = useState<Slot[]>([])
+  const [turno, setTurno] = useState<'manana' | 'tarde' | null>(null)
   const [slotsLoading, setSlotsLoading] = useState(false)
   const [slot, setSlot] = useState<Slot | null>(null)
   const [resolvedPodologistName, setResolvedPodologistName] = useState<string | null>(null)
@@ -157,6 +162,9 @@ export function PublicBookingFlow({ initialClinicSlug }: { initialClinicSlug?: s
       const r = await fetch(`/api/public/disponibilidad?${params.toString()}`)
       const d = await r.json()
       setSlots(d.slots || [])
+      setMorningSlots(d.morningSlots || [])
+      setAfternoonSlots(d.afternoonSlots || [])
+      setTurno(null) // reset turno al cargar nuevos slots
       // Si el usuario eligió "cualquiera" y la API eligió uno, lo guardamos para el resumen
       if (!podologistId && d.podologistId) {
         setResolvedPodologistName(d.podologistName)
@@ -328,6 +336,10 @@ export function PublicBookingFlow({ initialClinicSlug }: { initialClinicSlug?: s
                     clinic={clinic}
                     date={date}
                     slots={slots}
+                    morningSlots={morningSlots}
+                    afternoonSlots={afternoonSlots}
+                    turno={turno}
+                    onTurnoChange={setTurno}
                     loading={slotsLoading}
                     selected={slot}
                     onSelect={(s) => {
@@ -689,7 +701,10 @@ function StepDia({
 function StepHorario({
   clinic,
   date,
-  slots,
+  morningSlots,
+  afternoonSlots,
+  turno,
+  onTurnoChange,
   loading,
   selected,
   onSelect,
@@ -699,7 +714,10 @@ function StepHorario({
 }: {
   clinic: Clinic | null
   date: Date | undefined
-  slots: Slot[]
+  morningSlots: Slot[]
+  afternoonSlots: Slot[]
+  turno: 'manana' | 'tarde' | null
+  onTurnoChange: (t: 'manana' | 'tarde' | null) => void
   loading: boolean
   selected: Slot | null
   onSelect: (s: Slot) => void
@@ -707,6 +725,11 @@ function StepHorario({
   onBack: () => void
   onRetry: () => void
 }) {
+  const hasMorning = morningSlots.length > 0
+  const hasAfternoon = afternoonSlots.length > 0
+  const hasAny = hasMorning || hasAfternoon
+  const displaySlots = turno === 'manana' ? morningSlots : turno === 'tarde' ? afternoonSlots : []
+
   return (
     <div>
       <h2 className="text-xl font-bold text-slate-900">Selecciona un horario</h2>
@@ -726,7 +749,7 @@ function StepHorario({
             <Skeleton className="h-14 w-full" />
             <Skeleton className="h-14 w-full" />
           </div>
-        ) : slots.length === 0 ? (
+        ) : !hasAny ? (
           <div className="text-center py-8 px-4 rounded-xl bg-amber-50 border border-amber-200">
             <AlertCircle className="h-8 w-8 text-amber-600 mx-auto" />
             <p className="text-sm text-amber-800 mt-2 font-medium">
@@ -746,29 +769,69 @@ function StepHorario({
           </div>
         ) : (
           <>
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
-              {slots.map((s) => {
-                const active = selected?.startTime === s.startTime
-                return (
-                  <button
-                    key={s.startTime}
-                    onClick={() => onSelect(s)}
-                    className={`p-4 rounded-xl border-2 transition-all flex flex-col items-center gap-1 ${
-                      active
-                        ? 'border-[#0a3143] bg-[#0a3143]/5'
-                        : 'border-slate-200 hover:border-[#0a3143]/40 hover:bg-slate-50'
-                    }`}
-                  >
-                    <Clock className={`h-5 w-5 ${active ? 'text-[#0a3143]' : 'text-slate-400'}`} />
-                    <span className="font-bold text-lg text-slate-900">{fmt12h(s.startTime)}</span>
-                    <span className="text-xs text-slate-500">a {fmt12h(s.endTime)}</span>
-                  </button>
-                )
-              })}
+            {/* Selección de turno */}
+            <p className="text-sm font-medium text-slate-700 mb-2">¿Qué turno prefieres?</p>
+            <div className="grid grid-cols-2 gap-2.5 mb-4">
+              <button
+                onClick={() => { onTurnoChange('manana'); onSelect({} as Slot) }}
+                disabled={!hasMorning}
+                className={`p-4 rounded-xl border-2 transition-all flex flex-col items-center gap-1 ${
+                  turno === 'manana'
+                    ? 'border-[#0a3143] bg-[#0a3143]/5'
+                    : hasMorning
+                      ? 'border-slate-200 hover:border-[#0a3143]/40 hover:bg-slate-50'
+                      : 'border-slate-100 opacity-40 cursor-not-allowed'
+                }`}
+              >
+                <Sun className={`h-5 w-5 ${turno === 'manana' ? 'text-[#0a3143]' : 'text-slate-400'}`} />
+                <span className="font-bold text-slate-900">Mañana</span>
+                <span className="text-xs text-slate-500">{hasMorning ? `${morningSlots.length} disponible${morningSlots.length > 1 ? 's' : ''}` : 'Sin cupo'}</span>
+              </button>
+              <button
+                onClick={() => { onTurnoChange('tarde'); onSelect({} as Slot) }}
+                disabled={!hasAfternoon}
+                className={`p-4 rounded-xl border-2 transition-all flex flex-col items-center gap-1 ${
+                  turno === 'tarde'
+                    ? 'border-[#0a3143] bg-[#0a3143]/5'
+                    : hasAfternoon
+                      ? 'border-slate-200 hover:border-[#0a3143]/40 hover:bg-slate-50'
+                      : 'border-slate-100 opacity-40 cursor-not-allowed'
+                }`}
+              >
+                <Moon className={`h-5 w-5 ${turno === 'tarde' ? 'text-[#0a3143]' : 'text-slate-400'}`} />
+                <span className="font-bold text-slate-900">Tarde</span>
+                <span className="text-xs text-slate-500">{hasAfternoon ? `${afternoonSlots.length} disponible${afternoonSlots.length > 1 ? 's' : ''}` : 'Sin cupo'}</span>
+              </button>
             </div>
-            <p className="text-xs text-slate-500 mt-3 text-center">
-              Solo mostramos algunos horarios disponibles para facilitar tu elección.
-            </p>
+
+            {/* Horarios del turno seleccionado */}
+            {turno && displaySlots.length > 0 && (
+              <>
+                <p className="text-sm font-medium text-slate-700 mb-2">
+                  Horarios disponibles ({turno === 'manana' ? 'mañana' : 'tarde'}):
+                </p>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+                  {displaySlots.map((s) => {
+                    const active = selected?.startTime === s.startTime
+                    return (
+                      <button
+                        key={s.startTime}
+                        onClick={() => onSelect(s)}
+                        className={`p-4 rounded-xl border-2 transition-all flex flex-col items-center gap-1 ${
+                          active
+                            ? 'border-[#0a3143] bg-[#0a3143]/5'
+                            : 'border-slate-200 hover:border-[#0a3143]/40 hover:bg-slate-50'
+                        }`}
+                      >
+                        <Clock className={`h-5 w-5 ${active ? 'text-[#0a3143]' : 'text-slate-400'}`} />
+                        <span className="font-bold text-lg text-slate-900">{fmt12h(s.startTime)}</span>
+                        <span className="text-xs text-slate-500">a {fmt12h(s.endTime)}</span>
+                      </button>
+                    )
+                  })}
+                </div>
+              </>
+            )}
           </>
         )}
       </div>
@@ -779,7 +842,7 @@ function StepHorario({
         </Button>
         <Button
           onClick={onContinue}
-          disabled={!selected}
+          disabled={!selected?.startTime}
           className="flex-1 text-white"
           style={{ backgroundColor: BRAND }}
         >
