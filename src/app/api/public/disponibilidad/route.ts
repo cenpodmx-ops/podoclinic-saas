@@ -86,13 +86,39 @@ function filterFreeSlots(
   })
 }
 
-/** Selecciona hasta 3 slots por turno (mañana y tarde). */
+/** Selecciona hasta 3 slots por turno (mañana y tarde), separados entre sí.
+ *  - Mañana: antes de las 12:00
+ *  - Tarde: desde las 12:00, EXCEPTO las 14:00-14:59 (hora de comida)
+ *  - Los slots se separan para no mostrar horas seguidas (mínimo 1 slot de gap)
+ */
 function pickByTurn(free: Slot[]): { morning: Slot[]; afternoon: Slot[] } {
-  const morning = free.filter((s) => s.start.getHours() < 12)
-  const afternoon = free.filter((s) => s.start.getHours() >= 12)
+  // Filtrar mañana: antes de las 12:00
+  const morningAll = free.filter((s) => s.start.getHours() < 12)
+
+  // Filtrar tarde: desde las 12:00, excluyendo 14:00-14:59 (hora de comida)
+  const afternoonAll = free.filter((s) => {
+    const h = s.start.getHours()
+    return h >= 12 && h !== 14 // excluir las 14:00 (2:00 PM)
+  })
+
+  // Separar slots para no mostrar horas seguidas (mínimo 1 gap entre cada uno)
+  function separateSlots(slots: Slot[], maxCount: number): Slot[] {
+    if (slots.length === 0) return []
+    const result: Slot[] = [slots[0]]
+    let lastEnd = slots[0].end.getTime()
+    for (let i = 1; i < slots.length && result.length < maxCount; i++) {
+      // Si hay al menos 1 slot de gap entre el anterior y este
+      if (slots[i].start.getTime() >= lastEnd + (slots[i].end.getTime() - slots[i].start.getTime())) {
+        result.push(slots[i])
+        lastEnd = slots[i].end.getTime()
+      }
+    }
+    return result
+  }
+
   return {
-    morning: morning.slice(0, 3),
-    afternoon: afternoon.slice(0, 3),
+    morning: separateSlots(morningAll, 3),
+    afternoon: separateSlots(afternoonAll, 3),
   }
 }
 
