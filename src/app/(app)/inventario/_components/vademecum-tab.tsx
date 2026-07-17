@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -100,8 +100,6 @@ export function VademecumTab({ canEdit }: { canEdit: boolean }) {
   const [form, setForm] = useState<typeof EMPTY_FORM>(EMPTY_FORM)
   const [deleteTarget, setDeleteTarget] = useState<VademecumItem | null>(null)
   const [importOpen, setImportOpen] = useState(false)
-  const scrollBarRef = useRef<HTMLDivElement>(null)
-  const tableScrollRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     const t = setTimeout(() => setDebouncedSearch(search), 300)
@@ -119,34 +117,6 @@ export function VademecumTab({ canEdit }: { canEdit: boolean }) {
   })
 
   const items = data?.data || []
-
-  // Sincronizar scroll: barra superior ↔ tabla
-  useEffect(() => {
-    const bar = scrollBarRef.current
-    const table = tableScrollRef.current
-    if (!bar || !table) return
-
-    let syncing = false
-    const syncBarToTable = () => {
-      if (syncing) return
-      syncing = true
-      bar.scrollLeft = table.scrollLeft
-      syncing = false
-    }
-    const syncTableToBar = () => {
-      if (syncing) return
-      syncing = true
-      table.scrollLeft = bar.scrollLeft
-      syncing = false
-    }
-
-    bar.addEventListener('scroll', syncTableToBar)
-    table.addEventListener('scroll', syncBarToTable)
-    return () => {
-      bar.removeEventListener('scroll', syncTableToBar)
-      table.removeEventListener('scroll', syncBarToTable)
-    }
-  }, [items.length])
 
   const saveMutation = useMutation({
     mutationFn: async (body: any) => {
@@ -301,27 +271,45 @@ export function VademecumTab({ canEdit }: { canEdit: boolean }) {
               )}
             </div>
           ) : (
-            <div className="sticky-scroll-top-wrapper">
-              <div ref={scrollBarRef} className="sticky-scroll-top-bar" aria-hidden="true">
-                <div className="sticky-scroll-top-spacer" />
-              </div>
-              <div ref={tableScrollRef} className="overflow-x-auto sticky-scroll-wrapper">
-                <Table className="min-w-[900px]" wrapperClassName="min-w-[900px]">
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead className="w-[280px] whitespace-nowrap">Nombre</TableHead>
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    {canEdit && <TableHead className="w-20 whitespace-nowrap">Acciones</TableHead>}
+                    <TableHead className="min-w-[200px]">Nombre</TableHead>
                     <TableHead className="whitespace-nowrap">Categoría</TableHead>
-                    <TableHead className="w-32 whitespace-nowrap">Dosis</TableHead>
-                    <TableHead className="w-28 whitespace-nowrap">Vía</TableHead>
-                    <TableHead className="w-32 whitespace-nowrap">Duración</TableHead>
-                    <TableHead className="min-w-[280px]">Indicación</TableHead>
+                    <TableHead className="w-28 whitespace-nowrap">Dosis</TableHead>
+                    <TableHead className="w-24 whitespace-nowrap">Vía</TableHead>
+                    <TableHead className="w-28 whitespace-nowrap">Duración</TableHead>
+                    <TableHead className="min-w-[200px]">Indicación</TableHead>
                     <TableHead className="w-24 whitespace-nowrap">Estado</TableHead>
-                    {canEdit && <TableHead className="w-24 text-right whitespace-nowrap">Acciones</TableHead>}
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {items.map((item) => (
                     <TableRow key={item.id} className={!item.active ? 'opacity-50' : ''}>
+                      {canEdit && (
+                        <TableCell>
+                          <div className="flex items-center gap-1">
+                            <Button
+                              size="icon"
+                              variant="ghost"
+                              onClick={() => openEdit(item)}
+                              className="h-8 w-8"
+                            >
+                              <Pencil className="h-3.5 w-3.5" />
+                            </Button>
+                            <Button
+                              size="icon"
+                              variant="ghost"
+                              onClick={() => setDeleteTarget(item)}
+                              className="h-8 w-8 text-red-600 hover:text-red-700"
+                            >
+                              <Trash2 className="h-3.5 w-3.5" />
+                            </Button>
+                          </div>
+                        </TableCell>
+                      )}
                       <TableCell>
                         <div className="font-medium">{item.name}</div>
                         {item.genericName && (
@@ -348,33 +336,10 @@ export function VademecumTab({ canEdit }: { canEdit: boolean }) {
                           {item.active ? 'Activo' : 'Inactivo'}
                         </Badge>
                       </TableCell>
-                      {canEdit && (
-                        <TableCell>
-                          <div className="flex items-center justify-end gap-1">
-                            <Button
-                              size="icon"
-                              variant="ghost"
-                              onClick={() => openEdit(item)}
-                              className="h-8 w-8"
-                            >
-                              <Pencil className="h-3.5 w-3.5" />
-                            </Button>
-                            <Button
-                              size="icon"
-                              variant="ghost"
-                              onClick={() => setDeleteTarget(item)}
-                              className="h-8 w-8 text-red-600 hover:text-red-700"
-                            >
-                              <Trash2 className="h-3.5 w-3.5" />
-                            </Button>
-                          </div>
-                        </TableCell>
-                      )}
                     </TableRow>
                   ))}
                 </TableBody>
               </Table>
-              </div>
             </div>
           )}
         </CardContent>
