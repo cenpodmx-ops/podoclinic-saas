@@ -103,6 +103,23 @@ export function VademecumTab({ canEdit }: { canEdit: boolean }) {
   const scrollBarRef = useRef<HTMLDivElement>(null)
   const tableScrollRef = useRef<HTMLDivElement>(null)
 
+  useEffect(() => {
+    const t = setTimeout(() => setDebouncedSearch(search), 300)
+    return () => clearTimeout(t)
+  }, [search])
+
+  const queryParams = new URLSearchParams()
+  if (debouncedSearch) queryParams.set('q', debouncedSearch)
+  if (categoryFilter !== SENTINEL_ALL) queryParams.set('category', categoryFilter)
+  if (includeInactive) queryParams.set('includeInactive', '1')
+
+  const { data, isLoading } = useQuery<{ data: VademecumItem[]; total: number }>({
+    queryKey: ['vademecum', debouncedSearch, categoryFilter, includeInactive],
+    queryFn: () => fetch(`/api/vademecum?${queryParams.toString()}`).then((r) => r.json()),
+  })
+
+  const items = data?.data || []
+
   // Sincronizar scroll: barra superior ↔ tabla
   useEffect(() => {
     const bar = scrollBarRef.current
@@ -130,23 +147,6 @@ export function VademecumTab({ canEdit }: { canEdit: boolean }) {
       table.removeEventListener('scroll', syncBarToTable)
     }
   }, [items.length])
-
-  useEffect(() => {
-    const t = setTimeout(() => setDebouncedSearch(search), 300)
-    return () => clearTimeout(t)
-  }, [search])
-
-  const queryParams = new URLSearchParams()
-  if (debouncedSearch) queryParams.set('q', debouncedSearch)
-  if (categoryFilter !== SENTINEL_ALL) queryParams.set('category', categoryFilter)
-  if (includeInactive) queryParams.set('includeInactive', '1')
-
-  const { data, isLoading } = useQuery<{ data: VademecumItem[]; total: number }>({
-    queryKey: ['vademecum', debouncedSearch, categoryFilter, includeInactive],
-    queryFn: () => fetch(`/api/vademecum?${queryParams.toString()}`).then((r) => r.json()),
-  })
-
-  const items = data?.data || []
 
   const saveMutation = useMutation({
     mutationFn: async (body: any) => {
