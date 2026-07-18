@@ -40,9 +40,9 @@ export async function GET(req: NextRequest) {
   const where: any = { active: true, clinicId }
   if (q) {
     where.OR = [
-      { name: { contains: q } },
-      { code: { contains: q } },
-      { description: { contains: q } },
+      { name: { contains: q, mode: 'insensitive' } },
+      { code: { contains: q, mode: 'insensitive' } },
+      { description: { contains: q, mode: 'insensitive' } },
     ]
   }
 

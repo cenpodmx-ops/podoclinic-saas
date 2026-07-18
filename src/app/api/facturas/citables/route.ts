@@ -56,9 +56,9 @@ export async function GET(req: NextRequest) {
   if (paciente) {
     where.patient = {
       OR: [
-        { firstName: { contains: paciente } },
-        { lastName: { contains: paciente } },
-        { expNumber: { contains: paciente } },
+        { firstName: { contains: paciente, mode: 'insensitive' } },
+        { lastName: { contains: paciente, mode: 'insensitive' } },
+        { expNumber: { contains: paciente, mode: 'insensitive' } },
       ],
     }
   }

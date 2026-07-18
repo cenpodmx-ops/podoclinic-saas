@@ -57,10 +57,10 @@ export async function GET(req: NextRequest) {
 
   if (q) {
     where.OR = [
-      { patient: { firstName: { contains: q } } },
-      { patient: { lastName: { contains: q } } },
-      { patient: { expNumber: { contains: q } } },
-      { diagnosis: { contains: q } },
+      { patient: { firstName: { contains: q, mode: 'insensitive' } } },
+      { patient: { lastName: { contains: q, mode: 'insensitive' } } },
+      { patient: { expNumber: { contains: q, mode: 'insensitive' } } },
+      { diagnosis: { contains: q, mode: 'insensitive' } },
     ]
   }
 

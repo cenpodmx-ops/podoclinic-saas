@@ -28,9 +28,9 @@ export async function GET(req: NextRequest) {
     const where: any = { active: true }
     if (clinicId) where.clinicId = clinicId
     where.OR = [
-      { name: { contains: q } },
-      { code: { contains: q } },
-      { description: { contains: q } },
+      { name: { contains: q, mode: 'insensitive' } },
+      { code: { contains: q, mode: 'insensitive' } },
+      { description: { contains: q, mode: 'insensitive' } },
     ]
     const products = await db.product.findMany({
       where,
