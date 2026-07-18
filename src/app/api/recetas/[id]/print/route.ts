@@ -562,6 +562,7 @@ export async function GET(_req: NextRequest, ctx: { params: Promise<{ id: string
 
   /* ===== IMPRESIÓN ===== */
   @page {
+    size: ${paper.cssSize};
     margin: 0;
   }
   @media print {
@@ -571,7 +572,7 @@ export async function GET(_req: NextRequest, ctx: { params: Promise<{ id: string
       background: #ffffff !important;
     }
     .rx-sheet {
-      margin: 0 auto;
+      margin: 0;
       box-shadow: none;
       width: ${paper.widthMm};
       min-height: ${paper.heightMm};
