@@ -158,6 +158,54 @@
 .appt-bloqueada { background-color: oklch(0.30 0 0); border-left: 3px solid oklch(0.18 0 0); color: oklch(0.95 0 0); }
 
 /* ===== Ticket de consulta (impresión) ===== */
+/* ===== Scrollbar siempre visible en tablas con overflow ===== */
+/* Wrapper que contiene la barra superior + la tabla */
+.sticky-scroll-top-wrapper {
+  position: relative;
+}
+/* Barra de scroll superior — sticky al top del contenedor scrollable */
+.sticky-scroll-top-bar {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  height: 0;
+  overflow-x: scroll;
+  overflow-y: hidden;
+  /* Invisible pero funcional — la scrollbar aparece abajo de este div */
+}
+.sticky-scroll-top-bar::-webkit-scrollbar {
+  height: 10px;
+  width: 10px;
+}
+.sticky-scroll-top-bar::-webkit-scrollbar-track {
+  background: #f1f1f1;
+  border-radius: 5px;
+}
+.sticky-scroll-top-bar::-webkit-scrollbar-thumb {
+  background: #888;
+  border-radius: 5px;
+}
+.sticky-scroll-top-bar::-webkit-scrollbar-thumb:hover {
+  background: #555;
+}
+.sticky-scroll-top-spacer {
+  /* Debe tener el mismo ancho que la tabla (min-w-[900px]) */
+  width: 900px;
+  height: 1px;
+  visibility: hidden;
+}
+/* Contenedor de la tabla — scrollbar sincronizada con la barra superior */
+.sticky-scroll-wrapper {
+  overflow-x: auto !important;
+  overflow-y: visible !important;
+  /* Ocultar la scrollbar visual pero mantener el scroll funcional */
+  scrollbar-width: none; /* Firefox */
+  -ms-overflow-style: none; /* IE/Edge */
+}
+.sticky-scroll-wrapper::-webkit-scrollbar {
+  display: none; /* Chrome/Safari */
+}
+
 /* ===== Ticket de consulta (impresora térmica 80mm) ===== */
 /* Optimizado para impresión nítida en impresoras térmicas GHIA */
 .ticket-print {

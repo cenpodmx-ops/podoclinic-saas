@@ -86,18 +86,40 @@ function filterFreeSlots(
   })
 }
 
-/** Selecciona máx 3 slots: primero de la mañana, primero de la tarde, uno más. */
-function pickThree(free: Slot[]): Slot[] {
-  const morning = free.filter((s) => s.start.getHours() < 12)
-  const afternoon = free.filter((s) => s.start.getHours() >= 12)
-  const result: Slot[] = []
-  if (morning.length > 0) result.push(morning[0])
-  if (afternoon.length > 0) result.push(afternoon[0])
-  if (result.length < 3) {
-    if (morning.length > 1) result.push(morning[1])
-    else if (afternoon.length > 1) result.push(afternoon[1])
+/** Selecciona hasta 3 slots por turno (mañana y tarde), separados entre sí.
+ *  - Mañana: antes de las 12:00
+ *  - Tarde: desde las 12:00, EXCEPTO las 14:00-14:59 (hora de comida)
+ *  - Los slots se separan para no mostrar horas seguidas (mínimo 1 slot de gap)
+ */
+function pickByTurn(free: Slot[]): { morning: Slot[]; afternoon: Slot[] } {
+  // Filtrar mañana: antes de las 12:00
+  const morningAll = free.filter((s) => s.start.getHours() < 12)
+
+  // Filtrar tarde: desde las 12:00, excluyendo 14:00-14:59 (hora de comida)
+  const afternoonAll = free.filter((s) => {
+    const h = s.start.getHours()
+    return h >= 12 && h !== 14 // excluir las 14:00 (2:00 PM)
+  })
+
+  // Separar slots para no mostrar horas seguidas (mínimo 1 gap entre cada uno)
+  function separateSlots(slots: Slot[], maxCount: number): Slot[] {
+    if (slots.length === 0) return []
+    const result: Slot[] = [slots[0]]
+    let lastEnd = slots[0].end.getTime()
+    for (let i = 1; i < slots.length && result.length < maxCount; i++) {
+      // Si hay al menos 1 slot de gap entre el anterior y este
+      if (slots[i].start.getTime() >= lastEnd + (slots[i].end.getTime() - slots[i].start.getTime())) {
+        result.push(slots[i])
+        lastEnd = slots[i].end.getTime()
+      }
+    }
+    return result
   }
-  return result.sort((a, b) => a.start.getTime() - b.start.getTime()).slice(0, 3)
+
+  return {
+    morning: separateSlots(morningAll, 3),
+    afternoon: separateSlots(afternoonAll, 3),
+  }
 }
 
 function fmtSlot(d: Date): string {
@@ -154,7 +176,8 @@ export async function GET(req: NextRequest) {
       }),
     ])
     const free = filterFreeSlots(allSlots, appts, blocks, isToday)
-    const picked = pickThree(free)
+    const byTurn = pickByTurn(free)
+    const allPicked = [...byTurn.morning, ...byTurn.afternoon]
 
     const pod = await db.podologist.findUnique({
       where: { id: podologistId },
@@ -164,7 +187,9 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({
       podologistId,
       podologistName: pod?.name || null,
-      slots: picked.map((s) => ({ startTime: fmtSlot(s.start), endTime: fmtSlot(s.end) })),
+      slots: allPicked.map((s) => ({ startTime: fmtSlot(s.start), endTime: fmtSlot(s.end) })),
+      morningSlots: byTurn.morning.map((s) => ({ startTime: fmtSlot(s.start), endTime: fmtSlot(s.end) })),
+      afternoonSlots: byTurn.afternoon.map((s) => ({ startTime: fmtSlot(s.start), endTime: fmtSlot(s.end) })),
     })
   }
 
@@ -187,12 +212,15 @@ export async function GET(req: NextRequest) {
       }),
     ])
     const free = filterFreeSlots(allSlots, appts, blocks, isToday)
-    const picked = pickThree(free)
-    if (picked.length > 0) {
+    const byTurn = pickByTurn(free)
+    const allPicked = [...byTurn.morning, ...byTurn.afternoon]
+    if (allPicked.length > 0) {
       return NextResponse.json({
         podologistId: p.id,
         podologistName: p.name,
-        slots: picked.map((s) => ({ startTime: fmtSlot(s.start), endTime: fmtSlot(s.end) })),
+        slots: allPicked.map((s) => ({ startTime: fmtSlot(s.start), endTime: fmtSlot(s.end) })),
+        morningSlots: byTurn.morning.map((s) => ({ startTime: fmtSlot(s.start), endTime: fmtSlot(s.end) })),
+        afternoonSlots: byTurn.afternoon.map((s) => ({ startTime: fmtSlot(s.start), endTime: fmtSlot(s.end) })),
       })
     }
   }
@@ -202,6 +230,8 @@ export async function GET(req: NextRequest) {
     podologistId: null,
     podologistName: null,
     slots: [],
+    morningSlots: [],
+    afternoonSlots: [],
     message: 'Sin horarios disponibles para esta fecha',
   })
 }

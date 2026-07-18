@@ -248,7 +248,7 @@ export function VademecumTab({ canEdit }: { canEdit: boolean }) {
       </Card>
 
       {/* Tabla */}
-      <Card className="shadow-sm">
+      <Card className="shadow-sm overflow-hidden">
         <CardContent className="p-0">
           {isLoading ? (
             <div className="p-4 space-y-2">
@@ -275,19 +275,41 @@ export function VademecumTab({ canEdit }: { canEdit: boolean }) {
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead className="w-[280px]">Nombre</TableHead>
-                    <TableHead>Categoría</TableHead>
-                    <TableHead className="w-32">Dosis</TableHead>
-                    <TableHead className="w-28">Vía</TableHead>
-                    <TableHead className="w-32">Duración</TableHead>
-                    <TableHead>Indicación</TableHead>
-                    <TableHead className="w-24">Estado</TableHead>
-                    {canEdit && <TableHead className="w-24 text-right">Acciones</TableHead>}
+                    {canEdit && <TableHead className="w-20 whitespace-nowrap">Acciones</TableHead>}
+                    <TableHead className="min-w-[200px]">Nombre</TableHead>
+                    <TableHead className="whitespace-nowrap">Categoría</TableHead>
+                    <TableHead className="w-28 whitespace-nowrap">Dosis</TableHead>
+                    <TableHead className="w-24 whitespace-nowrap">Vía</TableHead>
+                    <TableHead className="w-28 whitespace-nowrap">Duración</TableHead>
+                    <TableHead className="min-w-[200px]">Indicación</TableHead>
+                    <TableHead className="w-24 whitespace-nowrap">Estado</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {items.map((item) => (
                     <TableRow key={item.id} className={!item.active ? 'opacity-50' : ''}>
+                      {canEdit && (
+                        <TableCell>
+                          <div className="flex items-center gap-1">
+                            <Button
+                              size="icon"
+                              variant="ghost"
+                              onClick={() => openEdit(item)}
+                              className="h-8 w-8"
+                            >
+                              <Pencil className="h-3.5 w-3.5" />
+                            </Button>
+                            <Button
+                              size="icon"
+                              variant="ghost"
+                              onClick={() => setDeleteTarget(item)}
+                              className="h-8 w-8 text-red-600 hover:text-red-700"
+                            >
+                              <Trash2 className="h-3.5 w-3.5" />
+                            </Button>
+                          </div>
+                        </TableCell>
+                      )}
                       <TableCell>
                         <div className="font-medium">{item.name}</div>
                         {item.genericName && (
@@ -314,28 +336,6 @@ export function VademecumTab({ canEdit }: { canEdit: boolean }) {
                           {item.active ? 'Activo' : 'Inactivo'}
                         </Badge>
                       </TableCell>
-                      {canEdit && (
-                        <TableCell>
-                          <div className="flex items-center justify-end gap-1">
-                            <Button
-                              size="icon"
-                              variant="ghost"
-                              onClick={() => openEdit(item)}
-                              className="h-8 w-8"
-                            >
-                              <Pencil className="h-3.5 w-3.5" />
-                            </Button>
-                            <Button
-                              size="icon"
-                              variant="ghost"
-                              onClick={() => setDeleteTarget(item)}
-                              className="h-8 w-8 text-red-600 hover:text-red-700"
-                            >
-                              <Trash2 className="h-3.5 w-3.5" />
-                            </Button>
-                          </div>
-                        </TableCell>
-                      )}
                     </TableRow>
                   ))}
                 </TableBody>

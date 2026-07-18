@@ -156,7 +156,7 @@ function SoapEditor({
       const res = await fetch(`/api/consultas/${consult.id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ soapJson: JSON.stringify(soap) }),
+        body: JSON.stringify({ soapJson: soap }),
       })
       if (!res.ok) {
         const e = await res.json().catch(() => ({}))

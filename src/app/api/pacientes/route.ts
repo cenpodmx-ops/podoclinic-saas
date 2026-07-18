@@ -66,14 +66,59 @@ export async function GET(req: NextRequest) {
   const where: Prisma.PatientWhereInput = clinicFilter
 
   if (q) {
-    // PostgreSQL: `mode: 'insensitive'` hace la búsqueda case-insensitive y acento-insensitive.
-    // Esto permite buscar "maria" y encontrar "María González".
+    // Búsqueda insensible a mayúsculas/minúsculas y acentos.
+    // Usa la función unaccent_immutable de PostgreSQL (instalada en Supabase)
+    // para comparar sin acentos. Soporta nombre completo ("Daniel González"),
+    // nombre solo, apellido solo, teléfono o expediente.
+
+    // Normalizar el query: quitar acentos y pasar a minúsculas
+    // Esto se comparará con el nombre completo normalizado del paciente
+    // usando Prisma.sql con unaccent_immutable.
+
+    // Como Prisma no soporta funciones SQL en where directamente,
+    // usamos un enfoque híbrido:
+    // 1. Búsqueda simple por campos individuales (sin acentos del query)
+    // 2. Búsqueda por palabras (AND de cada palabra en firstName O lastName)
+    // 3. Búsqueda por nombre completo usando raw SQL filter
+
+    const normalizeStr = (s: string): string =>
+      s.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase()
+
+    const qNormalized = normalizeStr(q)
+
+    // Búsqueda por palabras: cada palabra debe aparecer en firstName O lastName
+    // (sin acentos, sin mayúsculas)
+    const words = q.split(/\s+/).filter(Boolean)
+
+    // Construir OR conditions
     where.OR = [
+      // Búsqueda simple por campo (query original)
       { firstName: { contains: q, mode: 'insensitive' } },
       { lastName: { contains: q, mode: 'insensitive' } },
       { phone: { contains: q } },
       { expNumber: { contains: q, mode: 'insensitive' } },
     ]
+
+    // Búsqueda por nombre completo: cada palabra en firstName O lastName
+    // Ej: "Daniel González" → AND[
+    //   OR[firstName contains "Daniel", lastName contains "Daniel"],
+    //   OR[firstName contains "González", lastName contains "González"]
+    // ]
+    if (words.length > 1) {
+      where.OR.push({
+        AND: words.map((word) => ({
+          OR: [
+            { firstName: { contains: word, mode: 'insensitive' } },
+            { lastName: { contains: word, mode: 'insensitive' } },
+          ],
+        })),
+      })
+    }
+
+    // Búsqueda usando raw SQL con unaccent para ignorar acentos completamente
+    // Esto se aplica como un filtro adicional usando Prisma.sql
+    // Solo se activa si el query tiene acentos o si las búsquedas anteriores no encontraron nada
+    // (se ejecuta en el findMany con un filtro raw adicional)
   }
   if (diabetic === 'true') where.isDiabetic = true
   if (diabetic === 'false') where.isDiabetic = false
@@ -88,6 +133,93 @@ export async function GET(req: NextRequest) {
         some: { status: 'FINALIZADA', startTime: { gte: cutoff } },
       },
     }
+  }
+
+  // Si hay query de búsqueda, usar raw SQL con unaccent para ignorar acentos
+  // completamente. Esto busca en el nombre completo (firstName + lastName)
+  // normalizado, comparando con el query normalizado.
+  if (q) {
+    const normalizeStr = (s: string): string =>
+      s.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase()
+    const qNorm = normalizeStr(q)
+
+    // Construir condición de clínica
+    let clinicCondition = 'TRUE'
+    if (clinicFilter.clinicId) {
+      if (typeof clinicFilter.clinicId === 'object' && (clinicFilter.clinicId as any).in) {
+        const ids = (clinicFilter.clinicId as any).in as string[]
+        clinicCondition = `p."clinicId" IN (${ids.map(id => `'${id}'`).join(',')})`
+      } else {
+        clinicCondition = `p."clinicId" = '${clinicFilter.clinicId}'`
+      }
+    }
+
+    // Búsqueda: cada palabra del query debe aparecer en el nombre completo normalizado
+    const words = qNorm.split(/\s+/).filter(Boolean)
+    const wordConditions = words.map((w: string) =>
+      `lower(unaccent_immutable(p."firstName" || ' ' || p."lastName")) LIKE '%${w.replace(/'/g, "''")}%'`
+    ).join(' AND ')
+
+    const searchCondition = `(${wordConditions}
+      OR lower(unaccent_immutable(p."firstName")) LIKE '%${qNorm.replace(/'/g, "''")}%'
+      OR lower(unaccent_immutable(p."lastName")) LIKE '%${qNorm.replace(/'/g, "''")}%'
+      OR p."phone" LIKE '%${q.replace(/'/g, "''")}%'
+      OR lower(unaccent_immutable(p."expNumber")) LIKE '%${qNorm.replace(/'/g, "''")}%')`
+
+    const rows = await db.$queryRawUnsafe(`
+      SELECT p.* FROM "Patient" p
+      WHERE ${clinicCondition} AND ${searchCondition}
+      ORDER BY p."lastName" ASC, p."firstName" ASC
+      LIMIT ${limit} OFFSET ${(page - 1) * limit}
+    `) as any[]
+
+    const countRows = await db.$queryRawUnsafe(`
+      SELECT COUNT(*)::int as total FROM "Patient" p
+      WHERE ${clinicCondition} AND ${searchCondition}
+    `) as any[]
+    const total = countRows[0]?.total || 0
+
+    // Cargar relaciones para los rows encontrados
+    const patientIds = rows.map((r: any) => r.id)
+    const fullRows = patientIds.length > 0
+      ? await db.patient.findMany({
+          where: { id: { in: patientIds } },
+          orderBy: [{ lastName: 'asc' }, { firstName: 'asc' }],
+          include: {
+            clinic: { select: { name: true } },
+            appointments: {
+              where: { status: 'FINALIZADA' },
+              orderBy: { startTime: 'desc' },
+              take: 1,
+              select: { startTime: true },
+            },
+          },
+        })
+      : []
+
+    // Mapear igual que abajo
+    const data = fullRows.map((p) => ({
+      id: p.id,
+      expNumber: p.expNumber,
+      firstName: p.firstName,
+      lastName: p.lastName,
+      phone: p.phone,
+      email: p.email,
+      isDiabetic: p.isDiabetic,
+      allergies: p.allergies,
+      currentMeds: p.currentMeds,
+      chronicConditions: p.chronicConditions,
+      riskLevel: p.riskLevel,
+      clinicId: p.clinicId,
+      clinic: p.clinic,
+      totalSpent: p.totalSpent,
+      birthDate: p.birthDate,
+      sex: p.sex,
+      createdAt: p.createdAt,
+      lastVisit: p.appointments[0]?.startTime || null,
+    }))
+
+    return ok({ data, total, page, limit })
   }
 
   const [total, rows] = await Promise.all([
