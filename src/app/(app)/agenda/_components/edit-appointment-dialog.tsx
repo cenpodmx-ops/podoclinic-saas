@@ -23,7 +23,7 @@ export function EditAppointmentDialog({ open, onOpenChange, appointment, podolog
   const qc = useQueryClient()
   const [podologistId, setPodologistId] = useState('')
   const [startTime, setStartTime] = useState('09:00')
-  const [endTime, setEndTime] = useState('09:30')
+  const [endTime, setEndTime] = useState('09:45')
   const [reason, setReason] = useState('')
   const [notes, setNotes] = useState('')
   const [saving, setSaving] = useState(false)
@@ -40,10 +40,13 @@ export function EditAppointmentDialog({ open, onOpenChange, appointment, podolog
   useEffect(() => {
     if (!open || !appointment) return
     setPodologistId(appointment.podologist?.id || '')
-    const s = new Date(appointment.startTime)
-    const e = new Date(appointment.endTime)
-    setStartTime(`${String(s.getHours()).padStart(2, '0')}:${String(s.getMinutes()).padStart(2, '0')}`)
-    setEndTime(`${String(e.getHours()).padStart(2, '0')}:${String(e.getMinutes()).padStart(2, '0')}`)
+    // Extraer HH:MM del ISO string SIN convertir a timezone local
+    const extractTime = (iso: string) => {
+      const m = iso?.match?.(/T(\d{2}):(\d{2})/)
+      return m ? `${m[1]}:${m[2]}` : '09:00'
+    }
+    setStartTime(extractTime(appointment.startTime))
+    setEndTime(extractTime(appointment.endTime))
     setReason(appointment.reason || '')
     setNotes(appointment.notes || '')
   }, [open, appointment])

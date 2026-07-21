@@ -81,17 +81,25 @@ export async function PATCH(req: NextRequest, ctx: { params: Promise<{ id: strin
   }
 
   // Optional date move (YYYY-MM-DD) — re-maps startTime/endTime
-  let dStr = existing.date.toISOString().slice(0, 10)
+  // Usar la fecha existente SIN convertir a timezone local
+  let dStr: string
+  if (existing.date) {
+    // Extraer YYYY-MM-DD del ISO sin convertir timezone
+    const dateIso = existing.date.toISOString()
+    dStr = dateIso.slice(0, 10)
+  } else {
+    dStr = new Date().toISOString().slice(0, 10)
+  }
   if (body.date && /^\d{4}-\d{2}-\d{2}$/.test(body.date)) {
     dStr = body.date
-    updates.date = startOfDay(parseISO(body.date))
+    updates.date = new Date(dStr + 'T00:00:00.000Z')
   }
 
   if (body.startTime && /^\d{2}:\d{2}$/.test(body.startTime)) {
-    updates.startTime = new Date(`${dStr}T${body.startTime}:00`)
+    updates.startTime = new Date(`${dStr}T${body.startTime}:00.000Z`)
   }
   if (body.endTime && /^\d{2}:\d{2}$/.test(body.endTime)) {
-    updates.endTime = new Date(`${dStr}T${body.endTime}:00`)
+    updates.endTime = new Date(`${dStr}T${body.endTime}:00.000Z`)
   }
   if (updates.startTime && updates.endTime && updates.endTime <= updates.startTime) {
     return bad('La hora final debe ser mayor a la inicial')
