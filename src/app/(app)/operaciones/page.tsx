@@ -150,8 +150,8 @@ export default function OperacionesPage() {
     },
     onSuccess: () => {
       toast.success('Sucursal abierta')
-      qc.invalidateQueries({ queryKey: ['operaciones-hoy'] })
-      qc.refetchQueries({ queryKey: ['operaciones-hoy'] })
+      // Forzar recarga completa de la página para mostrar el estado ABIERTA
+      setTimeout(() => window.location.reload(), 500)
     },
     onError: (e: Error) => toast.error(e.message),
   })
