@@ -1,7 +1,7 @@
 import { NextRequest } from 'next/server'
 import { db } from '@/lib/db'
 import { requireSession, ok, effectiveClinic } from '@/lib/api'
-import { startOfMonthHermosillo, endOfMonthHermosillo, startOfDayHermosillo, endOfDayHermosillo } from '@/lib/timezone'
+import { startOfDayHermosillo, endOfDayHermosillo, formatDateHermosillo } from '@/lib/timezone'
 import { subDays, format } from 'date-fns'
 
 export async function GET(req: NextRequest) {
