@@ -14,10 +14,28 @@ export async function GET(req: NextRequest) {
 
   // Usar zona horaria de Hermosillo (UTC-7) para que los cobros después
   // de las 5 PM se registren en el día correcto (no al día siguiente en UTC)
-  const todayStart = startOfDayHermosillo(new Date())
-  const todayEnd = endOfDayHermosillo(new Date())
-  const monthStart = startOfMonthHermosillo(new Date())
-  const monthEnd = endOfMonthHermosillo(new Date())
+  //
+  // IMPORTANTE: hay 2 tipos de campos de fecha:
+  // 1. `date` (citas): calendario guardado como medianoche UTC (2026-07-21T00:00:00Z)
+  //    → filtrar por fecha calendario de Hermosillo (YYYY-MM-DD → UTC medianoche)
+  // 2. `createdAt` (movimientos de caja, pacientes nuevos): timestamp real en UTC
+  //    → filtrar por rango UTC de Hermosillo (07:00 UTC a 06:59 UTC del día siguiente)
+
+  // Fecha de hoy en Hermosillo como string YYYY-MM-DD
+  const todayHermosilloStr = formatDateHermosillo(new Date())
+
+  // Para campo `date` (citas): rango UTC de medianoche a medianoche del día calendario
+  const todayDateStart = new Date(todayHermosilloStr + 'T00:00:00.000Z')
+  const todayDateEnd = new Date(todayHermosilloStr + 'T23:59:59.999Z')
+
+  // Para campo `createdAt` (movimientos, pacientes nuevos): rango UTC de Hermosillo
+  const todayCreatedStart = startOfDayHermosillo(new Date())
+  const todayCreatedEnd = endOfDayHermosillo(new Date())
+
+  // Mes en Hermosillo — para campo `date` (citas/consultas) usar UTC medianoche
+  const monthHermosillo = new Date(new Date().getTime() - 7 * 60 * 60 * 1000)
+  const monthStart = new Date(Date.UTC(monthHermosillo.getFullYear(), monthHermosillo.getMonth(), 1))
+  const monthEnd = new Date(Date.UTC(monthHermosillo.getFullYear(), monthHermosillo.getMonth() + 1, 0, 23, 59, 59, 999))
 
   const where = clinicId ? { clinicId } : {}
 
@@ -34,16 +52,16 @@ export async function GET(req: NextRequest) {
     last30DaysConsults,
   ] = await Promise.all([
     db.appointment.findMany({
-      where: { ...where, date: { gte: todayStart, lte: todayEnd } },
+      where: { ...where, date: { gte: todayDateStart, lte: todayDateEnd } },
       include: { patient: { select: { firstName: true, lastName: true } }, podologist: { select: { name: true } } },
       orderBy: { startTime: 'asc' },
     }),
     db.consultation.findMany({
-      where: { ...where, date: { gte: todayStart, lte: todayEnd }, paid: true },
+      where: { ...where, date: { gte: todayDateStart, lte: todayDateEnd }, paid: true },
       select: { total: true, itemsJson: true },
     }),
     db.patient.count({
-      where: { ...where, createdAt: { gte: todayStart, lte: todayEnd } },
+      where: { ...where, createdAt: { gte: todayCreatedStart, lte: todayCreatedEnd } },
     }),
     db.consultation.findMany({
       where: { ...where, date: { gte: monthStart, lte: monthEnd }, paid: true },
