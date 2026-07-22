@@ -4,6 +4,9 @@ import { requireSession, ok, bad, effectiveClinic } from '@/lib/api'
 import { canAccessFinance } from '@/lib/session'
 import {
   subDays,
+  subWeeks,
+  subMonths,
+  subYears,
   format,
   eachDayOfInterval,
   eachMonthOfInterval,
