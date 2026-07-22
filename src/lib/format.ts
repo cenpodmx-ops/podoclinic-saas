@@ -15,8 +15,17 @@ export function fmtMoney(n: number) {
 }
 
 export function fmtDate(d: Date | string) {
+  // Si es string YYYY-MM-DD, extraer directamente sin convertir timezone
+  if (typeof d === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(d)) {
+    return `${d.slice(8, 10)}/${d.slice(5, 7)}/${d.slice(0, 4)}`
+  }
+  // Si es string ISO con tiempo, extraer la fecha sin convertir
+  if (typeof d === 'string') {
+    const match = d.match(/^(\d{4})-(\d{2})-(\d{2})/)
+    if (match) return `${match[3]}/${match[2]}/${match[1]}`
+  }
   const date = typeof d === 'string' ? new Date(d) : d
-  return format(date, 'dd/MM/yyyy')
+  return `${String(date.getUTCDate()).padStart(2, '0')}/${String(date.getUTCMonth() + 1).padStart(2, '0')}/${date.getUTCFullYear()}`
 }
 
 export function fmtDateTime(d: Date | string) {

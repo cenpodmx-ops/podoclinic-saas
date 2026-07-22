@@ -163,7 +163,7 @@ export default function OperacionesPage() {
           Cierre y Apertura de Sucursal
         </h1>
         <p className="text-sm text-muted-foreground">
-          Apertura y corte diario de caja · {op?.date && fmtDate(op.date)}
+          Apertura y corte diario de caja · {op?.date || '—'}
         </p>
       </div>
 
@@ -364,7 +364,7 @@ function StatusCard({
             <div>
               <h3 className="font-semibold text-emerald-900">Sucursal abierta</h3>
               <p className="text-xs text-emerald-700">
-                Abierta por <strong>{op.apertura?.performedBy || '—'}</strong> · Fondo {fmtMoney(op.apertura?.openingFund ?? 0)} · {op.apertura && fmtDateTime(op.apertura.createdAt)}
+                Abierta por <strong>{op.apertura?.performedBy || '—'}</strong> · Fondo {fmtMoney(op.apertura?.openingFund ?? 0)} · {op.apertura && new Date(new Date(op.apertura.createdAt).getTime() - 7 * 60 * 60 * 1000).toLocaleString('es-MX', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
               </p>
             </div>
           </div>
@@ -391,7 +391,7 @@ function StatusCard({
           <div>
             <h3 className="font-semibold text-slate-900">Sucursal cerrada por hoy</h3>
             <p className="text-xs text-slate-700">
-              Cerrada por <strong>{op.cierre?.performedBy || '—'}</strong> · {op.cierre && fmtDateTime(op.cierre.createdAt)}
+              Cerrada por <strong>{op.cierre?.performedBy || '—'}</strong> · {op.cierre && new Date(new Date(op.cierre.createdAt).getTime() - 7 * 60 * 60 * 1000).toLocaleString('es-MX', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
               {op.cierre && op.cierre.difference !== null && op.cierre.difference !== 0 && (() => {
                 const diff = op.cierre!.difference!
                 return (
