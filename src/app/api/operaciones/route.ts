@@ -41,12 +41,13 @@ export async function GET(req: NextRequest) {
   }
 
   // ── Caso día único (default hoy)
-  const date = dateParam ? parseISO(dateParam) : new Date()
-  if (isNaN(date.getTime())) return bad('Fecha inválida (use YYYY-MM-DD)')
+  // Usar formatDateHermosillo para obtener YYYY-MM-DD y luego medianoche UTC
+  // (igual que la API de apertura, para que coincidan)
+  const dateStr = dateParam || formatDateHermosillo(new Date())
+  const ds = new Date(dateStr + 'T00:00:00.000Z')
+  const de = new Date(dateStr + 'T23:59:59.999Z')
 
   const targetClinicId = clinicId || user!.clinicId
-  const ds = startOfDayHermosillo(date)
-  const de = endOfDayHermosillo(date)
 
   const [apertura, cierre, cashSession] = await Promise.all([
     db.dailyOperation.findFirst({
@@ -60,10 +61,10 @@ export async function GET(req: NextRequest) {
     }),
   ])
 
-  const summary = await computeDailySummary(targetClinicId, date)
+  const summary = await computeDailySummary(targetClinicId, ds)
 
   return ok({
-    date: formatDateHermosillo(date),
+    date: dateStr,
     status: cierre ? 'CERRADA' : apertura ? 'ABIERTA' : 'CERRADA_SIN_ABRIR',
     apertura,
     cierre,

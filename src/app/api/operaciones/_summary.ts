@@ -11,15 +11,17 @@ import { startOfDayHermosillo, endOfDayHermosillo, formatDateHermosillo } from '
  *   - efectivo esperado en caja
  */
 export async function computeDailySummary(clinicId: string, date: Date) {
-  // Usar zona horaria de Hermosillo (UTC-7)
-  // Para campo `date` (citas): UTC medianoche del día calendario
-  const dayStr = formatDateHermosillo(date)
+  // `date` viene como medianoche UTC del día calendario (ej: 2026-07-22T00:00:00Z)
+  // Extraer el YYYY-MM-DD directamente del ISO sin convertir timezone
+  const dayStr = date.toISOString().slice(0, 10)
   const ds = new Date(dayStr + 'T00:00:00.000Z')
   const de = new Date(dayStr + 'T23:59:59.999Z')
 
   // Para campo `createdAt` (movimientos): rango UTC de Hermosillo
-  const dsCreated = startOfDayHermosillo(date)
-  const deCreated = endOfDayHermosillo(date)
+  // Hermosillo = UTC-7, medianoche Hermosillo = 07:00 UTC del mismo día
+  const dsCreated = new Date(dayStr + 'T07:00:00.000Z')
+  const deCreated = new Date(dayStr + 'T06:59:59.999Z')
+  deCreated.setDate(deCreated.getDate() + 1)
 
   const [appts, movements, aperturaOp, cashSession, consultations] = await Promise.all([
     db.appointment.findMany({
