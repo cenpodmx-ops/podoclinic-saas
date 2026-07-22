@@ -151,6 +151,7 @@ export default function OperacionesPage() {
     onSuccess: () => {
       toast.success('Sucursal abierta')
       qc.invalidateQueries({ queryKey: ['operaciones-hoy'] })
+      qc.refetchQueries({ queryKey: ['operaciones-hoy'] })
     },
     onError: (e: Error) => toast.error(e.message),
   })
