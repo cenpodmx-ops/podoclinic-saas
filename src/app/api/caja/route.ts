@@ -42,15 +42,37 @@ export async function GET(req: NextRequest) {
       clinicId,
       date: { gte: dayStart, lte: dayEnd },
     },
-    include: {
-      movements: {
-        orderBy: { createdAt: 'asc' },
-      },
-    },
   })
 
-  // Resumen calculado a partir de movimientos
-  const movements = session?.movements ?? []
+  // Buscar TODOS los movimientos del día (no solo los de la sesión encontrada)
+  // Esto arregla el problema donde movimientos creados en una sesión del día anterior
+  // pero con createdAt del día actual no se mostraban en caja
+  const allDayMovements = await db.cashMovement.findMany({
+    where: {
+      clinicId,
+      createdAt: { gte: dayStart, lte: dayEnd },
+    },
+    orderBy: { createdAt: 'asc' },
+  })
+
+  // Si hay sesión, usar sus movimientos + los del día que no tengan sesión
+  // Si no hay sesión, usar los movimientos del día
+  let movements: any[] = allDayMovements
+  if (session) {
+    // Obtener movimientos de la sesión
+    const sessionMovements = await db.cashMovement.findMany({
+      where: { cashSessionId: session.id },
+      orderBy: { createdAt: 'asc' },
+    })
+    // Combinar: movimientos del día + movimientos de la sesión (sin duplicar)
+    const allIds = new Set(allDayMovements.map(m => m.id))
+    const extraFromSession = sessionMovements.filter(m => !allIds.has(m.id))
+    // Solo incluir movimientos de la sesión que caigan en el rango del día
+    const extraInDay = extraFromSession.filter(m => m.createdAt >= dayStart && m.createdAt <= dayEnd)
+    movements = [...allDayMovements, ...extraInDay].sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime())
+  }
+
+  // Resumen calculado a partir de TODOS los movimientos del día
   const summary = computeSummary(session, movements)
 
   return ok({
