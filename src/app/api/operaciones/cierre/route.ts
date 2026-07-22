@@ -1,19 +1,13 @@
 import { NextRequest } from 'next/server'
 import { db } from '@/lib/db'
 import { requireSession, ok, bad } from '@/lib/api'
-import { startOfDay, endOfDay } from 'date-fns'
+import { formatDateHermosillo } from '@/lib/timezone'
 import { computeDailySummary } from '../_summary'
 
 // ============================================================
 // MÓDULO 15 — CIERRE Y APERTURA DE SUCURSAL
 // POST /api/operaciones/cierre
 // Body: { countedCash, notes?, signatureData? }
-// - 400 si no se abrió hoy
-// - 409 si ya se cerró hoy
-// - Calcula summaryJson (citas, ingresos by method, expected cash)
-// - Crea DailyOperation CIERRE con counted/expected/difference/summary/signature
-// - Cierra CashSession
-// 403 si PODOLOGIST
 // ============================================================
 
 export async function POST(req: NextRequest) {
@@ -34,8 +28,11 @@ export async function POST(req: NextRequest) {
   }
 
   const clinicId = user!.clinicId
-  const ds = startOfDay(new Date())
-  const de = endOfDay(new Date())
+
+  // Usar zona horaria de Hermosillo (UTC-7)
+  const todayStr = formatDateHermosillo(new Date())
+  const ds = new Date(todayStr + 'T00:00:00.000Z')
+  const de = new Date(todayStr + 'T23:59:59.999Z')
 
   // Validaciones de estado
   const apertura = await db.dailyOperation.findFirst({
@@ -55,7 +52,7 @@ export async function POST(req: NextRequest) {
   const difference = Math.round((counted - expected) * 100) / 100
 
   const summaryJson = JSON.stringify({
-    date: new Date().toISOString(),
+    date: todayStr,
     citas: summary.citas,
     ingresos: summary.ingresos,
     egresos: summary.egresos,
@@ -75,7 +72,7 @@ export async function POST(req: NextRequest) {
   const cierre = await db.dailyOperation.create({
     data: {
       clinicId,
-      date: new Date(),
+      date: ds, // medianoche UTC del día de Hermosillo
       type: 'CIERRE',
       closingCounted: counted,
       closingExpected: expected,

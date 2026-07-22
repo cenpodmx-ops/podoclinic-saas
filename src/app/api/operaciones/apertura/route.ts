@@ -1,7 +1,7 @@
 import { NextRequest } from 'next/server'
 import { db } from '@/lib/db'
 import { requireSession, ok, bad } from '@/lib/api'
-import { startOfDay, endOfDay } from 'date-fns'
+import { startOfDayHermosillo, endOfDayHermosillo, formatDateHermosillo } from '@/lib/timezone'
 
 // ============================================================
 // MÓDULO 15 — CIERRE Y APERTURA DE SUCURSAL
@@ -26,8 +26,16 @@ export async function POST(req: NextRequest) {
   }
 
   const clinicId = user!.clinicId
-  const ds = startOfDay(new Date())
-  const de = endOfDay(new Date())
+
+  // Usar zona horaria de Hermosillo (UTC-7)
+  // Para campo `date` (citas, operaciones): UTC medianoche del día calendario
+  const todayStr = formatDateHermosillo(new Date())
+  const ds = new Date(todayStr + 'T00:00:00.000Z')
+  const de = new Date(todayStr + 'T23:59:59.999Z')
+
+  // Para campo `createdAt` (movimientos): rango UTC de Hermosillo
+  const dsCreated = startOfDayHermosillo(new Date())
+  const deCreated = endOfDayHermosillo(new Date())
 
   // 409 si ya abrió hoy
   const yaAbierta = await db.dailyOperation.findFirst({
@@ -58,7 +66,7 @@ export async function POST(req: NextRequest) {
     session = await db.cashSession.create({
       data: {
         clinicId,
-        date: new Date(),
+        date: ds, // medianoche UTC del día de Hermosillo
         openingFund: Number(openingFund),
         closed: false,
         notes: notes || null,
@@ -70,7 +78,7 @@ export async function POST(req: NextRequest) {
   const apertura = await db.dailyOperation.create({
     data: {
       clinicId,
-      date: new Date(),
+      date: ds, // medianoche UTC del día de Hermosillo
       type: 'APERTURA',
       openingFund: Number(openingFund),
       notes: notes || null,
