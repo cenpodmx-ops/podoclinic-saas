@@ -1,7 +1,8 @@
 import { NextRequest } from 'next/server'
 import { db } from '@/lib/db'
 import { requireSession, ok, effectiveClinic } from '@/lib/api'
-import { startOfDay, endOfDay, startOfMonth, endOfMonth, subDays, format } from 'date-fns'
+import { startOfMonthHermosillo, endOfMonthHermosillo, startOfDayHermosillo, endOfDayHermosillo } from '@/lib/timezone'
+import { subDays, format } from 'date-fns'
 
 export async function GET(req: NextRequest) {
   const { user, response } = await requireSession()
@@ -11,12 +12,12 @@ export async function GET(req: NextRequest) {
   const all = req.nextUrl.searchParams.get('all') || undefined
   const clinicId = effectiveClinic(user!, all || undefined)
 
-  // Forzar UTC para consistencia
-  const todayStr = new Date().toISOString().slice(0, 10)
-  const todayStart = new Date(todayStr + 'T00:00:00.000Z')
-  const todayEnd = new Date(todayStr + 'T23:59:59.999Z')
-  const monthStart = startOfMonth(new Date())
-  const monthEnd = endOfMonth(new Date())
+  // Usar zona horaria de Hermosillo (UTC-7) para que los cobros después
+  // de las 5 PM se registren en el día correcto (no al día siguiente en UTC)
+  const todayStart = startOfDayHermosillo(new Date())
+  const todayEnd = endOfDayHermosillo(new Date())
+  const monthStart = startOfMonthHermosillo(new Date())
+  const monthEnd = endOfMonthHermosillo(new Date())
 
   const where = clinicId ? { clinicId } : {}
 

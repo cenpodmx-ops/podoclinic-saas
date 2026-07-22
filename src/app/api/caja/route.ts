@@ -1,7 +1,7 @@
 import { NextRequest } from 'next/server'
 import { db } from '@/lib/db'
 import { requireSession, ok, bad } from '@/lib/api'
-import { startOfDay, endOfDay, format } from 'date-fns'
+import { startOfDayHermosillo, endOfDayHermosillo, formatDateHermosillo } from '@/lib/timezone'
 import { METHOD_LABELS } from '@/lib/format'
 
 // ============================================================
@@ -23,13 +23,13 @@ export async function GET(req: NextRequest) {
   let dayStart: Date
   let dayEnd: Date
   if (dateParam) {
-    const parsed = new Date(dateParam + 'T00:00:00')
+    const parsed = new Date(dateParam + 'T12:00:00')
     if (isNaN(parsed.getTime())) return bad('Fecha inválida')
-    dayStart = startOfDay(parsed)
-    dayEnd = endOfDay(parsed)
+    dayStart = startOfDayHermosillo(parsed)
+    dayEnd = endOfDayHermosillo(parsed)
   } else {
-    dayStart = startOfDay(new Date())
-    dayEnd = endOfDay(new Date())
+    dayStart = startOfDayHermosillo(new Date())
+    dayEnd = endOfDayHermosillo(new Date())
   }
 
   // Buscar sesión de ese día para la clínica del usuario
@@ -54,7 +54,7 @@ export async function GET(req: NextRequest) {
   const summary = computeSummary(session, movements)
 
   return ok({
-    date: format(dayStart, 'yyyy-MM-dd'),
+    date: formatDateHermosillo(dayStart),
     session: session
       ? {
           id: session.id,
@@ -102,8 +102,8 @@ export async function POST(req: NextRequest) {
   if (!clinicId) return bad('Sin clínica asignada', 403)
 
   // Verificar si ya existe una sesión para hoy
-  const todayStart = startOfDay(new Date())
-  const todayEnd = endOfDay(new Date())
+  const todayStart = startOfDayHermosillo(new Date())
+  const todayEnd = endOfDayHermosillo(new Date())
   const existing = await db.cashSession.findFirst({
     where: { clinicId, date: { gte: todayStart, lte: todayEnd } },
   })

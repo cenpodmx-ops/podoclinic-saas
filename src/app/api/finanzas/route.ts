@@ -3,24 +3,23 @@ import { db } from '@/lib/db'
 import { requireSession, ok, bad, effectiveClinic } from '@/lib/api'
 import { canAccessFinance } from '@/lib/session'
 import {
-  startOfDay,
-  endOfDay,
-  startOfWeek,
-  endOfWeek,
-  startOfMonth,
-  endOfMonth,
-  startOfYear,
-  endOfYear,
   subDays,
-  subWeeks,
-  subMonths,
-  subYears,
   format,
   eachDayOfInterval,
   eachMonthOfInterval,
   parseISO,
   isWithinInterval,
 } from 'date-fns'
+import {
+  startOfDayHermosillo,
+  endOfDayHermosillo,
+  startOfWeekHermosillo,
+  endOfWeekHermosillo,
+  startOfMonthHermosillo,
+  endOfMonthHermosillo,
+  startOfYearHermosillo,
+  endOfYearHermosillo,
+} from '@/lib/timezone'
 
 // ============================================================
 // MÓDULO 07 — FINANZAS — Dashboard
@@ -50,11 +49,11 @@ export async function GET(req: NextRequest) {
   let prevEnd: Date
 
   if (fromParam && toParam) {
-    start = startOfDay(parseISO(fromParam))
-    end = endOfDay(parseISO(toParam))
+    start = startOfDayHermosillo(parseISO(fromParam))
+    end = endOfDayHermosillo(parseISO(toParam))
     const days = Math.ceil((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24)) + 1
-    prevStart = startOfDay(subDays(start, days))
-    prevEnd = endOfDay(subDays(start, 1))
+    prevStart = startOfDayHermosillo(subDays(start, days))
+    prevEnd = endOfDayHermosillo(subDays(start, 1))
   } else {
     const r = getRangeForPeriod(period)
     start = r.start
@@ -209,13 +208,13 @@ function getRangeForPeriod(period: Period) {
   const now = new Date()
   switch (period) {
     case 'dia':
-      return { start: startOfDay(now), end: endOfDay(now) }
+      return { start: startOfDayHermosillo(now), end: endOfDayHermosillo(now) }
     case 'semana':
-      return { start: startOfWeek(now, { weekStartsOn: 1 }), end: endOfWeek(now, { weekStartsOn: 1 }) }
+      return { start: startOfWeekHermosillo(now), end: endOfWeekHermosillo(now) }
     case 'mes':
-      return { start: startOfMonth(now), end: endOfMonth(now) }
+      return { start: startOfMonthHermosillo(now), end: endOfMonthHermosillo(now) }
     case 'año':
-      return { start: startOfYear(now), end: endOfYear(now) }
+      return { start: startOfYearHermosillo(now), end: endOfYearHermosillo(now) }
   }
 }
 
@@ -223,16 +222,16 @@ function getPreviousRange(period: Period, _start: Date, end: Date) {
   // El "periodo anterior" es el periodo inmediato anterior al actual
   switch (period) {
     case 'dia':
-      return { start: startOfDay(subDays(end, 1)), end: endOfDay(subDays(end, 1)) }
+      return { start: startOfDayHermosillo(subDays(end, 1)), end: endOfDayHermosillo(subDays(end, 1)) }
     case 'semana':
       return {
-        start: startOfWeek(subWeeks(end, 1), { weekStartsOn: 1 }),
-        end: endOfWeek(subWeeks(end, 1), { weekStartsOn: 1 }),
+        start: startOfWeekHermosillo(subWeeks(end, 1)),
+        end: endOfWeekHermosillo(subWeeks(end, 1)),
       }
     case 'mes':
-      return { start: startOfMonth(subMonths(end, 1)), end: endOfMonth(subMonths(end, 1)) }
+      return { start: startOfMonthHermosillo(subMonths(end, 1)), end: endOfMonthHermosillo(subMonths(end, 1)) }
     case 'año':
-      return { start: startOfYear(subYears(end, 1)), end: endOfYear(subYears(end, 1)) }
+      return { start: startOfYearHermosillo(subYears(end, 1)), end: endOfYearHermosillo(subYears(end, 1)) }
   }
 }
 
@@ -246,8 +245,8 @@ function buildDailySeries(
   if (period === 'año') {
     const months = eachMonthOfInterval({ start, end })
     return months.map((m) => {
-      const mStart = startOfMonth(m)
-      const mEnd = endOfMonth(m)
+      const mStart = startOfMonthHermosillo(m)
+      const mEnd = endOfMonthHermosillo(m)
       const inRange = movements.filter((mv) => isWithinInterval(mv.createdAt, { start: mStart, end: mEnd }))
       const ingresos = inRange
         .filter((mv) => mv.type === 'INGRESO' && mv.source !== 'EFECTIVO_INICIAL')
@@ -263,8 +262,8 @@ function buildDailySeries(
 
   const days = eachDayOfInterval({ start, end })
   return days.map((d) => {
-    const dStart = startOfDay(d)
-    const dEnd = endOfDay(d)
+    const dStart = startOfDayHermosillo(d)
+    const dEnd = endOfDayHermosillo(d)
     const inRange = movements.filter((mv) => isWithinInterval(mv.createdAt, { start: dStart, end: dEnd }))
     const ingresos = inRange
       .filter((mv) => mv.type === 'INGRESO' && mv.source !== 'EFECTIVO_INICIAL')
