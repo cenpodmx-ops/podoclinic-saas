@@ -138,11 +138,13 @@ export async function POST(req: NextRequest) {
     )
   }
 
-  // Crear la sesión
+  // Crear la sesión — usar medianoche de Hermosillo como fecha
+  // (no new Date() que es UTC y puede caer en el día siguiente)
+  const sessionDate = startOfDayHermosillo(new Date())
   const session = await db.cashSession.create({
     data: {
       clinicId,
-      date: new Date(),
+      date: sessionDate,
       openingFund,
       closed: false,
     },
