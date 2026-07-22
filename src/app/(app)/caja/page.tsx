@@ -219,7 +219,7 @@ export default function CajaPage() {
             <Wallet className="h-6 w-6" style={{ color: '#0a3143' }} /> Caja
           </h1>
           <p className="text-sm text-muted-foreground">
-            {new Date().toLocaleDateString('es-MX', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
+            {new Date(new Date().getTime() - 7 * 60 * 60 * 1000).toLocaleDateString('es-MX', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
           </p>
         </header>
 
