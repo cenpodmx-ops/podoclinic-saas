@@ -57,14 +57,14 @@ export async function GET(req: NextRequest) {
       orderBy: { startTime: 'asc' },
     }),
     db.consultation.findMany({
-      where: { ...where, date: { gte: todayDateStart, lte: todayDateEnd }, paid: true },
+      where: { ...where, createdAt: { gte: todayCreatedStart, lte: todayCreatedEnd }, paid: true },
       select: { total: true, itemsJson: true },
     }),
     db.patient.count({
       where: { ...where, createdAt: { gte: todayCreatedStart, lte: todayCreatedEnd } },
     }),
     db.consultation.findMany({
-      where: { ...where, date: { gte: monthStart, lte: monthEnd }, paid: true },
+      where: { ...where, createdAt: { gte: monthStart, lte: monthEnd }, paid: true },
       select: { itemsJson: true, consultPrice: true, total: true },
     }),
     db.appointment.count({
