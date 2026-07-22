@@ -1,4 +1,5 @@
 import { db } from '@/lib/db'
+import { startOfDayHermosillo, endOfDayHermosillo, formatDateHermosillo } from '@/lib/timezone'
 
 /**
  * Calcula el resumen de operación de un día para una clínica:
@@ -10,9 +11,15 @@ import { db } from '@/lib/db'
  *   - efectivo esperado en caja
  */
 export async function computeDailySummary(clinicId: string, date: Date) {
-  const dayStr = new Date(date).toISOString().slice(0, 10)
+  // Usar zona horaria de Hermosillo (UTC-7)
+  // Para campo `date` (citas): UTC medianoche del día calendario
+  const dayStr = formatDateHermosillo(date)
   const ds = new Date(dayStr + 'T00:00:00.000Z')
   const de = new Date(dayStr + 'T23:59:59.999Z')
+
+  // Para campo `createdAt` (movimientos): rango UTC de Hermosillo
+  const dsCreated = startOfDayHermosillo(date)
+  const deCreated = endOfDayHermosillo(date)
 
   const [appts, movements, aperturaOp, cashSession, consultations] = await Promise.all([
     db.appointment.findMany({
@@ -20,7 +27,7 @@ export async function computeDailySummary(clinicId: string, date: Date) {
       select: { id: true, status: true, podologistId: true, podologist: { select: { name: true } } },
     }),
     db.cashMovement.findMany({
-      where: { clinicId, createdAt: { gte: ds, lte: de } },
+      where: { clinicId, createdAt: { gte: dsCreated, lte: deCreated } },
       select: { type: true, source: true, method: true, amount: true },
     }),
     db.dailyOperation.findFirst({
@@ -30,7 +37,7 @@ export async function computeDailySummary(clinicId: string, date: Date) {
       where: { clinicId, date: { gte: ds, lte: de } },
     }),
     db.consultation.findMany({
-      where: { clinicId, date: { gte: ds, lte: de }, paid: true },
+      where: { clinicId, createdAt: { gte: dsCreated, lte: deCreated }, paid: true },
       select: {
         id: true,
         consultPrice: true,

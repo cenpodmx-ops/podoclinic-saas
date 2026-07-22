@@ -110,8 +110,8 @@ export default function OperacionesPage() {
   const [tab, setTab] = useState<'hoy' | 'historial'>('hoy')
   const [cierreOpen, setCierreOpen] = useState(false)
   const [historialRange, setHistorialRange] = useState(() => ({
-    from: format(subDays(new Date(), 30), 'yyyy-MM-dd'),
-    to: format(new Date(), 'yyyy-MM-dd'),
+    from: format(new Date(new Date().getTime() - 7*60*60*1000 - 30*24*60*60*1000), 'yyyy-MM-dd'),
+    to: format(new Date(new Date().getTime() - 7*60*60*1000), 'yyyy-MM-dd'),
   }))
   const qc = useQueryClient()
 
@@ -215,14 +215,14 @@ export default function OperacionesPage() {
                 <Button
                   variant="outline"
                   size="sm"
-                  onClick={() => setHistorialRange({ from: format(subDays(new Date(), 7), 'yyyy-MM-dd'), to: format(new Date(), 'yyyy-MM-dd') })}
+                  onClick={() => setHistorialRange({ from: format(new Date(new Date().getTime() - 7*60*60*1000 - 7*24*60*60*1000), 'yyyy-MM-dd'), to: format(new Date(new Date().getTime() - 7*60*60*1000), 'yyyy-MM-dd') })}
                 >
                   Última semana
                 </Button>
                 <Button
                   variant="outline"
                   size="sm"
-                  onClick={() => setHistorialRange({ from: format(subDays(new Date(), 30), 'yyyy-MM-dd'), to: format(new Date(), 'yyyy-MM-dd') })}
+                  onClick={() => setHistorialRange({ from: format(new Date(new Date().getTime() - 7*60*60*1000 - 30*24*60*60*1000), 'yyyy-MM-dd'), to: format(new Date(new Date().getTime() - 7*60*60*1000), 'yyyy-MM-dd') })}
                 >
                   Últimos 30 días
                 </Button>

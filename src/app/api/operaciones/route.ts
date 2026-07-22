@@ -1,7 +1,8 @@
 import { NextRequest } from 'next/server'
 import { db } from '@/lib/db'
 import { requireSession, ok, bad, effectiveClinic } from '@/lib/api'
-import { startOfDay, endOfDay, parseISO, format } from 'date-fns'
+import { parseISO, format } from 'date-fns'
+import { startOfDayHermosillo, endOfDayHermosillo, formatDateHermosillo } from '@/lib/timezone'
 import { computeDailySummary } from './_summary'
 
 // ============================================================
@@ -27,8 +28,8 @@ export async function GET(req: NextRequest) {
 
   // ── Caso rango: devuelve historial
   if (fromParam && toParam) {
-    const from = startOfDay(parseISO(fromParam))
-    const to = endOfDay(parseISO(toParam))
+    const from = startOfDayHermosillo(parseISO(fromParam))
+    const to = endOfDayHermosillo(parseISO(toParam))
     const where: any = { date: { gte: from, lte: to } }
     if (clinicId) where.clinicId = clinicId
     const rows = await db.dailyOperation.findMany({
@@ -44,8 +45,8 @@ export async function GET(req: NextRequest) {
   if (isNaN(date.getTime())) return bad('Fecha inválida (use YYYY-MM-DD)')
 
   const targetClinicId = clinicId || user!.clinicId
-  const ds = startOfDay(date)
-  const de = endOfDay(date)
+  const ds = startOfDayHermosillo(date)
+  const de = endOfDayHermosillo(date)
 
   const [apertura, cierre, cashSession] = await Promise.all([
     db.dailyOperation.findFirst({
@@ -62,7 +63,7 @@ export async function GET(req: NextRequest) {
   const summary = await computeDailySummary(targetClinicId, date)
 
   return ok({
-    date: format(date, 'yyyy-MM-dd'),
+    date: formatDateHermosillo(date),
     status: cierre ? 'CERRADA' : apertura ? 'ABIERTA' : 'CERRADA_SIN_ABRIR',
     apertura,
     cierre,
