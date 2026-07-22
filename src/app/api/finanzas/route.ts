@@ -22,6 +22,7 @@ import {
   endOfMonthHermosillo,
   startOfYearHermosillo,
   endOfYearHermosillo,
+  formatDateHermosillo,
 } from '@/lib/timezone'
 
 // ============================================================
@@ -183,7 +184,7 @@ export async function GET(req: NextRequest) {
 
   return ok({
     period,
-    range: { from: format(start, 'yyyy-MM-dd'), to: format(end, 'yyyy-MM-dd') },
+    range: { from: formatDateHermosillo(start), to: formatDateHermosillo(end) },
     totals: {
       ingresos: ingresosTotal,
       egresos: egresosTotal,
@@ -263,17 +264,44 @@ function buildDailySeries(
     })
   }
 
-  const days = eachDayOfInterval({ start, end })
+  // Generar días del rango en zona horaria de Hermosillo
+  // Para evitar desfases, generamos los días en "tiempo local Hermosillo"
+  const HERMOSILLO_OFFSET = -7
+  const toHermosillo = (d: Date) => new Date(d.getTime() + HERMOSILLO_OFFSET * 60 * 60 * 1000)
+  const fromHermosillo = (d: Date) => new Date(d.getTime() - HERMOSILLO_OFFSET * 60 * 60 * 1000)
+
+  // Convertir start y end a Hermosillo para generar los días
+  const localStart = toHermosillo(start)
+  const localEnd = toHermosillo(end)
+
+  // Generar cada día en zona local Hermosillo
+  const days: Date[] = []
+  const cur = new Date(localStart.getFullYear(), localStart.getMonth(), localStart.getDate())
+  const lastDay = new Date(localEnd.getFullYear(), localEnd.getMonth(), localEnd.getDate())
+  while (cur <= lastDay) {
+    days.push(new Date(cur))
+    cur.setDate(cur.getDate() + 1)
+  }
+
   return days.map((d) => {
-    const dStart = startOfDayHermosillo(d)
-    const dEnd = endOfDayHermosillo(d)
-    const inRange = movements.filter((mv) => isWithinInterval(mv.createdAt, { start: dStart, end: dEnd }))
+    // Para cada día local, calcular el rango UTC correspondiente
+    const dStart = fromHermosillo(new Date(d.getFullYear(), d.getMonth(), d.getDate(), 0, 0, 0, 0))
+    const dEnd = fromHermosillo(new Date(d.getFullYear(), d.getMonth(), d.getDate(), 23, 59, 59, 999))
+
+    const inRange = movements.filter((mv) => mv.createdAt >= dStart && mv.createdAt <= dEnd)
     const ingresos = inRange
       .filter((mv) => mv.type === 'INGRESO' && mv.source !== 'EFECTIVO_INICIAL')
       .reduce((s, mv) => s + mv.amount, 0)
     const egresos = inRange.filter((mv) => mv.type === 'EGRESO').reduce((s, mv) => s + mv.amount, 0)
+
+    // Formatear la fecha usando el día local de Hermosillo
+    const months = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic']
+    const dayStr = period === 'mes'
+      ? `${String(d.getDate()).padStart(2, '0')} ${months[d.getMonth()]}`
+      : `${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')}`
+
     return {
-      date: format(d, period === 'mes' ? 'dd MMM' : 'dd/MM'),
+      date: dayStr,
       ingresos,
       egresos,
     }
