@@ -443,7 +443,16 @@ export default function CajaPage() {
           <DialogHeader className="px-6 pt-4 pb-2 sticky top-0 bg-background z-10 border-b">
             <div className="flex items-center justify-between">
               <DialogTitle>Corte de Caja — {fmtDate(cajaQ.data.date)}</DialogTitle>
-              <Button size="sm" variant="outline" onClick={() => window.print()}>
+              <Button size="sm" variant="outline" onClick={() => {
+                const corte = document.querySelector('.corte-print') as HTMLElement
+                if (!corte) { toast.error('No se pudo encontrar el reporte'); return }
+                const html = corte.outerHTML
+                const w = window.open('', '_blank', 'width=800,height=600')
+                if (!w) { toast.error('Permite popups para imprimir'); return }
+                w.document.write(`<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"><title>Corte de Caja</title><style>*{box-sizing:border-box}body{font-family:Arial,sans-serif;margin:0;padding:20px;color:#111}@page{size:A4;margin:14mm}table{width:100%;border-collapse:collapse;font-size:12px}th,td{padding:6px 8px;text-align:left;border-bottom:1px solid #ddd}th{font-weight:700;background:#f5f5f5}.header{text-align:center;border-bottom:2px solid #0a3143;padding-bottom:10px;margin-bottom:16px}.title{font-size:18px;font-weight:700;color:#0a3143}.totals{background:#0a3143;color:#fff;padding:12px;border-radius:6px;margin-top:12px}.totals div{display:flex;justify-content:space-between;padding:4px 0}.signature{margin-top:40px;display:grid;grid-template-columns:1fr 1fr;gap:40px}.signature div{border-top:1px solid #333;padding-top:6px;text-align:center;font-size:11px}</style></head><body>${html}<div style="margin-top:20px;text-align:center"><button onclick="window.print()" style="padding:10px 24px;font-size:14px;cursor:pointer;background:#0a3143;color:#fff;border:none;border-radius:6px">Imprimir</button></div></body></html>`)
+                w.document.close()
+                w.onload = () => setTimeout(() => w.print(), 300)
+              }}>
                 <Printer className="h-4 w-4 mr-1" /> Imprimir
               </Button>
             </div>

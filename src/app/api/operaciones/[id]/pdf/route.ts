@@ -91,7 +91,7 @@ export async function GET(_req: NextRequest, ctx: { params: Promise<{ id: string
     </div>
     <div class="meta">
       <div><strong>Fecha:</strong> ${fmtDate(op.date)}</div>
-      <div><strong>Hora:</strong> ${fmtDateTime(op.createdAt).split(' ')[1]}</div>
+      <div><strong>Hora:</strong> ${new Date(new Date(op.createdAt).getTime() - 7 * 60 * 60 * 1000).toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' })}</div>
       <div><strong>Responsable:</strong> ${escapeHtml(op.performedBy || '—')}</div>
       <div><strong>Tipo:</strong> ${op.type === 'CIERRE' ? 'Cierre' : 'Apertura'}</div>
     </div>
@@ -234,7 +234,7 @@ export async function GET(_req: NextRequest, ctx: { params: Promise<{ id: string
   }
 
   <div class="footer">
-    Reporte generado el ${fmtDateTime(new Date())} · Sistema CENPOD
+    Reporte generado el ${new Date(new Date().getTime() - 7 * 60 * 60 * 1000).toLocaleString('es-MX', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })} · Sistema CENPOD
   </div>
 
   <div class="no-print" style="margin-top:24px;text-align:center;">
