@@ -1,6 +1,6 @@
 'use client'
 
-import { fmtMoney, fmtDateTime, fmtDate, METHOD_LABELS } from '@/lib/format'
+import { fmtMoney, fmtDate, METHOD_LABELS } from '@/lib/format'
 import type { CajaApiResponse } from './types'
 
 type Props = {
@@ -11,17 +11,30 @@ type Props = {
   clinicPhone?: string
 }
 
-/**
- * Vista imprimible del corte de caja.
- * Visible en pantalla dentro del diálogo y para impresión A4.
- * Usa la clase `.corte-print` (ver globals.css) — al imprimir, todo lo
- * demás se oculta y solo se imprime este componente.
- */
+// Función para convertir timestamp UTC a hora de Hermosillo (UTC-7)
+function toHermosilloTime(date: string | Date): string {
+  const d = typeof date === 'string' ? new Date(date) : date
+  const h = new Date(d.getTime() - 7 * 60 * 60 * 1000)
+  return h.toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' })
+}
+
+function toHermosilloDateTime(date: string | Date): string {
+  const d = typeof date === 'string' ? new Date(date) : date
+  const h = new Date(d.getTime() - 7 * 60 * 60 * 1000)
+  return h.toLocaleString('es-MX', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })
+}
+
 export function CorteReport({ data, responsable, clinicName, clinicAddress, clinicPhone }: Props) {
   const { session, movements, summary } = data
 
   // Movimientos imprimibles (excluir fondo inicial del listado detallado)
   const printableMovements = movements.filter((m) => m.source !== 'EFECTIVO_INICIAL')
+
+  // El fondo de apertura viene de la sesión, no del summary
+  const fondoApertura = session?.openingFund ?? summary.openingFund ?? 0
+
+  // El efectivo esperado = fondo + ingresos en efectivo - egresos en efectivo
+  const efectivoEsperado = fondoApertura + (summary.byMethod?.EFECTIVO ?? 0) - (summary.egresos ?? 0)
 
   return (
     <div className="corte-print bg-white text-slate-900 p-8 mx-auto" style={{ maxWidth: 800 }}>
@@ -42,7 +55,7 @@ export function CorteReport({ data, responsable, clinicName, clinicAddress, clin
           </div>
           <div className="text-xs text-slate-600">{fmtDate(data.date)}</div>
           <div className="text-xs text-slate-600">
-            {session?.closed ? `Cerrada: ${session.closedAt ? fmtDateTime(session.closedAt) : ''}` : 'Abierta'}
+            {session?.closed ? `Cerrada: ${session.closedAt ? toHermosilloDateTime(session.closedAt) : ''}` : 'Abierta'}
           </div>
         </div>
       </div>
@@ -66,7 +79,7 @@ export function CorteReport({ data, responsable, clinicName, clinicAddress, clin
       <div className="resumen-grid">
         <div className="resumen-item">
           <span>Fondo inicial:</span>
-          <strong>{fmtMoney(summary.openingFund)}</strong>
+          <strong>{fmtMoney(fondoApertura)}</strong>
         </div>
         <div className="resumen-item">
           <span>Ingresos totales:</span>
@@ -78,7 +91,7 @@ export function CorteReport({ data, responsable, clinicName, clinicAddress, clin
         </div>
         <div className="resumen-item">
           <span>Saldo esperado:</span>
-          <strong>{fmtMoney(summary.saldoEsperado)}</strong>
+          <strong>{fmtMoney(efectivoEsperado)}</strong>
         </div>
       </div>
 
@@ -128,7 +141,7 @@ export function CorteReport({ data, responsable, clinicName, clinicAddress, clin
           )}
           {printableMovements.map((m) => (
             <tr key={m.id}>
-              <td>{fmtDateTime(m.time).split(' ')[1]}</td>
+              <td>{toHermosilloTime(m.time)}</td>
               <td>{m.type === 'INGRESO' ? 'Ingreso' : 'Egreso'}</td>
               <td>{m.source}</td>
               <td>{m.description || '—'}</td>
@@ -149,20 +162,20 @@ export function CorteReport({ data, responsable, clinicName, clinicAddress, clin
           <div className="resumen-grid">
             <div className="resumen-item">
               <span>Efectivo esperado:</span>
-              <strong>{fmtMoney(summary.expectedCash ?? 0)}</strong>
+              <strong>{fmtMoney(efectivoEsperado)}</strong>
             </div>
             <div className="resumen-item">
               <span>Efectivo contado:</span>
-              <strong>{fmtMoney(summary.countedCash ?? 0)}</strong>
+              <strong>{fmtMoney(session.countedCash ?? summary.countedCash ?? 0)}</strong>
             </div>
             <div className="resumen-item" style={{ gridColumn: '1 / 3' }}>
               <span>Diferencia:</span>
               <strong
                 style={{
-                  color: (summary.difference ?? 0) === 0 ? '#16a34a' : '#dc2626',
+                  color: (session.difference ?? summary.difference ?? 0) === 0 ? '#16a34a' : '#dc2626',
                 }}
               >
-                {fmtMoney(summary.difference ?? 0)}
+                {fmtMoney(session.difference ?? summary.difference ?? 0)}
               </strong>
             </div>
           </div>
@@ -187,7 +200,7 @@ export function CorteReport({ data, responsable, clinicName, clinicAddress, clin
       </div>
 
       <p className="text-center text-[10px] text-slate-400 mt-8">
-        Documento generado por Sistema CENPOD · {fmtDateTime(new Date().toISOString())}
+        Documento generado por Sistema CENPOD · {toHermosilloDateTime(new Date().toISOString())}
       </p>
     </div>
   )
