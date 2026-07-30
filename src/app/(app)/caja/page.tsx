@@ -219,7 +219,7 @@ export default function CajaPage() {
             <Wallet className="h-6 w-6" style={{ color: '#0a3143' }} /> Caja
           </h1>
           <p className="text-sm text-muted-foreground">
-            {new Date(new Date().getTime() - 7 * 60 * 60 * 1000).toLocaleDateString('es-MX', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
+            {new Date().toLocaleDateString('es-MX', { timeZone: 'America/Hermosillo', weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
           </p>
         </header>
 
@@ -533,7 +533,7 @@ function MovementRow({ m }: { m: CashMovement }) {
   const isInitial = m.source === 'EFECTIVO_INICIAL'
   return (
     <TableRow>
-      <TableCell className="font-mono text-xs">{new Date(new Date(m.time).getTime() - 7 * 60 * 60 * 1000).toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' })}</TableCell>
+      <TableCell className="font-mono text-xs">{new Date(m.time).toLocaleTimeString('es-MX', { timeZone: 'America/Hermosillo', hour: '2-digit', minute: '2-digit' })}</TableCell>
       <TableCell>
         {isInitial ? (
           <Badge variant="outline" className="text-[10px] bg-slate-50">Fondo</Badge>

@@ -11,6 +11,29 @@ import { computeDailySummary } from '../../_summary'
 // 403 si PODOLOGIST
 // ============================================================
 
+// Opciones para formatear fechas en zona horaria de Hermosillo (UTC-7)
+// Usar timeZone explícito es más robusto que restar 7 horas manualmente,
+// porque funciona igual sin importar la zona horaria del servidor/navegador.
+const HERMOSILLO_TZ = 'America/Hermosillo'
+
+function fmtHermosilloDateTime(date: Date | string, opts?: Intl.DateTimeFormatOptions): string {
+  const d = typeof date === 'string' ? new Date(date) : date
+  return d.toLocaleString('es-MX', {
+    timeZone: HERMOSILLO_TZ,
+    day: '2-digit', month: '2-digit', year: 'numeric',
+    hour: '2-digit', minute: '2-digit',
+    ...opts,
+  })
+}
+
+function fmtHermosilloTime(date: Date | string): string {
+  const d = typeof date === 'string' ? new Date(date) : date
+  return d.toLocaleTimeString('es-MX', {
+    timeZone: HERMOSILLO_TZ,
+    hour: '2-digit', minute: '2-digit',
+  })
+}
+
 export async function GET(_req: NextRequest, ctx: { params: Promise<{ id: string }> }) {
   const { user, response } = await requireSession()
   if (response) return response
@@ -35,6 +58,10 @@ export async function GET(_req: NextRequest, ctx: { params: Promise<{ id: string
   const clinicName = op.clinic?.name || 'CENPOD'
   const clinicPhone = op.clinic?.phone || ''
   const clinicAddress = op.clinic?.address || ''
+
+  // El fondo de apertura viene del resumen (que busca la APERTURA del día),
+  // NO de `op.openingFund` porque los CIERRE no tienen openingFund guardado
+  const fondoApertura = summary.openingFund ?? op.openingFund ?? 0
 
   const title = op.type === 'CIERRE' ? 'REPORTE DE CIERRE DE SUCURSAL' : 'REPORTE DE APERTURA DE SUCURSAL'
 
@@ -95,7 +122,7 @@ export async function GET(_req: NextRequest, ctx: { params: Promise<{ id: string
     </div>
     <div class="meta">
       <div><strong>Fecha:</strong> ${fmtDate(op.date)}</div>
-      <div><strong>Hora:</strong> ${new Date(new Date(op.createdAt).getTime() - 7 * 60 * 60 * 1000).toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' })}</div>
+      <div><strong>${op.type === 'CIERRE' ? 'Cerrada' : 'Abierta'}:</strong> ${fmtHermosilloDateTime(op.createdAt)}</div>
       <div><strong>Responsable:</strong> ${escapeHtml(op.performedBy || '—')}</div>
       <div><strong>Tipo:</strong> ${op.type === 'CIERRE' ? 'Cierre' : 'Apertura'}</div>
     </div>
@@ -106,7 +133,7 @@ export async function GET(_req: NextRequest, ctx: { params: Promise<{ id: string
   <div class="grid">
     <div class="card">
       <div class="label">Fondo de apertura</div>
-      <div class="value">${fmtMoney(op.openingFund ?? 0)}</div>
+      <div class="value">${fmtMoney(fondoApertura)}</div>
     </div>
     <div class="card">
       <div class="label">Citas atendidas</div>
@@ -238,7 +265,7 @@ export async function GET(_req: NextRequest, ctx: { params: Promise<{ id: string
   }
 
   <div class="footer">
-    Reporte generado el ${new Date(new Date().getTime() - 7 * 60 * 60 * 1000).toLocaleString('es-MX', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })} · Sistema CENPOD
+    Reporte generado el ${fmtHermosilloDateTime(new Date())} · Sistema CENPOD
   </div>
 
   <div class="no-print" style="margin-top:24px;text-align:center;">

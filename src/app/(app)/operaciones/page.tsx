@@ -50,6 +50,18 @@ import { fmtMoney, fmtDate, fmtDateTime, METHOD_LABELS } from '@/lib/format'
 import { format, subDays } from 'date-fns'
 import { SignaturePad, type SignaturePadHandle } from '@/components/cenpod/signature-pad'
 
+// Formatear fecha/hora en zona horaria de Hermosillo (UTC-7) de forma robusta.
+// Usar timeZone explícito evita el problema de doble-offset cuando el navegador
+// del usuario también está en Hermosillo.
+function fmtHermosillo(date: string | Date): string {
+  const d = typeof date === 'string' ? new Date(date) : date
+  return d.toLocaleString('es-MX', {
+    timeZone: 'America/Hermosillo',
+    day: '2-digit', month: '2-digit', year: 'numeric',
+    hour: '2-digit', minute: '2-digit',
+  })
+}
+
 type DailyOperation = {
   id: string
   clinicId: string
@@ -365,7 +377,7 @@ function StatusCard({
             <div>
               <h3 className="font-semibold text-emerald-900">Sucursal abierta</h3>
               <p className="text-xs text-emerald-700">
-                Abierta por <strong>{op.apertura?.performedBy || '—'}</strong> · Fondo {fmtMoney(op.apertura?.openingFund ?? 0)} · {op.apertura && new Date(new Date(op.apertura.createdAt).getTime() - 7 * 60 * 60 * 1000).toLocaleString('es-MX', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                Abierta por <strong>{op.apertura?.performedBy || '—'}</strong> · Fondo {fmtMoney(op.apertura?.openingFund ?? 0)} · {op.apertura && fmtHermosillo(op.apertura.createdAt)}
               </p>
             </div>
           </div>
@@ -392,7 +404,7 @@ function StatusCard({
           <div>
             <h3 className="font-semibold text-slate-900">Sucursal cerrada por hoy</h3>
             <p className="text-xs text-slate-700">
-              Cerrada por <strong>{op.cierre?.performedBy || '—'}</strong> · {op.cierre && new Date(new Date(op.cierre.createdAt).getTime() - 7 * 60 * 60 * 1000).toLocaleString('es-MX', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
+              Cerrada por <strong>{op.cierre?.performedBy || '—'}</strong> · {op.cierre && fmtHermosillo(op.cierre.createdAt)}
               {op.cierre && op.cierre.difference !== null && op.cierre.difference !== 0 && (() => {
                 const diff = op.cierre!.difference!
                 return (

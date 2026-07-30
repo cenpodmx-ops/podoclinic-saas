@@ -19,18 +19,30 @@ export async function GET(req: NextRequest) {
   const url = req.nextUrl
   const dateParam = url.searchParams.get('date')
 
-  // Determinar el día a consultar
-  let dayStart: Date
-  let dayEnd: Date
+  // Determinar el día a consultar (en zona horaria de Hermosillo)
+  let hermosilloDayStr: string
   if (dateParam) {
-    const parsed = new Date(dateParam + 'T12:00:00')
-    if (isNaN(parsed.getTime())) return bad('Fecha inválida')
-    dayStart = startOfDayHermosillo(parsed)
-    dayEnd = endOfDayHermosillo(parsed)
+    // Si el parámetro ya es YYYY-MM-DD, usarlo directamente
+    if (/^\d{4}-\d{2}-\d{2}$/.test(dateParam)) {
+      hermosilloDayStr = dateParam
+    } else {
+      const parsed = new Date(dateParam + 'T12:00:00')
+      if (isNaN(parsed.getTime())) return bad('Fecha inválida')
+      hermosilloDayStr = formatDateHermosillo(parsed)
+    }
   } else {
-    dayStart = startOfDayHermosillo(new Date())
-    dayEnd = endOfDayHermosillo(new Date())
+    hermosilloDayStr = formatDateHermosillo(new Date())
   }
+
+  // Rango para campo `date` (CashSession.date, guardado como medianoche UTC
+  // del día calendario de Hermosillo): 00:00:00Z a 23:59:59Z de ese día
+  const dateFieldStart = new Date(hermosilloDayStr + 'T00:00:00.000Z')
+  const dateFieldEnd = new Date(hermosilloDayStr + 'T23:59:59.999Z')
+
+  // Rango para campo `createdAt` (movimientos, timestamp real UTC):
+  // 07:00 UTC (00:00 Hermosillo) a 06:59:59 UTC del día siguiente (23:59:59 Hermosillo)
+  const createdFieldStart = startOfDayHermosillo(new Date(hermosilloDayStr + 'T12:00:00'))
+  const createdFieldEnd = endOfDayHermosillo(new Date(hermosilloDayStr + 'T12:00:00'))
 
   // Buscar sesión de ese día para la clínica del usuario
   // SUPER sin clínica asignada → 403 si no tiene clinicId
@@ -40,7 +52,7 @@ export async function GET(req: NextRequest) {
   const session = await db.cashSession.findFirst({
     where: {
       clinicId,
-      date: { gte: dayStart, lte: dayEnd },
+      date: { gte: dateFieldStart, lte: dateFieldEnd },
     },
   })
 
@@ -50,7 +62,7 @@ export async function GET(req: NextRequest) {
   const allDayMovements = await db.cashMovement.findMany({
     where: {
       clinicId,
-      createdAt: { gte: dayStart, lte: dayEnd },
+      createdAt: { gte: createdFieldStart, lte: createdFieldEnd },
     },
     orderBy: { createdAt: 'asc' },
   })
@@ -68,7 +80,7 @@ export async function GET(req: NextRequest) {
     const allIds = new Set(allDayMovements.map(m => m.id))
     const extraFromSession = sessionMovements.filter(m => !allIds.has(m.id))
     // Solo incluir movimientos de la sesión que caigan en el rango del día
-    const extraInDay = extraFromSession.filter(m => m.createdAt >= dayStart && m.createdAt <= dayEnd)
+    const extraInDay = extraFromSession.filter(m => m.createdAt >= createdFieldStart && m.createdAt <= createdFieldEnd)
     movements = [...allDayMovements, ...extraInDay].sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime())
   }
 
@@ -76,7 +88,7 @@ export async function GET(req: NextRequest) {
   const summary = computeSummary(session, movements)
 
   return ok({
-    date: formatDateHermosillo(dayStart),
+    date: hermosilloDayStr,
     session: session
       ? {
           id: session.id,
@@ -124,10 +136,12 @@ export async function POST(req: NextRequest) {
   if (!clinicId) return bad('Sin clínica asignada', 403)
 
   // Verificar si ya existe una sesión para hoy
-  const todayStart = startOfDayHermosillo(new Date())
-  const todayEnd = endOfDayHermosillo(new Date())
+  // Usar midnight UTC del día calendario de Hermosillo (igual que operaciones/apertura)
+  const todayStr = formatDateHermosillo(new Date())
+  const todayDateStart = new Date(todayStr + 'T00:00:00.000Z')
+  const todayDateEnd = new Date(todayStr + 'T23:59:59.999Z')
   const existing = await db.cashSession.findFirst({
-    where: { clinicId, date: { gte: todayStart, lte: todayEnd } },
+    where: { clinicId, date: { gte: todayDateStart, lte: todayDateEnd } },
   })
   if (existing) {
     return bad(
@@ -138,13 +152,12 @@ export async function POST(req: NextRequest) {
     )
   }
 
-  // Crear la sesión — usar medianoche de Hermosillo como fecha
-  // (no new Date() que es UTC y puede caer en el día siguiente)
-  const sessionDate = startOfDayHermosillo(new Date())
+  // Crear la sesión — usar medianoche UTC del día calendario de Hermosillo
+  // (igual que operaciones/apertura, para que las búsquedas por `date` coincidan)
   const session = await db.cashSession.create({
     data: {
       clinicId,
-      date: sessionDate,
+      date: todayDateStart,
       openingFund,
       closed: false,
     },

@@ -2,6 +2,7 @@ import { NextRequest } from 'next/server'
 import { db } from '@/lib/db'
 import { requireSession, ok, bad } from '@/lib/api'
 import { startOfDay, endOfDay, format } from 'date-fns'
+import { formatDateHermosillo } from '@/lib/timezone'
 
 // ============================================================
 // MÓDULO 06 — Venta de mostrador (POS)
@@ -101,8 +102,10 @@ export async function POST(req: NextRequest) {
   }
 
   // ── 2) CashSession de hoy (get-or-create)
-  const todayStart = startOfDay(new Date())
-  const todayEnd = endOfDay(new Date())
+  // Usar medianoche UTC del día calendario de Hermosillo (igual que caja y operaciones)
+  const todayStr = formatDateHermosillo(new Date())
+  const todayStart = new Date(todayStr + 'T00:00:00.000Z')
+  const todayEnd = new Date(todayStr + 'T23:59:59.999Z')
   let session = await db.cashSession.findFirst({
     where: { clinicId, date: { gte: todayStart, lte: todayEnd } },
   })
@@ -110,7 +113,7 @@ export async function POST(req: NextRequest) {
     session = await db.cashSession.create({
       data: {
         clinicId,
-        date: new Date(),
+        date: todayStart,
         openingFund: 0,
         closed: false,
       },

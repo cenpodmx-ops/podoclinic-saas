@@ -12,16 +12,23 @@ type Props = {
 }
 
 // Función para convertir timestamp UTC a hora de Hermosillo (UTC-7)
+// Usar timeZone explícito es más robusto que restar 7 horas manualmente,
+// porque funciona igual sin importar la zona horaria del navegador.
 function toHermosilloTime(date: string | Date): string {
   const d = typeof date === 'string' ? new Date(date) : date
-  const h = new Date(d.getTime() - 7 * 60 * 60 * 1000)
-  return h.toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' })
+  return d.toLocaleTimeString('es-MX', {
+    timeZone: 'America/Hermosillo',
+    hour: '2-digit', minute: '2-digit',
+  })
 }
 
 function toHermosilloDateTime(date: string | Date): string {
   const d = typeof date === 'string' ? new Date(date) : date
-  const h = new Date(d.getTime() - 7 * 60 * 60 * 1000)
-  return h.toLocaleString('es-MX', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })
+  return d.toLocaleString('es-MX', {
+    timeZone: 'America/Hermosillo',
+    day: '2-digit', month: '2-digit', year: 'numeric',
+    hour: '2-digit', minute: '2-digit',
+  })
 }
 
 export function CorteReport({ data, responsable, clinicName, clinicAddress, clinicPhone }: Props) {

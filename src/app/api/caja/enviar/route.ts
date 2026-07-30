@@ -2,6 +2,7 @@ import { NextRequest } from 'next/server'
 import { db } from '@/lib/db'
 import { requireSession, ok, bad } from '@/lib/api'
 import { startOfDay, endOfDay, format } from 'date-fns'
+import { formatDateHermosillo } from '@/lib/timezone'
 
 // ============================================================
 // MÓDULO 07 — CAJA — Enviar corte por WhatsApp
@@ -25,8 +26,10 @@ export async function POST(req: NextRequest) {
   if (!clinicId) return bad('Sin clínica asignada', 403)
 
   // Buscar sesión de hoy
-  const todayStart = startOfDay(new Date())
-  const todayEnd = endOfDay(new Date())
+  // Usar medianoche UTC del día calendario de Hermosillo (igual que caja y operaciones)
+  const todayStr = formatDateHermosillo(new Date())
+  const todayStart = new Date(todayStr + 'T00:00:00.000Z')
+  const todayEnd = new Date(todayStr + 'T23:59:59.999Z')
   const session = await db.cashSession.findFirst({
     where: { clinicId, date: { gte: todayStart, lte: todayEnd } },
     include: { movements: true, clinic: true },

@@ -68,7 +68,7 @@ export default function DashboardPage() {
         <div>
           <h1 className="text-2xl font-bold">Dashboard</h1>
           <p className="text-sm text-muted-foreground">
-            {data.clinicName} · {new Date(new Date().getTime() - 7 * 60 * 60 * 1000).toLocaleDateString('es-MX', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
+            {data.clinicName} · {new Date().toLocaleDateString('es-MX', { timeZone: 'America/Hermosillo', weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
           </p>
         </div>
         <div className="flex gap-2">

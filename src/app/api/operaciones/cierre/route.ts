@@ -45,8 +45,11 @@ export async function POST(req: NextRequest) {
   })
   if (yaCerrada) return bad('La sucursal ya está cerrada hoy', 409)
 
-  // Computar resumen
-  const summary = await computeDailySummary(clinicId, new Date())
+  // Computar resumen — usar `ds` (medianoche UTC del día de Hermosillo)
+  // NO usar `new Date()` porque si el cierre es después de las 5 PM Hermosillo
+  // (que es 00:00 UTC del día siguiente), computeDailySummary buscaría la apertura
+  // en el día equivocado y no la encontraría → openingFund = 0
+  const summary = await computeDailySummary(clinicId, ds)
   const counted = Number(countedCash)
   const expected = summary.expectedCash
   const difference = Math.round((counted - expected) * 100) / 100
@@ -69,11 +72,14 @@ export async function POST(req: NextRequest) {
   })
 
   // Crear DailyOperation CIERRE
+  // Guardar openingFund en el cierre también, para que el PDF y el reporte
+  // puedan mostrar el fondo correcto sin depender solo del resumen calculado
   const cierre = await db.dailyOperation.create({
     data: {
       clinicId,
       date: ds, // medianoche UTC del día de Hermosillo
       type: 'CIERRE',
+      openingFund: summary.openingFund, // preservar el fondo de la apertura
       closingCounted: counted,
       closingExpected: expected,
       difference,

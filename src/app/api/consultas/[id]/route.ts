@@ -3,6 +3,7 @@ import { db } from '@/lib/db'
 import { requireSession, ok, bad } from '@/lib/api'
 import { logAudit } from '@/lib/audit'
 import { startOfDay, endOfDay, addDays } from 'date-fns'
+import { formatDateHermosillo } from '@/lib/timezone'
 
 // ============================================================
 // MÓDULO 02 — CONSULTAS / [id]
@@ -261,8 +262,10 @@ export async function PATCH(req: NextRequest, ctx: { params: Promise<{ id: strin
     })
 
     // 3) CashSession get-or-create de hoy
-    const todayStart = startOfDay(new Date())
-    const todayEnd = endOfDay(new Date())
+    // Usar medianoche UTC del día calendario de Hermosillo (igual que caja y operaciones)
+    const todayStr = formatDateHermosillo(new Date())
+    const todayStart = new Date(todayStr + 'T00:00:00.000Z')
+    const todayEnd = new Date(todayStr + 'T23:59:59.999Z')
     let session = await db.cashSession.findFirst({
       where: { clinicId: existing.clinicId, date: { gte: todayStart, lte: todayEnd } },
     })
@@ -270,7 +273,7 @@ export async function PATCH(req: NextRequest, ctx: { params: Promise<{ id: strin
       session = await db.cashSession.create({
         data: {
           clinicId: existing.clinicId,
-          date: new Date(),
+          date: todayStart,
           openingFund: 0,
           closed: false,
         },
