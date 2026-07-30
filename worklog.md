@@ -1625,3 +1625,22 @@ Stage Summary:
 - Todas las fechas ahora muestran hora de Hermosillo (UTC-7) usando timeZone explícito
 - Todos los cálculos (expectedCash, difference) se recalculan en vivo para evitar valores guardados con bug
 - Unificadas TODAS las APIs a una sola convención de fecha (midnight UTC del día calendario de Hermosillo)
+
+---
+Task ID: FIX-CORTE-DIFERENCIA-2026-07-30
+Agent: main (fix diferencia en corte de caja imprimible)
+Task: Arreglar bug: diferencia no restaba en el imprimible de caja
+
+Work Log:
+- Usuario reportó: "en caja... Efectivo esperado $905, Efectivo contado $905, Diferencia $905 — no está restando"
+- Encontré en corte-report.tsx (línea 185): usaba `session.difference ?? summary.difference ?? 0`
+  que son los valores guardados en la BD con el bug anterior (openingFund=0 → difference=$905)
+- Fix: calcular diferenciaCierre en vivo = efectivoContado - efectivoEsperado
+- Commit 7de7496, push exitoso, deployado en Vercel
+- Verificación en producción (CENPOD Quiroga, 29/07/2026):
+  * Efectivo esperado: $905.00 ✓
+  * Efectivo contado: $905.00 ✓
+  * Diferencia: +$0.00 ✓ (antes mostraba $905.00)
+
+Stage Summary:
+- BUG RESUELTO. Corte de caja imprimible ahora calcula diferencia correctamente.
