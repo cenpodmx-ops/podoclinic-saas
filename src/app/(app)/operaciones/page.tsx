@@ -405,8 +405,12 @@ function StatusCard({
             <h3 className="font-semibold text-slate-900">Sucursal cerrada por hoy</h3>
             <p className="text-xs text-slate-700">
               Cerrada por <strong>{op.cierre?.performedBy || '—'}</strong> · {op.cierre && fmtHermosillo(op.cierre.createdAt)}
-              {op.cierre && op.cierre.difference !== null && op.cierre.difference !== 0 && (() => {
-                const diff = op.cierre!.difference!
+              {op.cierre && (() => {
+                // Recalcular diferencia en vivo (los valores guardados pueden tener el bug openingFund=0)
+                const counted = op.cierre!.closingCounted ?? 0
+                const expected = op.summary.expectedCash ?? op.cierre!.closingExpected ?? 0
+                const diff = Math.round((counted - expected) * 100) / 100
+                if (diff === 0) return null
                 return (
                   <span className={`ml-2 font-semibold ${diff > 0 ? 'text-emerald-700' : 'text-red-700'}`}>
                     Diferencia: {diff > 0 ? '+' : ''}{fmtMoney(diff)}
