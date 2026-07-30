@@ -1566,3 +1566,62 @@ Stage Summary:
 - BUG RESUELTO. Impresión de receta ahora tiene márgenes consistentes.
 - @page margin:0 + padding de .rx-sheet = márgenes uniformes en cualquier navegador.
 - @media print elimina fondo gris y sombras de pantalla.
+
+---
+Task ID: FIX-FONDO-INICIAL-2026-07-30
+Agent: main (fix fondo inicial $0 en caja y cierre/apertura)
+Task: Arreglar bug: fondo inicial no aparecía ni se contaba en caja ni en cierre/apertura
+
+Work Log:
+- Usuario reportó: "Siguen sin contar ni aparecer fondo inicial, ni en caja, ni en cierre apertura"
+- Investigación reveló ROOT CAUSE: había DOS convenciones incompatibles para el campo `date`:
+  1. operaciones/apertura, operaciones/cierre, _summary.ts: date = new Date(todayStr + 'T00:00:00.000Z') → 2026-07-29T00:00:00Z (medianoche UTC)
+  2. caja (GET/POST), consultas, ventas-mostrador, egreso, enviar: date = startOfDayHermosillo(new Date()) → 2026-07-29T07:00:00Z (07:00 UTC)
+  Cuando el usuario abría vía operaciones/apertura (convención 1), caja no encontraba la sesión porque buscaba con convención 2 → session = null → openingFund = $0
+
+- Fix 1: Unificar TODAS las APIs a convención 1 (medianoche UTC del día calendario de Hermosillo)
+  * caja/route.ts (GET): separar rangos para 'date' (midnight UTC) y 'createdAt' (Hermosillo day range)
+  * caja/route.ts (POST): guardar date como midnight UTC
+  * caja/egreso/route.ts: midnight UTC para buscar sesión
+  * caja/enviar/route.ts: midnight UTC para buscar sesión
+  * consultas/route.ts: midnight UTC para get-or-create sesión
+  * consultas/[id]/route.ts: midnight UTC para get-or-create sesión
+  * ventas-mostrador/route.ts: midnight UTC para get-or-create sesión
+
+- Fix 2: operaciones/cierre pasaba new Date() a computeDailySummary que podía caer en día siguiente UTC después de 5 PM → apertura no encontrada → openingFund = $0
+  * Cambiado a pasar 'ds' (midnight UTC del día de Hermosillo)
+  * También: guardar openingFund en el CIERRE record para preservar
+
+- Fix 3: operaciones/[id]/pdf usaba op.openingFund (null en CIERRE) → $0
+  * Cambiado a summary.openingFund (busca APERTURA del día)
+  * Recalcular expectedCash y difference en vivo (los guardados pueden tener bug)
+  * Fechas "Cerrada" y "Documento generado" con timeZone: 'America/Hermosillo'
+
+- Fix 4: Reemplazado patrón manual 'new Date(d.getTime() - 7*3600*1000)' por toLocaleString('es-MX', { timeZone: 'America/Hermosillo' })
+  * Más robusto — funciona igual sin importar zona horaria del navegador/servidor
+  * Aplicado en: corte-report.tsx, caja/page.tsx, dashboard/page.tsx, operaciones/page.tsx, operaciones/[id]/pdf/route.ts
+
+- Fix 5: caja "Saldo esperado" incluía TODOS los ingresos (tarjeta+efectivo) → $1,585 en vez de $905
+  * Cambiado a: saldoEsperado = openingFund + ingresosEfectivo - egresosEfectivo
+  * Añadido egresosEfectivo al summary
+  * KPI "Diferencia" recalculado en vivo: countedCash - saldoEsperado
+
+- Fix 6: StatusCard y CierreReportCard en operaciones usaban valores guardados (op.cierre.difference) → recalcular en vivo
+
+Verificación en PRODUCCIÓN con Agent Browser (CENPOD Quiroga, cierre 29/07/2026):
+  * Caja: Fondo inicial $700.00 ✓, Saldo esperado $905.00 ✓, Diferencia $0.00 ✓
+  * Operaciones: Fondo apertura $700.00 ✓, Efectivo esperado $905.00 ✓, Diferencia +$0.00 ✓
+  * PDF: Fondo de apertura $700.00 ✓, Efectivo esperado $905.00 ✓, Diferencia +$0.00 ✓
+  * PDF "Cerrada: 29/07/2026, 05:44 p.m." ✓ (Hermosillo time, antes mostraba UTC 30/07/2026 00:43)
+  * PDF "Reporte generado el 29/07/2026, 09:46 p.m." ✓ (Hermosillo time)
+
+Commits: 52d20fe, 633a28e, 7829cda, 1a59e19, be204e5, 57bd8da (todos pusheados a main, deployados en Vercel)
+
+Stage Summary:
+- BUG COMPLETAMENTE RESUELTO. Fondo inicial ahora aparece y se cuenta correctamente en:
+  1. Caja (KPI Fondo inicial, Saldo esperado, Diferencia)
+  2. Cierre/Apertura (StatusCard, CierreReportCard, PDF)
+  3. Corte de caja imprimible
+- Todas las fechas ahora muestran hora de Hermosillo (UTC-7) usando timeZone explícito
+- Todos los cálculos (expectedCash, difference) se recalculan en vivo para evitar valores guardados con bug
+- Unificadas TODAS las APIs a una sola convención de fecha (midnight UTC del día calendario de Hermosillo)
