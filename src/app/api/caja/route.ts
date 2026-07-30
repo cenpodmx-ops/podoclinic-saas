@@ -232,11 +232,21 @@ function computeSummary(
 
   // Para el saldo "operativo" (sin fondo inicial) — pero el saldo en caja
   // incluye el fondo inicial porque físicamente está en el cajón.
+  // IMPORTANTE: el saldo esperado en CAJA (efectivo físico) solo incluye
+  // ingresos en EFECTIVO. Los ingresos con tarjeta/transferencia NO están
+  // en el cajón, son bancarios.
   const openingFund = session?.openingFund ?? 0
   const ingresosOperativos = movements
     .filter((m) => m.type === 'INGRESO' && m.source !== 'EFECTIVO_INICIAL')
     .reduce((s, m) => s + m.amount, 0)
-  const saldoEsperado = openingFund + ingresosOperativos - egresos
+  const ingresosEfectivo = movements
+    .filter((m) => m.type === 'INGRESO' && m.source !== 'EFECTIVO_INICIAL' && (m.method || 'EFECTIVO') === 'EFECTIVO')
+    .reduce((s, m) => s + m.amount, 0)
+  const egresosEfectivo = movements
+    .filter((m) => m.type === 'EGRESO' && (m.method || 'EFECTIVO') === 'EFECTIVO')
+    .reduce((s, m) => s + m.amount, 0)
+  // Saldo esperado en el cajón = fondo + ingresos en efectivo - egresos en efectivo
+  const saldoEsperado = openingFund + ingresosEfectivo - egresosEfectivo
 
   return {
     openingFund,
