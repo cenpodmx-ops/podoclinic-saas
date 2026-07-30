@@ -252,6 +252,7 @@ function computeSummary(
     openingFund,
     ingresos: ingresosOperativos,
     egresos,
+    egresosEfectivo,
     saldoEsperado,
     byMethod: {
       EFECTIVO: byMethod.EFECTIVO,

@@ -41,7 +41,7 @@ export function CorteReport({ data, responsable, clinicName, clinicAddress, clin
   const fondoApertura = session?.openingFund ?? summary.openingFund ?? 0
 
   // El efectivo esperado = fondo + ingresos en efectivo - egresos en efectivo
-  const efectivoEsperado = fondoApertura + (summary.byMethod?.EFECTIVO ?? 0) - (summary.egresos ?? 0)
+  const efectivoEsperado = fondoApertura + (summary.byMethod?.EFECTIVO ?? 0) - (summary.egresosEfectivo ?? summary.egresos ?? 0)
 
   return (
     <div className="corte-print bg-white text-slate-900 p-8 mx-auto" style={{ maxWidth: 800 }}>

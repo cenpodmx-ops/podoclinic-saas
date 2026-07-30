@@ -30,6 +30,7 @@ export type CashSummary = {
   openingFund: number
   ingresos: number
   egresos: number
+  egresosEfectivo: number
   saldoEsperado: number
   byMethod: {
     EFECTIVO: number

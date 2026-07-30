@@ -210,6 +210,13 @@ export default function CajaPage() {
 
   const { session: cashSession, movements, summary } = cajaQ.data
 
+  // Recalcular la diferencia en vivo (los valores guardados en session.difference
+  // pueden haber sido calculados con un bug anterior donde openingFund = 0).
+  // Diferencia real = efectivo contado - saldo esperado (efectivo en cajón)
+  const liveDifference = cashSession?.closed
+    ? Math.round(((cashSession.countedCash ?? 0) - summary.saldoEsperado) * 100) / 100
+    : null
+
   // ── Render: sin sesión (caja cerrada — abrir)
   if (!cashSession) {
     return (
@@ -321,10 +328,10 @@ export default function CajaPage() {
         {cashSession.closed ? (
           <KpiCard
             label="Diferencia"
-            value={fmtMoney(summary.difference ?? 0)}
+            value={fmtMoney(liveDifference ?? 0)}
             icon={AlertTriangle}
             color={
-              (summary.difference ?? 0) === 0
+              (liveDifference ?? 0) === 0
                 ? 'text-emerald-700 bg-emerald-50'
                 : 'text-amber-700 bg-amber-50'
             }
@@ -682,12 +689,14 @@ function CloseDialog({
   onClose: (v: { countedCash: number; notes: string; signatureData?: string | null }) => void
   isPending: boolean
 }) {
-  const expected = summary.expectedCash ?? 0
+  // Usar saldoEsperado (calculado en vivo) en vez de session.expectedCash
+  // (que podría ser null o estar calculado con un bug anterior)
+  const expected = summary.saldoEsperado ?? 0
   const [counted, setCounted] = useState('')
   const [notes, setNotes] = useState('')
 
   const countedNum = Number(counted) || 0
-  const difference = countedNum - expected
+  const difference = Math.round((countedNum - expected) * 100) / 100
 
   const handle = () => {
     if (isNaN(countedNum) || countedNum < 0) {
@@ -718,7 +727,7 @@ function CloseDialog({
             </div>
             <div className="flex justify-between">
               <span className="text-muted-foreground">Egresos en efectivo:</span>
-              <span className="font-medium">{fmtMoney(summary.egresos)}</span>
+              <span className="font-medium">{fmtMoney(summary.egresosEfectivo ?? summary.egresos ?? 0)}</span>
             </div>
             <Separator className="my-1" />
             <div className="flex justify-between">
