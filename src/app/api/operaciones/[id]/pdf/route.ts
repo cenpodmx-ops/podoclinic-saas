@@ -1,7 +1,8 @@
 import { NextRequest } from 'next/server'
 import { db } from '@/lib/db'
 import { requireSession, bad } from '@/lib/api'
-import { fmtMoney, fmtDate, fmtDateTime, METHOD_LABELS } from '@/lib/format'
+import { fmtMoney, fmtDate, METHOD_LABELS } from '@/lib/format'
+import { computeDailySummary } from '../../_summary'
 
 // ============================================================
 // MÓDULO 15 — CIERRE Y APERTURA DE SUCURSAL
@@ -25,9 +26,12 @@ export async function GET(_req: NextRequest, ctx: { params: Promise<{ id: string
     return bad('No tienes acceso a esta operación', 403)
   }
 
-  const summary = op.summaryJson ? safeParse(op.summaryJson) : null
-  const ingresosByMethod = summary?.ingresos?.byMethod || {}
-  const citas = summary?.citas || {}
+  // Recalcular el resumen en vivo (en vez de usar summaryJson guardado
+  // que puede tener datos incorrectos si se guardó con un bug anterior)
+  const liveSummary = await computeDailySummary(op.clinicId, op.date)
+  const summary = liveSummary
+  const ingresosByMethod = summary.ingresos.byMethod
+  const citas = summary.citas
   const clinicName = op.clinic?.name || 'CENPOD'
   const clinicPhone = op.clinic?.phone || ''
   const clinicAddress = op.clinic?.address || ''

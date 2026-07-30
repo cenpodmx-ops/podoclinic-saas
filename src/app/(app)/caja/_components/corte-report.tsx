@@ -28,7 +28,6 @@ export function CorteReport({ data, responsable, clinicName, clinicAddress, clin
       {/* Encabezado */}
       <div className="flex items-center justify-between border-b-2 border-[#0a3143] pb-3 mb-4">
         <div className="flex items-center gap-3">
-          <img src="/logo.svg" alt="CENPOD" className="h-12" />
           <div>
             <h1 className="text-xl font-bold" style={{ color: '#0a3143' }}>
               {clinicName || 'CENPOD'}
