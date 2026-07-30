@@ -43,6 +43,11 @@ export function CorteReport({ data, responsable, clinicName, clinicAddress, clin
   // El efectivo esperado = fondo + ingresos en efectivo - egresos en efectivo
   const efectivoEsperado = fondoApertura + (summary.byMethod?.EFECTIVO ?? 0) - (summary.egresosEfectivo ?? summary.egresos ?? 0)
 
+  // Diferencia en vivo = efectivo contado - efectivo esperado
+  // (NO usar session.difference que puede estar guardado con un bug anterior)
+  const efectivoContado = session?.countedCash ?? summary.countedCash ?? 0
+  const diferenciaCierre = Math.round((efectivoContado - efectivoEsperado) * 100) / 100
+
   return (
     <div className="corte-print bg-white text-slate-900 p-8 mx-auto" style={{ maxWidth: 800 }}>
       {/* Encabezado */}
@@ -179,10 +184,11 @@ export function CorteReport({ data, responsable, clinicName, clinicAddress, clin
               <span>Diferencia:</span>
               <strong
                 style={{
-                  color: (session.difference ?? summary.difference ?? 0) === 0 ? '#16a34a' : '#dc2626',
+                  color: diferenciaCierre === 0 ? '#16a34a' : '#dc2626',
                 }}
               >
-                {fmtMoney(session.difference ?? summary.difference ?? 0)}
+                {diferenciaCierre >= 0 ? '+' : ''}
+                {fmtMoney(diferenciaCierre)}
               </strong>
             </div>
           </div>
