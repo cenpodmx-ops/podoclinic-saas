@@ -63,12 +63,19 @@ export async function GET(_req: NextRequest, ctx: { params: Promise<{ id: string
   // NO de `op.openingFund` porque los CIERRE no tienen openingFund guardado
   const fondoApertura = summary.openingFund ?? op.openingFund ?? 0
 
+  // Recalcular el efectivo esperado y la diferencia en vivo, porque los valores
+  // guardados (op.closingExpected, op.difference) pueden haber sido calculados
+  // con un bug anterior (openingFund = 0). Usar el resumen actualizado.
+  const countedCash = op.closingCounted ?? 0
+  const expectedCash = op.type === 'CIERRE' ? summary.expectedCash : (op.closingExpected ?? summary.expectedCash ?? 0)
+  const difference = op.type === 'CIERRE' ? Math.round((countedCash - expectedCash) * 100) / 100 : (op.difference ?? 0)
+
   const title = op.type === 'CIERRE' ? 'REPORTE DE CIERRE DE SUCURSAL' : 'REPORTE DE APERTURA DE SUCURSAL'
 
   const diffClass =
-    op.difference === null || op.difference === 0
+    difference === null || difference === 0
       ? '#0a3143'
-      : op.difference > 0
+      : difference > 0
       ? '#15803d'
       : '#b91c1c'
 
@@ -229,15 +236,15 @@ export async function GET(_req: NextRequest, ctx: { params: Promise<{ id: string
   <div class="totals">
     <div>
       <div class="lbl">Efectivo contado</div>
-      <div class="val">${fmtMoney(op.closingCounted ?? 0)}</div>
+      <div class="val">${fmtMoney(countedCash)}</div>
     </div>
     <div>
       <div class="lbl">Efectivo esperado</div>
-      <div class="val">${fmtMoney(op.closingExpected ?? 0)}</div>
+      <div class="val">${fmtMoney(expectedCash)}</div>
     </div>
     <div>
       <div class="lbl">Diferencia</div>
-      <div class="val" style="color:${diffClass === '#0a3143' ? '#fff' : diffClass === '#15803d' ? '#86efac' : '#fca5a5'}">${(op.difference ?? 0) >= 0 ? '+' : ''}${fmtMoney(op.difference ?? 0)}</div>
+      <div class="val" style="color:${diffClass === '#0a3143' ? '#fff' : diffClass === '#15803d' ? '#86efac' : '#fca5a5'}">${difference >= 0 ? '+' : ''}${fmtMoney(difference)}</div>
     </div>
   </div>
 

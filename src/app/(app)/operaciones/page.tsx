@@ -576,7 +576,12 @@ function LiveSummary({ op, onCerrar }: { op: OperacionesResponse; onCerrar: () =
 }
 
 function CierreReportCard({ cierre, summary }: { cierre: DailyOperation; summary: Summary }) {
-  const diff = cierre.difference ?? 0
+  // Recalcular efectivo esperado y diferencia en vivo, porque los valores
+  // guardados (cierre.closingExpected, cierre.difference) pueden haber sido
+  // calculados con un bug anterior (openingFund = 0).
+  const countedCash = cierre.closingCounted ?? 0
+  const expectedCash = summary.expectedCash ?? cierre.closingExpected ?? 0
+  const diff = Math.round((countedCash - expectedCash) * 100) / 100
   const diffColor = diff === 0 ? 'text-slate-700' : diff > 0 ? 'text-emerald-700' : 'text-red-700'
   const [waOpen, setWaOpen] = useState(false)
 
@@ -608,8 +613,9 @@ Responsable: ${cierre.performedBy || '—'}
 ${podMsg || '  Sin consultas pagadas'}
 
 *Caja:*
-• Efectivo esperado: ${fmtMoney(cierre.closingExpected ?? 0)}
-• Efectivo contado: ${fmtMoney(cierre.closingCounted ?? 0)}
+• Fondo apertura: ${fmtMoney(summary.openingFund ?? cierre.openingFund ?? 0)}
+• Efectivo esperado: ${fmtMoney(expectedCash)}
+• Efectivo contado: ${fmtMoney(countedCash)}
 • Diferencia: ${diff >= 0 ? '+' : ''}${fmtMoney(diff)}
 
 ${cierre.notes ? `*Incidencias:* ${cierre.notes}` : 'Sin incidencias.'}`
@@ -631,10 +637,10 @@ ${cierre.notes ? `*Incidencias:* ${cierre.notes}` : 'Sin incidencias.'}`
       <CardContent className="space-y-3">
         {/* KPIs principales */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
-          <Stat label="Fondo apertura" value={fmtMoney(cierre.openingFund ?? summary.openingFund ?? 0)} />
+          <Stat label="Fondo apertura" value={fmtMoney(summary.openingFund ?? cierre.openingFund ?? 0)} />
           <Stat label="Total del día" value={fmtMoney(summary.ingresos.total)} />
-          <Stat label="Efectivo contado" value={fmtMoney(cierre.closingCounted ?? 0)} />
-          <Stat label="Efectivo esperado" value={fmtMoney(cierre.closingExpected ?? 0)} />
+          <Stat label="Efectivo contado" value={fmtMoney(countedCash)} />
+          <Stat label="Efectivo esperado" value={fmtMoney(expectedCash)} />
         </div>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
           <Stat label="Citas atendidas" value={`${summary.citas.atendidas} / ${summary.citas.total}`} />
