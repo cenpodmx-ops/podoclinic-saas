@@ -1644,3 +1644,49 @@ Work Log:
 
 Stage Summary:
 - BUG RESUELTO. Corte de caja imprimible ahora calcula diferencia correctamente.
+
+---
+Task ID: FIX-FINANZAS-RANGO-2026-07-30
+Agent: main (fix desfase de un día en finanzas)
+Task: Arreglar bug: al seleccionar rango de fechas en finanzas, mostraba datos de un día antes
+
+Work Log:
+- Usuario reportó: "al seleccionar del 24 al 30 de julio, me muestra datos del 23 al 29, y se mueven las cantidades. Las gráficas de ingreso por podólogo y top de servicios también muestran cantidades incorrectas"
+
+- CAUSA RAÍZ en finanzas/route.ts:
+  startOfDayHermosillo(parseISO('2026-07-24')) devolvía 2026-07-23T07:00:00Z (un día antes)
+  Por qué:
+    1. parseISO crea medianoche UTC: 2026-07-24T00:00:00Z
+    2. startOfDayHermosillo convierte a Hermosillo: 2026-07-23T17:00:00Z
+    3. Toma midnight de ese día Hermosillo: 2026-07-23T00:00:00 Hermosillo
+    4. Convierte a UTC: 2026-07-23T07:00:00Z
+  Es decir, trataba el midnight UTC del input como un instante Hermosillo (17:00 del día anterior) → tomaba midnight de ese día anterior.
+
+- BUG ADICIONAL: consultations se filtraba con rango Hermosillo (07:00 UTC) pero el campo 'date' se guarda como midnight UTC del día calendario → algunas consultas no se encontraban → gráficas de podólogo y top servicios mostraban cantidades incorrectas.
+
+- FIX: Añadidos helpers en src/lib/timezone.ts que construyen rangos UTC directamente desde un string YYYY-MM-DD sin pasar por parseISO+startOfDayHermosillo:
+  * dateFieldStart/End: midnight UTC (para campos 'date' como citas, consultas, cashSession)
+  * createdAtFieldStart/End: 07:00 UTC a 06:59 next day (para 'createdAt' como movimientos)
+
+- Aplicado a:
+  * finanzas/route.ts (dashboard): rango custom + filtro de consultations con dateFieldRange
+  * finanzas/comisiones/route.ts: rango Hermosillo correcto
+  * finanzas/reportes/route.ts: distinción startTime/createdAt vs date
+
+- Verificación en PRODUCCIÓN (CENPOD Quiroga, rango 24-30 julio):
+  * API /api/finanzas?from=2026-07-24&to=2026-07-30 devuelve:
+    - range: {from: "2026-07-24", to: "2026-07-30"} ✓
+    - dailySeries: [24 jul, 25 jul, 26 jul, 27 jul, 28 jul, 29 jul, 30 jul] ✓ (7 días correctos)
+    - byPodologist: Uziel Montaño, 9 consultas, $4,995 ✓
+    - topServices: Consulta Podologica, 9, $4,995 ✓
+    - Ingresos totales: $5,680 ✓
+  * UI muestra gráfica con días 24 jul - 30 jul ✓ (antes 23-29)
+  * Gráfica de ingreso por podólogo muestra barra correcta ~$5k ✓
+  * Top servicios muestra ConsultaPodologica ✓
+
+- Commit 996e053, push exitoso, deployado en Vercel.
+
+Stage Summary:
+- BUG COMPLETAMENTE RESUELTO. Finanzas ahora muestra el rango de fechas correcto y las gráficas (diaria, por podólogo, top servicios) muestran las cantidades correctas del período seleccionado.
+- La causa raíz era usar startOfDayHermosillo(parseISO(dateStr)) que aplica un doble offset (parseISO → midnight UTC, startOfDayHermosillo → trata como instante Hermosillo → midnight del día anterior).
+- Ahora se construyen rangos UTC directamente desde el string YYYY-MM-DD.
