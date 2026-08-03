@@ -2,7 +2,16 @@ import { NextRequest } from 'next/server'
 import { db } from '@/lib/db'
 import { requireSession, ok, bad, effectiveClinic } from '@/lib/api'
 import { canAccessFinance } from '@/lib/session'
-import { startOfDay, endOfDay, parseISO, format } from 'date-fns'
+import { format } from 'date-fns'
+import {
+  formatDateHermosillo,
+  dateFieldStart,
+  dateFieldEnd,
+  createdAtFieldStart,
+  createdAtFieldEnd,
+  startOfMonthHermosillo,
+  endOfMonthHermosillo,
+} from '@/lib/timezone'
 
 // ============================================================
 // MÓDULO 07 — FINANZAS — Reportes
@@ -24,29 +33,32 @@ export async function GET(req: NextRequest) {
   const type = url.searchParams.get('type') as ReportType
   if (!type) return bad('Tipo de reporte requerido')
 
-  // Rango por defecto: mes actual
-  const now = new Date()
+  // Rango por defecto: mes actual (en Hermosillo)
   const fromParam = url.searchParams.get('from')
   const toParam = url.searchParams.get('to')
-  const start = fromParam ? startOfDay(parseISO(fromParam)) : new Date(now.getFullYear(), now.getMonth(), 1)
-  const end = toParam ? endOfDay(parseISO(toParam)) : new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999)
+  const fromStr = fromParam || formatDateHermosillo(startOfMonthHermosillo(new Date()))
+  const toStr = toParam || formatDateHermosillo(endOfMonthHermosillo(new Date()))
 
   switch (type) {
     case 'citas':
-      return ok(await reporteCitas(clinicId, start, end))
+      return ok(await reporteCitas(clinicId, fromStr, toStr))
     case 'inventario':
       return ok(await reporteInventario(clinicId))
     case 'comisiones':
-      return ok(await reporteComisiones(clinicId, start, end))
+      return ok(await reporteComisiones(clinicId, fromStr, toStr))
     case 'ingresos':
-      return ok(await reporteIngresos(clinicId, start, end))
+      return ok(await reporteIngresos(clinicId, fromStr, toStr))
     default:
       return bad('Tipo de reporte inválido')
   }
 }
 
 // ── Citas: lista detallada de citas en el periodo
-async function reporteCitas(clinicId: string | undefined, start: Date, end: Date) {
+// `startTime` es un timestamp real (no midnight UTC), así que usamos Hermosillo range
+async function reporteCitas(clinicId: string | undefined, fromStr: string, toStr: string) {
+  const start = createdAtFieldStart(fromStr)
+  const end = createdAtFieldEnd(toStr)
+
   const appointments = await db.appointment.findMany({
     where: {
       ...(clinicId ? { clinicId } : {}),
@@ -66,7 +78,7 @@ async function reporteCitas(clinicId: string | undefined, start: Date, end: Date
 
   return {
     title: 'Reporte de Citas',
-    range: { from: format(start, 'yyyy-MM-dd'), to: format(end, 'yyyy-MM-dd') },
+    range: { from: fromStr, to: toStr },
     total: appointments.length,
     byStatus,
     rows: appointments.map((a) => ({
@@ -119,7 +131,11 @@ async function reporteInventario(clinicId: string | undefined) {
 }
 
 // ── Comisiones: por podólogo en el periodo
-async function reporteComisiones(clinicId: string | undefined, start: Date, end: Date) {
+// `date` field se guarda como midnight UTC del día calendario
+async function reporteComisiones(clinicId: string | undefined, fromStr: string, toStr: string) {
+  const start = dateFieldStart(fromStr)
+  const end = dateFieldEnd(toStr)
+
   const consultations = await db.consultation.findMany({
     where: {
       ...(clinicId ? { clinicId } : {}),
@@ -153,7 +169,7 @@ async function reporteComisiones(clinicId: string | undefined, start: Date, end:
 
   return {
     title: 'Reporte de Comisiones',
-    range: { from: format(start, 'yyyy-MM-dd'), to: format(end, 'yyyy-MM-dd') },
+    range: { from: fromStr, to: toStr },
     totalConsults: rows.reduce((s, r) => s + r.consultCount, 0),
     totalGenerated: rows.reduce((s, r) => s + r.totalGenerated, 0),
     totalCommission: rows.reduce((s, r) => s + r.commissionAmount, 0),
@@ -162,7 +178,11 @@ async function reporteComisiones(clinicId: string | undefined, start: Date, end:
 }
 
 // ── Ingresos: movimientos de caja del periodo
-async function reporteIngresos(clinicId: string | undefined, start: Date, end: Date) {
+// `createdAt` es un timestamp real, así que usamos Hermosillo range
+async function reporteIngresos(clinicId: string | undefined, fromStr: string, toStr: string) {
+  const start = createdAtFieldStart(fromStr)
+  const end = createdAtFieldEnd(toStr)
+
   const movements = await db.cashMovement.findMany({
     where: {
       ...(clinicId ? { clinicId } : {}),
@@ -192,7 +212,7 @@ async function reporteIngresos(clinicId: string | undefined, start: Date, end: D
 
   return {
     title: 'Reporte de Ingresos y Egresos',
-    range: { from: format(start, 'yyyy-MM-dd'), to: format(end, 'yyyy-MM-dd') },
+    range: { from: fromStr, to: toStr },
     totalIngresos: ingresos.reduce((s, m) => s + m.amount, 0),
     totalEgresos: egresos.reduce((s, m) => s + m.amount, 0),
     neto: ingresos.reduce((s, m) => s + m.amount, 0) - egresos.reduce((s, m) => s + m.amount, 0),

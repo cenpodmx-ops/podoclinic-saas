@@ -2,7 +2,13 @@ import { NextRequest } from 'next/server'
 import { db } from '@/lib/db'
 import { requireSession, ok, bad, effectiveClinic } from '@/lib/api'
 import { canAccessFinance } from '@/lib/session'
-import { startOfDay, endOfDay, parseISO } from 'date-fns'
+import {
+  formatDateHermosillo,
+  dateFieldStart,
+  dateFieldEnd,
+  startOfMonthHermosillo,
+  endOfMonthHermosillo,
+} from '@/lib/timezone'
 
 // ============================================================
 // MÓDULO 07 — FINANZAS — Comisiones por podólogo
@@ -20,12 +26,15 @@ export async function GET(req: NextRequest) {
   const all = url.searchParams.get('all') || undefined
   const clinicId = effectiveClinic(user!, all || undefined)
 
-  // Rango: por defecto mes actual
-  const now = new Date()
+  // Rango: por defecto mes actual (Hermosillo)
   const fromParam = url.searchParams.get('from')
   const toParam = url.searchParams.get('to')
-  const start = fromParam ? startOfDay(parseISO(fromParam)) : new Date(now.getFullYear(), now.getMonth(), 1)
-  const end = toParam ? endOfDay(parseISO(toParam)) : new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999)
+  const fromStr = fromParam || formatDateHermosillo(startOfMonthHermosillo(new Date()))
+  const toStr = toParam || formatDateHermosillo(endOfMonthHermosillo(new Date()))
+
+  // Para campo `date` (consultas, guardado como midnight UTC del día calendario)
+  const start = dateFieldStart(fromStr)
+  const end = dateFieldEnd(toStr)
 
   // Consultas pagadas en el rango
   const consultations = await db.consultation.findMany({
@@ -70,7 +79,7 @@ export async function GET(req: NextRequest) {
   }
 
   return ok({
-    range: { from: start.toISOString(), to: end.toISOString() },
+    range: { from: fromStr, to: toStr },
     rows,
     total,
   })

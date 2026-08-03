@@ -23,6 +23,10 @@ import {
   startOfYearHermosillo,
   endOfYearHermosillo,
   formatDateHermosillo,
+  dateFieldStart,
+  dateFieldEnd,
+  createdAtFieldStart,
+  createdAtFieldEnd,
 } from '@/lib/timezone'
 
 // ============================================================
@@ -53,11 +57,18 @@ export async function GET(req: NextRequest) {
   let prevEnd: Date
 
   if (fromParam && toParam) {
-    start = startOfDayHermosillo(parseISO(fromParam))
-    end = endOfDayHermosillo(parseISO(toParam))
-    const days = Math.ceil((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24)) + 1
-    prevStart = startOfDayHermosillo(subDays(start, days))
-    prevEnd = endOfDayHermosillo(subDays(start, 1))
+    // Cuando el usuario pasa from=2026-07-24&to=2026-07-30, queremos:
+    //  - Para `createdAt` (movimientos): del 2026-07-24T07:00Z (00:00 Hermosillo) al 2026-07-31T06:59:59Z (23:59 Hermosillo del 30)
+    //  - Para `date` (consultas): del 2026-07-24T00:00Z al 2026-07-30T23:59:59Z (medianoche UTC del día calendario)
+    //
+    // BUG ANTERIOR: startOfDayHermosillo(parseISO('2026-07-24')) devolvía 2026-07-23T07:00Z
+    // (un día antes) porque parseISO crea medianoche UTC y startOfDayHermosillo lo trataba
+    // como un instante Hermosillo (17:00 del día anterior) → tomaba midnight de ese día anterior.
+    start = createdAtFieldStart(fromParam)
+    end = createdAtFieldEnd(toParam)
+    const days = Math.ceil((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24))
+    prevStart = createdAtFieldStart(formatDateHermosillo(subDays(start, days)))
+    prevEnd = createdAtFieldEnd(formatDateHermosillo(subDays(start, 1)))
   } else {
     const r = getRangeForPeriod(period)
     start = r.start
@@ -66,6 +77,11 @@ export async function GET(req: NextRequest) {
     prevStart = p.start
     prevEnd = p.end
   }
+
+  // Rango para campo `date` (consultas, citas): medianoche UTC del día calendario
+  // (distinto al rango de `createdAt` que usa Hermosillo day range)
+  const dateFieldRangeStart = dateFieldStart(fromParam || formatDateHermosillo(start))
+  const dateFieldRangeEnd = dateFieldEnd(fromParam ? toParam! : formatDateHermosillo(end))
 
   // Cargar movimientos del periodo actual
   const where = {
@@ -89,7 +105,10 @@ export async function GET(req: NextRequest) {
     db.consultation.findMany({
       where: {
         ...(clinicId ? { clinicId } : {}),
-        date: { gte: start, lte: end },
+        // Campo `date` se guarda como medianoche UTC del día calendario,
+        // NO como timestamp real. Por eso se filtra con dateFieldRange (medianoche UTC)
+        // y NO con `start`/`end` (que son Hermosillo ranges para createdAt).
+        date: { gte: dateFieldRangeStart, lte: dateFieldRangeEnd },
         paid: true,
       },
       include: {

@@ -109,3 +109,56 @@ export function formatDateHermosillo(date: Date = new Date()): string {
   const d = String(local.getDate()).padStart(2, '0')
   return `${y}-${m}-${d}`
 }
+
+// ============================================================
+// Helpers para convertir un string YYYY-MM-DD a rangos UTC.
+// Hay DOS convenciones diferentes dependiendo del campo de la BD:
+//
+// 1. Campo `date` (citas, consultas, operaciones, cashSession):
+//    Se guarda como medianoche UTC del día calendario.
+//    Ej: '2026-07-24' → 2026-07-24T00:00:00.000Z (start)
+//                       2026-07-24T23:59:59.999Z (end)
+//
+// 2. Campo `createdAt` (movimientos, pacientes, etc.):
+//    Se guarda como timestamp real UTC.
+//    Para un día calendario de Hermosillo (UTC-7), el rango es:
+//    Ej: '2026-07-24' → 2026-07-24T07:00:00.000Z (00:00 Hermosillo)
+//                       2026-07-25T06:59:59.999Z (23:59:59 Hermosillo)
+// ============================================================
+
+/**
+ * Inicio del día (medianoche UTC) para un string YYYY-MM-DD.
+ * Usar para filtrar campos `date` (citas, consultas, operaciones).
+ */
+export function dateFieldStart(dateStr: string): Date {
+  return new Date(dateStr + 'T00:00:00.000Z')
+}
+
+/**
+ * Fin del día (23:59:59.999 UTC) para un string YYYY-MM-DD.
+ * Usar para filtrar campos `date` (citas, consultas, operaciones).
+ */
+export function dateFieldEnd(dateStr: string): Date {
+  return new Date(dateStr + 'T23:59:59.999Z')
+}
+
+/**
+ * Inicio del día en Hermosillo (00:00 local = 07:00 UTC) para un string YYYY-MM-DD.
+ * Usar para filtrar campos `createdAt` (movimientos, pacientes).
+ */
+export function createdAtFieldStart(dateStr: string): Date {
+  return new Date(dateStr + 'T07:00:00.000Z')
+}
+
+/**
+ * Fin del día en Hermosillo (23:59:59 local = 06:59:59 UTC del día siguiente)
+ * para un string YYYY-MM-DD.
+ * Usar para filtrar campos `createdAt` (movimientos, pacientes).
+ */
+export function createdAtFieldEnd(dateStr: string): Date {
+  // 00:00 Hermosillo del día siguiente = 07:00 UTC del día siguiente
+  // Restamos 1 ms para obtener 23:59:59.999 Hermosillo del día anterior
+  const nextDayStart = new Date(dateStr + 'T07:00:00.000Z')
+  nextDayStart.setDate(nextDayStart.getDate() + 1)
+  return new Date(nextDayStart.getTime() - 1)
+}
