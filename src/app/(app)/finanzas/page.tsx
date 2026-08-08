@@ -124,11 +124,6 @@ function FinanzasContent() {
   const [from, setFrom] = useState('')
   const [to, setTo] = useState('')
 
-  // Comisiones: rango = mes actual por defecto
-  const today = new Date()
-  const [comisionFrom, setComisionFrom] = useState(format(new Date(today.getFullYear(), today.getMonth(), 1), 'yyyy-MM-dd'))
-  const [comisionTo, setComisionTo] = useState(format(new Date(today.getFullYear(), today.getMonth() + 1, 0), 'yyyy-MM-dd'))
-
   // Reporte activo
   const [reporteOpen, setReporteOpen] = useState(false)
   const [reporteType, setReporteType] = useState<string | null>(null)
@@ -147,11 +142,21 @@ function FinanzasContent() {
     staleTime: 60_000,
   })
 
-  // ── Comisiones
+  // ── Comisiones — usa el MISMO rango de fechas que el dashboard arriba
+  // (antes tenía su propio selector lo que causaba confusión)
   const comisionesQ = useQuery<ComisionesResponse>({
-    queryKey: ['finanzas-comisiones', comisionFrom, comisionTo],
+    queryKey: ['finanzas-comisiones', period, from, to],
     queryFn: async () => {
-      const params = new URLSearchParams({ from: comisionFrom, to: comisionTo })
+      // Si hay rango custom (from/to), usarlo directamente
+      // Si es preset (dia/semana/mes/año), calcular el rango igual que el dashboard
+      let params: URLSearchParams
+      if (from && to) {
+        params = new URLSearchParams({ from, to })
+      } else {
+        // El backend usa los mismos helpers de Hermosillo (startOfMonthHermosillo etc)
+        // asi que pasamos period sin from/to y dejamos que el backend lo calcule
+        params = new URLSearchParams({ period })
+      }
       const r = await fetch(`/api/finanzas/comisiones?${params.toString()}`)
       if (!r.ok) throw new Error('No se pudo cargar comisiones')
       return r.json()
@@ -297,26 +302,15 @@ function FinanzasContent() {
           <Card className="shadow-sm">
             <CardHeader className="pb-3">
               <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
-                <CardTitle className="text-base">Comisiones por podólogo</CardTitle>
-                <div className="flex items-end gap-2">
-                  <div className="space-y-1">
-                    <Label className="text-xs text-muted-foreground">Desde</Label>
-                    <Input
-                      type="date"
-                      value={comisionFrom}
-                      onChange={(e) => setComisionFrom(e.target.value)}
-                      className="w-40"
-                    />
-                  </div>
-                  <div className="space-y-1">
-                    <Label className="text-xs text-muted-foreground">Hasta</Label>
-                    <Input
-                      type="date"
-                      value={comisionTo}
-                      onChange={(e) => setComisionTo(e.target.value)}
-                      className="w-40"
-                    />
-                  </div>
+                <div>
+                  <CardTitle className="text-base">Comisiones por podólogo</CardTitle>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Usa el mismo rango de fechas del dashboard (
+                    {comisionesQ.data?.range?.from && comisionesQ.data?.range?.to
+                      ? `${comisionesQ.data.range.from} al ${comisionesQ.data.range.to}`
+                      : '—'}
+                    )
+                  </p>
                 </div>
               </div>
             </CardHeader>
@@ -331,16 +325,17 @@ function FinanzasContent() {
                         <TableRow>
                           <TableHead>Podólogo</TableHead>
                           <TableHead className="text-right">Consultas</TableHead>
+                          <TableHead className="text-right">Productos vendidos</TableHead>
+                          <TableHead className="text-right">Ingreso por productos</TableHead>
                           <TableHead className="text-right">Total generado</TableHead>
                           <TableHead className="text-right">% Comisión</TableHead>
                           <TableHead className="text-right">Monto a pagar</TableHead>
-                          <TableHead className="w-12"></TableHead>
                         </TableRow>
                       </TableHeader>
                       <TableBody>
                         {comisionesQ.data.rows.length === 0 && (
                           <TableRow>
-                            <TableCell colSpan={5} className="text-center text-muted-foreground py-8">
+                            <TableCell colSpan={7} className="text-center text-muted-foreground py-8">
                               Sin consultas pagadas en el periodo
                             </TableCell>
                           </TableRow>
@@ -349,12 +344,20 @@ function FinanzasContent() {
                           <TableRow key={i}>
                             <TableCell className="font-medium">{r.name}</TableCell>
                             <TableCell className="text-right">{r.consultCount}</TableCell>
+                            <TableCell className="text-right">
+                              <span className="text-amber-700 font-medium">
+                                {r.productsCount ?? 0}
+                              </span>
+                              <span className="text-[10px] text-muted-foreground ml-1">pzs</span>
+                            </TableCell>
+                            <TableCell className="text-right text-amber-700">
+                              {fmtMoney(r.productsRevenue ?? 0)}
+                            </TableCell>
                             <TableCell className="text-right">{fmtMoney(r.totalGenerated)}</TableCell>
                             <TableCell className="text-right">{r.commissionPct}%</TableCell>
                             <TableCell className="text-right font-semibold" style={{ color: BRAND }}>
                               {fmtMoney(r.commissionAmount)}
                             </TableCell>
-                            <TableCell></TableCell>
                           </TableRow>
                         ))}
                       </TableBody>
@@ -363,12 +366,13 @@ function FinanzasContent() {
                           <TableRow className="bg-muted/50 font-semibold">
                             <TableCell>TOTAL</TableCell>
                             <TableCell className="text-right">{comisionesQ.data.total.consultCount}</TableCell>
+                            <TableCell className="text-right text-amber-700">{comisionesQ.data.total.productsCount ?? 0}</TableCell>
+                            <TableCell className="text-right text-amber-700">{fmtMoney(comisionesQ.data.total.productsRevenue ?? 0)}</TableCell>
                             <TableCell className="text-right">{fmtMoney(comisionesQ.data.total.totalGenerated)}</TableCell>
                             <TableCell></TableCell>
                             <TableCell className="text-right" style={{ color: BRAND }}>
                               {fmtMoney(comisionesQ.data.total.commissionAmount)}
                             </TableCell>
-                            <TableCell></TableCell>
                           </TableRow>
                         </tfoot>
                       )}
@@ -450,7 +454,7 @@ function FinanzasContent() {
 // ============================================================
 
 function FinanzasDashboardView({ data }: { data: FinanzasDashboard }) {
-  const { totals, byMethod, byPodologist, topServices, dailySeries, comparison } = data
+  const { totals, byMethod, byPodologist, topServices, dailySeries, comparison, productos } = data
 
   const pctBadge = (pct: number, inverse = false) => {
     const isUp = pct >= 0
@@ -475,7 +479,7 @@ function FinanzasDashboardView({ data }: { data: FinanzasDashboard }) {
   return (
     <>
       {/* KPIs */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+      <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
         <KpiCard
           label="Ingresos"
           value={fmtMoney(totals.ingresos)}
@@ -496,6 +500,13 @@ function FinanzasDashboardView({ data }: { data: FinanzasDashboard }) {
           icon={Wallet}
           color="text-[#0a3143] bg-[#0a3143]/10"
           badge={pctBadge(comparison.netoPct)}
+        />
+        <KpiCard
+          label="Productos vendidos"
+          value={fmtMoney(productos?.total ?? 0)}
+          icon={Package}
+          color="text-amber-700 bg-amber-50"
+          badge={<Badge variant="outline" className="text-[10px] text-amber-700">{productos?.top?.length ?? 0} productos</Badge>}
         />
         <KpiCard
           label="Ingresos prev."
@@ -655,6 +666,122 @@ function FinanzasDashboardView({ data }: { data: FinanzasDashboard }) {
           </CardContent>
         </Card>
       </div>
+
+      {/* Productos vendidos */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+        {/* KPI Productos vendidos */}
+        <Card className="shadow-sm lg:col-span-1">
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base flex items-center gap-2">
+              <Package className="h-4 w-4" style={{ color: '#d97706' }} /> Productos vendidos
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <div>
+              <div className="text-xs text-muted-foreground">Total en productos</div>
+              <div className="text-2xl font-bold" style={{ color: '#d97706' }}>{fmtMoney(productos?.total ?? 0)}</div>
+            </div>
+            <div className="space-y-2 pt-2 border-t">
+              <div className="flex justify-between text-sm">
+                <span className="text-muted-foreground flex items-center gap-1">
+                  <Stethoscope className="h-3.5 w-3.5" /> En consultas
+                </span>
+                <span className="font-semibold">{fmtMoney(productos?.enConsultas ?? 0)}</span>
+              </div>
+              <div className="flex justify-between text-sm">
+                <span className="text-muted-foreground flex items-center gap-1">
+                  <Banknote className="h-3.5 w-3.5" /> Mostrador
+                </span>
+                <span className="font-semibold">{fmtMoney(productos?.mostrador ?? 0)}</span>
+              </div>
+            </div>
+            <p className="text-[10px] text-muted-foreground pt-2 border-t">
+              Los productos en consultas se cobran junto con el ticket de consulta. Los de mostrador son ventas directas del inventario.
+            </p>
+          </CardContent>
+        </Card>
+
+        {/* Top productos vendidos */}
+        <Card className="shadow-sm lg:col-span-2">
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base flex items-center gap-2">
+              <Package className="h-4 w-4" style={{ color: '#d97706' }} /> Top productos vendidos
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            {(!productos?.top || productos.top.length === 0) ? (
+              <div className="text-center text-sm text-muted-foreground py-8">
+                Sin productos vendidos en el periodo
+              </div>
+            ) : (
+              <div className="max-h-72 overflow-y-auto">
+                <Table>
+                  <TableHeader className="sticky top-0 bg-background">
+                    <TableRow>
+                      <TableHead>Producto</TableHead>
+                      <TableHead className="text-right">Piezas</TableHead>
+                      <TableHead className="text-right">Ingreso</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {productos.top.map((p, i) => (
+                      <TableRow key={i}>
+                        <TableCell className="font-medium">
+                          {p.name}
+                          <Badge variant="outline" className="ml-2 text-[9px]">{p.category}</Badge>
+                        </TableCell>
+                        <TableCell className="text-right">{p.count}</TableCell>
+                        <TableCell className="text-right font-semibold" style={{ color: '#d97706' }}>
+                          {fmtMoney(p.revenue)}
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Ranking de podólogos por venta de productos */}
+      <Card className="shadow-sm">
+        <CardHeader className="pb-3">
+          <CardTitle className="text-base flex items-center gap-2">
+            <Stethoscope className="h-4 w-4" style={{ color: '#d97706' }} /> Podólogos que más productos vendieron (en consultas)
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          {(!productos?.byPodologo || productos.byPodologo.length === 0) ? (
+            <div className="text-center text-sm text-muted-foreground py-8">
+              Sin productos vendidos en consultas en el periodo
+            </div>
+          ) : (
+            <div className="max-h-72 overflow-y-auto">
+              <Table>
+                <TableHeader className="sticky top-0 bg-background">
+                  <TableRow>
+                    <TableHead>Podólogo</TableHead>
+                    <TableHead className="text-right">Piezas vendidas</TableHead>
+                    <TableHead className="text-right">Ingreso por productos</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {productos.byPodologo.map((p, i) => (
+                    <TableRow key={i}>
+                      <TableCell className="font-medium">{p.name}</TableCell>
+                      <TableCell className="text-right">{p.productsCount}</TableCell>
+                      <TableCell className="text-right font-semibold" style={{ color: '#d97706' }}>
+                        {fmtMoney(p.productsRevenue)}
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          )}
+        </CardContent>
+      </Card>
 
       {/* Desglose por método y categoría de egresos */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">

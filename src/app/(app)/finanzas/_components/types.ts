@@ -21,6 +21,13 @@ export type FinanzasDashboard = {
     commission: number
   }>
   topServices: Array<{ name: string; count: number; revenue: number }>
+  productos?: {
+    total: number
+    enConsultas: number
+    mostrador: number
+    top: Array<{ name: string; count: number; revenue: number; category: string }>
+    byPodologo: Array<{ name: string; productsCount: number; productsRevenue: number }>
+  }
   dailySeries: Array<{ date: string; ingresos: number; egresos: number }>
   comparison: {
     prevIngresos: number
@@ -38,6 +45,8 @@ export type ComisionRow = {
   totalGenerated: number
   commissionPct: number
   commissionAmount: number
+  productsCount?: number
+  productsRevenue?: number
 }
 
 export type ComisionesResponse = {
@@ -47,6 +56,8 @@ export type ComisionesResponse = {
     consultCount: number
     totalGenerated: number
     commissionAmount: number
+    productsCount?: number
+    productsRevenue?: number
   }
 }
 

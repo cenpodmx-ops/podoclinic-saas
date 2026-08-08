@@ -198,6 +198,58 @@ export async function GET(req: NextRequest) {
     .sort((a, b) => b.revenue - a.revenue)
     .slice(0, 8)
 
+  // ── Productos vendidos (desglose)
+  // Dos fuentes:
+  //  1) Ventas de mostrador (CashMovement source='MOSTRADOR') — ya en ingresosBySource.mostrador
+  //  2) Productos vendidos en consulta (Consultation.itemsJson con type='PRODUCTO'/'MEDICAMENTO')
+  //     — NO se pueden separar del monto total del CashMovement de consulta, hay que iterar itemsJson.
+  let productosEnConsultas = 0   // total $ de productos vendidos dentro de consultas
+  let productosMostrador = ingresosBySource.mostrador  // total $ de ventas de mostrador
+  const topProductosMap = new Map<string, { count: number; revenue: number; category: string }>()
+  const productosByPodologoMap = new Map<string, { name: string; productsCount: number; productsRevenue: number }>()
+
+  for (const c of consultations) {
+    let items: any[] = []
+    try {
+      items = JSON.parse(c.itemsJson || '[]') as any[]
+    } catch {
+      items = []
+    }
+    let podProductsRevenue = 0
+    let podProductsCount = 0
+    for (const it of items) {
+      if (it.type !== 'PRODUCTO' && it.type !== 'MEDICAMENTO') continue
+      const qty = Number(it.qty) || 1
+      const price = Number(it.price) || 0
+      const lineTotal = qty * price
+      productosEnConsultas += lineTotal
+      podProductsRevenue += lineTotal
+      podProductsCount += qty
+      // Top productos
+      const name = String(it.name || 'Sin nombre')
+      const cur = topProductosMap.get(name) || { count: 0, revenue: 0, category: it.type }
+      cur.count += qty
+      cur.revenue += lineTotal
+      topProductosMap.set(name, cur)
+    }
+    // Productos por podólogo
+    if (podProductsCount > 0) {
+      const podId = c.podologistId || '__sin'
+      const podName = c.podologist?.name || 'Sin asignar'
+      const cur = productosByPodologoMap.get(podId) || { name: podName, productsCount: 0, productsRevenue: 0 }
+      cur.productsCount += podProductsCount
+      cur.productsRevenue += podProductsRevenue
+      productosByPodologoMap.set(podId, cur)
+    }
+  }
+  const topProductos = Array.from(topProductosMap.entries())
+    .map(([name, v]) => ({ name, ...v }))
+    .sort((a, b) => b.revenue - a.revenue)
+    .slice(0, 10)
+  const productosByPodologo = Array.from(productosByPodologoMap.values())
+    .sort((a, b) => b.productsRevenue - a.productsRevenue)
+  const totalProductos = productosEnConsultas + productosMostrador
+
   // ── Serie diaria del periodo
   const dailySeries = buildDailySeries(movements, start, end, period)
 
@@ -214,6 +266,14 @@ export async function GET(req: NextRequest) {
     byMethod: ingresosByMethod,
     byPodologist,
     topServices,
+    // ── Productos vendidos (nuevo) ──
+    productos: {
+      total: totalProductos,
+      enConsultas: productosEnConsultas,
+      mostrador: productosMostrador,
+      top: topProductos,
+      byPodologo: productosByPodologo,
+    },
     dailySeries,
     comparison: {
       prevIngresos,
