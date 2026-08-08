@@ -1731,3 +1731,65 @@ Stage Summary:
 - BUG COMPLETAMENTE RESUELTO.
   1. Las citas ahora muestran colores correctos por estatus + etiqueta visible (Pend, Conf, En consulta, Hecha, Cancel, No asist)
   2. La agenda ya NO mezcla podólogos de diferentes clínicas — cada clínica muestra solo sus propios podólogos
+
+---
+Task ID: FEAT-FINANZAS-PRODUCTOS-2026-07-30
+Agent: main (finanzas: desglose de productos + comisiones mismo rango)
+Task: Añadir desglose claro de ventas de mostrador y productos en consultas, ranking de podólogos por venta de productos, unificar rango de fechas entre dashboard y comisiones
+
+Work Log:
+- Usuario reportó: "no sale de forma adecuada las ventas que son de mostrador, ya sea directamente de inventario, o que se suman al finalizar consulta. Debería decir exactamente y claro que además de la consulta se vendió dicho producto. Para llevar manejo de eso también el desglose de qué productos se han vendido, saber cuánto ingreso es de ahí. Si se finalizó la consulta y ahí mismo se vendió junto con ticket de consulta, poder ver qué podólogo vende más producto. El reporte abajo de comisión por podólogo que se seleccione a la par con la fecha que se selecciona arriba en finanzas"
+
+- Investigación reveló:
+  1. Las ventas de mostrador solo se registran como CashMovement source='MOSTRADOR'
+     con monto total (sin desglose de items en BD — solo en respuesta HTTP para ticket)
+  2. Los productos vendidos en consultas están en Consultation.itemsJson
+     (JSON con [{name, qty, price, type}])
+  3. CashMovement.source='CONSULTA' tiene amount=total (consultPrice + productsTotal - discount)
+     — no se puede separar productos del monto del CashMovement
+  4. Para extraer productos: iterar consultations[].itemsJson y sumar items type='PRODUCTO'/'MEDICAMENTO'
+
+- FIX 1: API /api/finanzas — añadido objeto 'productos':
+  * total = enConsultas + mostrador
+  * enConsultas: iterando itemsJson de consultas pagadas, sumando qty*price de PRODUCTO/MEDICAMENTO
+  * mostrador: ya existía en ingresosBySource.mostrador
+  * top: top 10 productos por revenue (con name, count, revenue, category)
+  * byPodologo: ranking de podólogos por piezas vendidas e ingreso por productos
+
+- FIX 2: Frontend finanzas/page.tsx — añadidas 3 secciones nuevas:
+  1. KPI "Productos vendidos" con total + count + badge
+  2. Card "Productos vendidos" (col-span-1): total + desglose en consultas/mostrador + texto explicativo
+  3. Card "Top productos vendidos" (col-span-2): tabla con producto, piezas, ingreso
+  4. Card "Podólogos que más productos vendieron (en consultas)": tabla con podólogo, piezas vendidas, ingreso
+
+- FIX 3: Comisiones ahora usan el MISMO rango de fechas que el dashboard:
+  * Eliminado selector de fechas separado (comisionFrom/comisionTo state)
+  * Comisiones usa period/from/to del dashboard (igual que dashQ)
+  * API /api/finanzas/comisiones acepta ?period= además de ?from=&to=
+  * Texto explicativo mostrando el rango activo: "Usa el mismo rango de fechas del dashboard (2026-07-24 al 2026-07-30)"
+  * Tabla de comisiones ahora muestra columnas nuevas:
+    - Productos vendidos (pzs)
+    - Ingreso por productos
+  * API retorna productsCount y productsRevenue por podólogo
+
+- Verificación en PRODUCCIÓN (CENPOD Quiroga, 24-30 julio):
+  * KPI Productos vendidos: $1,160.00 (4 productos) ✓
+  * Desglose: En consultas $955.00, Mostrador $205.00 ✓
+  * Top productos:
+    - Terbinafina liquida Lodoal (MEDICAMENTO) 1pz $420
+    - Desodorante Desinfectante Lodoal (MEDICAMENTO) 1pz $260
+    - Cinta coban (MEDICAMENTO) 2pz $140
+    - Mupirocina (MEDICAMENTO) 1pz $135
+  * Ranking podólogos: Uziel Montaño Cordova 5pz $955
+  * Comisiones: solo 2 date inputs (los del dashboard) — eliminado el selector separado ✓
+  * Tabla comisiones muestra: Uziel 9 consultas, 9pzs productos, $955 productos, $4,995 total, 0% comisión
+
+- Commit abfa77f, push exitoso, deployado en Vercel.
+
+Stage Summary:
+- FEATURE COMPLETA. Ahora finanzas muestra:
+  1. Desglose claro de productos vendidos (mostrador + en consultas)
+  2. Top productos vendidos con cantidad e ingreso
+  3. Ranking de podólogos que más productos vendieron (en consultas)
+  4. Comisiones usan el mismo rango de fechas que el dashboard (eliminada confusión)
+  5. Tabla de comisiones con columnas nuevas: Productos vendidos e Ingreso por productos
