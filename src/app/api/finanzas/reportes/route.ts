@@ -130,6 +130,7 @@ async function reporteInventario(clinicId: string | undefined) {
 
 // ── Comisiones: por podólogo en el periodo
 // `Consultation.date` es @default(now()) → timestamp real → usar Hermosillo range
+// Comisión SOLO sobre consultPrice (no sobre productos/medicamentos)
 async function reporteComisiones(clinicId: string | undefined, fromStr: string, toStr: string) {
   const start = createdAtFieldStart(fromStr)
   const end = createdAtFieldEnd(toStr)
@@ -140,7 +141,13 @@ async function reporteComisiones(clinicId: string | undefined, fromStr: string, 
       date: { gte: start, lte: end },
       paid: true,
     },
-    include: {
+    select: {
+      id: true,
+      consultPrice: true,
+      productsTotal: true,
+      discount: true,
+      total: true,
+      podologistId: true,
       podologist: { select: { id: true, name: true, commissionPct: true } },
       patient: { select: { firstName: true, lastName: true } },
     },
@@ -148,21 +155,26 @@ async function reporteComisiones(clinicId: string | undefined, fromStr: string, 
 
   const map = new Map<
     string,
-    { name: string; consultCount: number; totalGenerated: number; commissionPct: number }
+    { name: string; consultCount: number; totalGenerated: number; consultRevenue: number; commissionPct: number }
   >()
   for (const c of consultations) {
     const podId = c.podologistId || '__sin'
     const podName = c.podologist?.name || 'Sin asignar'
     const commissionPct = c.podologist?.commissionPct ?? 0
-    const cur = map.get(podId) || { name: podName, consultCount: 0, totalGenerated: 0, commissionPct }
+    const cur = map.get(podId) || { name: podName, consultCount: 0, totalGenerated: 0, consultRevenue: 0, commissionPct }
     cur.consultCount += 1
     cur.totalGenerated += c.total
+    cur.consultRevenue += c.consultPrice || 0
     if (commissionPct > 0) cur.commissionPct = commissionPct
     map.set(podId, cur)
   }
 
   const rows = Array.from(map.values())
-    .map((r) => ({ ...r, commissionAmount: (r.totalGenerated * r.commissionPct) / 100 }))
+    .map((r) => ({
+      ...r,
+      // Comisión SOLO sobre consulta (consultPrice), no sobre productos
+      commissionAmount: Math.round((r.consultRevenue * r.commissionPct) / 100 * 100) / 100,
+    }))
     .sort((a, b) => b.totalGenerated - a.totalGenerated)
 
   return {
@@ -170,6 +182,7 @@ async function reporteComisiones(clinicId: string | undefined, fromStr: string, 
     range: { from: fromStr, to: toStr },
     totalConsults: rows.reduce((s, r) => s + r.consultCount, 0),
     totalGenerated: rows.reduce((s, r) => s + r.totalGenerated, 0),
+    totalConsultRevenue: rows.reduce((s, r) => s + r.consultRevenue, 0),
     totalCommission: rows.reduce((s, r) => s + r.commissionAmount, 0),
     rows,
   }

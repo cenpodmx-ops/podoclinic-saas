@@ -70,25 +70,38 @@ export async function GET(req: NextRequest) {
   const start = createdAtFieldStart(fromStr)
   const end = createdAtFieldEnd(toStr)
 
-  // Consultas pagadas en el rango
+  // Consultas pagadas en el rango — incluir consultPrice y productsTotal
+  // para calcular comisión SOLO sobre la consulta, no sobre productos
   const consultations = await db.consultation.findMany({
     where: {
       ...(clinicId ? { clinicId } : {}),
       date: { gte: start, lte: end },
       paid: true,
     },
-    include: {
+    select: {
+      id: true,
+      consultPrice: true,
+      productsTotal: true,
+      discount: true,
+      total: true,
+      itemsJson: true,
+      podologistId: true,
       podologist: { select: { id: true, name: true, commissionPct: true } },
+      appointment: { select: { id: true, serviceName: true, serviceId: true } },
     },
   })
 
   // Agrupar por podólogo — incluye desglose de productos vendidos en consulta
+  // IMPORTANTE: la comisión se calcula SOLO sobre consultPrice (precio de la
+  // consulta), NO sobre productsTotal (productos/medicamentos vendidos).
+  // Antes se calculaba sobre `total` (que incluye productos) — eso estaba mal.
   const map = new Map<
     string,
     {
       name: string
       consultCount: number
-      totalGenerated: number
+      totalGenerated: number        // total (consulta + productos - descuento)
+      consultRevenue: number        // solo consulta (consultPrice), para comisión
       commissionPct: number
       productsCount: number
       productsRevenue: number
@@ -98,9 +111,10 @@ export async function GET(req: NextRequest) {
     const podId = c.podologistId || '__sin'
     const podName = c.podologist?.name || 'Sin asignar'
     const commissionPct = c.podologist?.commissionPct ?? 0
-    const cur = map.get(podId) || { name: podName, consultCount: 0, totalGenerated: 0, commissionPct, productsCount: 0, productsRevenue: 0 }
+    const cur = map.get(podId) || { name: podName, consultCount: 0, totalGenerated: 0, consultRevenue: 0, commissionPct, productsCount: 0, productsRevenue: 0 }
     cur.consultCount += 1
     cur.totalGenerated += c.total
+    cur.consultRevenue += c.consultPrice || 0
     // Mantener el commissionPct (siempre el último visto)
     if (commissionPct > 0) cur.commissionPct = commissionPct
     // Productos vendidos en esta consulta (iterar itemsJson)
@@ -120,13 +134,15 @@ export async function GET(req: NextRequest) {
   const rows = Array.from(map.values())
     .map((r) => ({
       ...r,
-      commissionAmount: (r.totalGenerated * r.commissionPct) / 100,
+      // Comisión SOLO sobre consulta (consultPrice), no sobre productos
+      commissionAmount: Math.round((r.consultRevenue * r.commissionPct) / 100 * 100) / 100,
     }))
     .sort((a, b) => b.totalGenerated - a.totalGenerated)
 
   const total = {
     consultCount: rows.reduce((s, r) => s + r.consultCount, 0),
     totalGenerated: rows.reduce((s, r) => s + r.totalGenerated, 0),
+    consultRevenue: rows.reduce((s, r) => s + r.consultRevenue, 0),
     commissionAmount: rows.reduce((s, r) => s + r.commissionAmount, 0),
     productsCount: rows.reduce((s, r) => s + r.productsCount, 0),
     productsRevenue: rows.reduce((s, r) => s + r.productsRevenue, 0),

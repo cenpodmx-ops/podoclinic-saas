@@ -176,22 +176,40 @@ export async function GET(req: NextRequest) {
   }
 
   // ── Por podólogo
+  // IMPORTANTE: la comisión se calcula SOLO sobre el precio de la consulta
+  // (consultPrice), NO sobre los productos/medicamentos vendidos.
+  // Antes se calculaba sobre `total` (que incluye productos) — eso estaba mal.
   const byPodologistMap = new Map<
     string,
-    { name: string; consults: number; revenue: number; commissionPct: number }
+    {
+      name: string
+      consults: number
+      revenue: number           // total (consulta + productos - descuento)
+      consultRevenue: number    // solo consulta (consultPrice), para comisión
+      productsRevenue: number   // solo productos
+      commissionPct: number
+    }
   >()
   for (const c of consultations) {
     const podId = c.podologistId || '__sin'
     const podName = c.podologist?.name || 'Sin asignar'
     const commissionPct = c.podologist?.commissionPct ?? 0
-    const cur = byPodologistMap.get(podId) || { name: podName, consults: 0, revenue: 0, commissionPct }
+    const cur = byPodologistMap.get(podId) || { name: podName, consults: 0, revenue: 0, consultRevenue: 0, productsRevenue: 0, commissionPct }
     cur.consults += 1
     cur.revenue += c.total
+    cur.consultRevenue += c.consultPrice || 0
+    cur.productsRevenue += c.productsTotal || 0
     byPodologistMap.set(podId, cur)
   }
   const byPodologist = Array.from(byPodologistMap.values()).map((p) => ({
-    ...p,
-    commission: (p.revenue * p.commissionPct) / 100,
+    name: p.name,
+    consults: p.consults,
+    revenue: p.revenue,
+    consultRevenue: p.consultRevenue,
+    productsRevenue: p.productsRevenue,
+    commissionPct: p.commissionPct,
+    // Comisión SOLO sobre consulta, no sobre productos
+    commission: Math.round((p.consultRevenue * p.commissionPct) / 100 * 100) / 100,
   }))
 
   // ── Top servicios (basado en citas finalizaron consulta)
@@ -209,7 +227,7 @@ export async function GET(req: NextRequest) {
     }
   >()
   for (const c of consultations) {
-    const name = c.appointment?.serviceName || 'Consulta general'
+    const name = c.appointment?.serviceName || 'Consulta Podologica'
     const cur = topServicesMap.get(name) || { count: 0, revenue: 0, bruto: 0, descuento: 0, productos: 0, podologos: new Set() }
     cur.count += 1
     cur.revenue += c.total

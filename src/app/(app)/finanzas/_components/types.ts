@@ -17,6 +17,8 @@ export type FinanzasDashboard = {
     name: string
     consults: number
     revenue: number
+    consultRevenue?: number
+    productsRevenue?: number
     commissionPct: number
     commission: number
   }>
@@ -59,6 +61,7 @@ export type ComisionRow = {
   name: string
   consultCount: number
   totalGenerated: number
+  consultRevenue?: number
   commissionPct: number
   commissionAmount: number
   productsCount?: number
@@ -71,6 +74,7 @@ export type ComisionesResponse = {
   total: {
     consultCount: number
     totalGenerated: number
+    consultRevenue?: number
     commissionAmount: number
     productsCount?: number
     productsRevenue?: number

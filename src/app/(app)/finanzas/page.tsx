@@ -311,6 +311,9 @@ function FinanzasContent() {
                       : '—'}
                     )
                   </p>
+                  <p className="text-[10px] text-amber-700 mt-1">
+                    ℹ La comisión se calcula solo sobre el precio de la consulta, no sobre productos o medicamentos vendidos.
+                  </p>
                 </div>
               </div>
             </CardHeader>
@@ -325,8 +328,9 @@ function FinanzasContent() {
                         <TableRow>
                           <TableHead>Podólogo</TableHead>
                           <TableHead className="text-right">Consultas</TableHead>
+                          <TableHead className="text-right">Ingreso consulta</TableHead>
                           <TableHead className="text-right">Productos vendidos</TableHead>
-                          <TableHead className="text-right">Ingreso por productos</TableHead>
+                          <TableHead className="text-right">Ingreso productos</TableHead>
                           <TableHead className="text-right">Total generado</TableHead>
                           <TableHead className="text-right">% Comisión</TableHead>
                           <TableHead className="text-right">Monto a pagar</TableHead>
@@ -335,7 +339,7 @@ function FinanzasContent() {
                       <TableBody>
                         {comisionesQ.data.rows.length === 0 && (
                           <TableRow>
-                            <TableCell colSpan={7} className="text-center text-muted-foreground py-8">
+                            <TableCell colSpan={8} className="text-center text-muted-foreground py-8">
                               Sin consultas pagadas en el periodo
                             </TableCell>
                           </TableRow>
@@ -344,6 +348,9 @@ function FinanzasContent() {
                           <TableRow key={i}>
                             <TableCell className="font-medium">{r.name}</TableCell>
                             <TableCell className="text-right">{r.consultCount}</TableCell>
+                            <TableCell className="text-right font-medium" style={{ color: BRAND }}>
+                              {fmtMoney(r.consultRevenue ?? 0)}
+                            </TableCell>
                             <TableCell className="text-right">
                               <span className="text-amber-700 font-medium">
                                 {r.productsCount ?? 0}
@@ -353,7 +360,9 @@ function FinanzasContent() {
                             <TableCell className="text-right text-amber-700">
                               {fmtMoney(r.productsRevenue ?? 0)}
                             </TableCell>
-                            <TableCell className="text-right">{fmtMoney(r.totalGenerated)}</TableCell>
+                            <TableCell className="text-right text-muted-foreground">
+                              {fmtMoney(r.totalGenerated)}
+                            </TableCell>
                             <TableCell className="text-right">{r.commissionPct}%</TableCell>
                             <TableCell className="text-right font-semibold" style={{ color: BRAND }}>
                               {fmtMoney(r.commissionAmount)}
@@ -366,6 +375,7 @@ function FinanzasContent() {
                           <TableRow className="bg-muted/50 font-semibold">
                             <TableCell>TOTAL</TableCell>
                             <TableCell className="text-right">{comisionesQ.data.total.consultCount}</TableCell>
+                            <TableCell className="text-right" style={{ color: BRAND }}>{fmtMoney(comisionesQ.data.total.consultRevenue ?? 0)}</TableCell>
                             <TableCell className="text-right text-amber-700">{comisionesQ.data.total.productsCount ?? 0}</TableCell>
                             <TableCell className="text-right text-amber-700">{fmtMoney(comisionesQ.data.total.productsRevenue ?? 0)}</TableCell>
                             <TableCell className="text-right">{fmtMoney(comisionesQ.data.total.totalGenerated)}</TableCell>
