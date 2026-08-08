@@ -114,6 +114,19 @@ export async function GET(req: NextRequest) {
         podologist: { select: { id: true, name: true, commissionPct: true } },
         appointment: { select: { id: true, serviceName: true, serviceId: true } },
       },
+      select: {
+        id: true,
+        date: true,
+        consultPrice: true,
+        productsTotal: true,
+        discount: true,
+        total: true,
+        paymentMethod: true,
+        itemsJson: true,
+        podologistId: true,
+        podologist: { select: { id: true, name: true, commissionPct: true } },
+        appointment: { select: { id: true, serviceName: true, serviceId: true } },
+      },
     }),
     db.podologist.findMany({
       where: clinicId ? { clinicId } : {},
@@ -184,18 +197,67 @@ export async function GET(req: NextRequest) {
   }))
 
   // ── Top servicios (basado en citas finalizaron consulta)
-  const topServicesMap = new Map<string, { count: number; revenue: number }>()
+  // Desglose detallado: count, revenue (con descuento), avgPrice, descuento total,
+  // productos vendidos por tipo de servicio
+  const topServicesMap = new Map<
+    string,
+    {
+      count: number
+      revenue: number
+      bruto: number
+      descuento: number
+      productos: number
+      podologos: Set<string>
+    }
+  >()
   for (const c of consultations) {
     const name = c.appointment?.serviceName || 'Consulta general'
-    const cur = topServicesMap.get(name) || { count: 0, revenue: 0 }
+    const cur = topServicesMap.get(name) || { count: 0, revenue: 0, bruto: 0, descuento: 0, productos: 0, podologos: new Set() }
     cur.count += 1
     cur.revenue += c.total
+    cur.bruto += (c.consultPrice || 0) + (c.productsTotal || 0)
+    cur.descuento += c.discount || 0
+    // Productos vendidos en esta consulta
+    try {
+      const items = JSON.parse(c.itemsJson || '[]') as any[]
+      for (const it of items) {
+        if (it.type === 'PRODUCTO' || it.type === 'MEDICAMENTO') {
+          cur.productos += (Number(it.qty) || 1)
+        }
+      }
+    } catch {}
+    if (c.podologist?.name) cur.podologos.add(c.podologist.name)
     topServicesMap.set(name, cur)
   }
   const topServices = Array.from(topServicesMap.entries())
-    .map(([name, v]) => ({ name, ...v }))
+    .map(([name, v]) => ({
+      name,
+      count: v.count,
+      revenue: v.revenue,
+      bruto: v.bruto,
+      descuento: v.descuento,
+      productos: v.productos,
+      avgPrice: v.count > 0 ? v.revenue / v.count : 0,
+      podologosCount: v.podologos.size,
+    }))
     .sort((a, b) => b.revenue - a.revenue)
     .slice(0, 8)
+
+  // ── Descuentos aplicados (resumen)
+  let descuentosCount = 0
+  let descuentosTotal = 0
+  let brutoTotalConsultas = 0  // consultPrice + productsTotal antes de descuento
+  let netoTotalConsultas = 0   // total ya con descuento aplicado (= revenue)
+  for (const c of consultations) {
+    const bruto = (c.consultPrice || 0) + (c.productsTotal || 0)
+    const desc = c.discount || 0
+    brutoTotalConsultas += bruto
+    netoTotalConsultas += c.total
+    if (desc > 0) {
+      descuentosCount += 1
+      descuentosTotal += desc
+    }
+  }
 
   // ── Productos vendidos (desglose)
   // Dos fuentes:
@@ -265,13 +327,21 @@ export async function GET(req: NextRequest) {
     byMethod: ingresosByMethod,
     byPodologist,
     topServices,
-    // ── Productos vendidos (nuevo) ──
+    // ── Productos vendidos ──
     productos: {
       total: totalProductos,
       enConsultas: productosEnConsultas,
       mostrador: productosMostrador,
       top: topProductos,
       byPodologo: productosByPodologo,
+    },
+    // ── Descuentos aplicados ──
+    descuentos: {
+      count: descuentosCount,
+      total: descuentosTotal,
+      bruto: brutoTotalConsultas,
+      neto: netoTotalConsultas,
+      pctAhorro: brutoTotalConsultas > 0 ? (descuentosTotal / brutoTotalConsultas) * 100 : 0,
     },
     dailySeries,
     comparison: {

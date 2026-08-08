@@ -20,13 +20,29 @@ export type FinanzasDashboard = {
     commissionPct: number
     commission: number
   }>
-  topServices: Array<{ name: string; count: number; revenue: number }>
+  topServices: Array<{
+    name: string
+    count: number
+    revenue: number
+    bruto?: number
+    descuento?: number
+    productos?: number
+    avgPrice?: number
+    podologosCount?: number
+  }>
   productos?: {
     total: number
     enConsultas: number
     mostrador: number
     top: Array<{ name: string; count: number; revenue: number; category: string }>
     byPodologo: Array<{ name: string; productsCount: number; productsRevenue: number }>
+  }
+  descuentos?: {
+    count: number
+    total: number
+    bruto: number
+    neto: number
+    pctAhorro: number
   }
   dailySeries: Array<{ date: string; ingresos: number; egresos: number }>
   comparison: {

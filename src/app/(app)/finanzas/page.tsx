@@ -454,7 +454,7 @@ function FinanzasContent() {
 // ============================================================
 
 function FinanzasDashboardView({ data }: { data: FinanzasDashboard }) {
-  const { totals, byMethod, byPodologist, topServices, dailySeries, comparison, productos } = data
+  const { totals, byMethod, byPodologist, topServices, dailySeries, comparison, productos, descuentos } = data
 
   const pctBadge = (pct: number, inverse = false) => {
     const isUp = pct >= 0
@@ -638,34 +638,100 @@ function FinanzasDashboardView({ data }: { data: FinanzasDashboard }) {
           </CardContent>
         </Card>
 
-        {/* Top servicios */}
+        {/* Top servicios — tabla detallada */}
         <Card className="shadow-sm">
           <CardHeader>
             <CardTitle className="text-base flex items-center gap-2">
-              <FileBarChart className="h-4 w-4" /> Top servicios
+              <FileBarChart className="h-4 w-4" /> Desglose por tipo de consulta
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="h-72">
-              {topServices.length === 0 ? (
-                <div className="h-full flex items-center justify-center text-sm text-muted-foreground">
-                  Sin servicios en el periodo
-                </div>
-              ) : (
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={topServices} layout="vertical">
-                    <CartesianGrid strokeDasharray="3 3" stroke="#eee" />
-                    <XAxis type="number" fontSize={10} tick={{ fill: '#666' }} tickFormatter={(v) => `$${(v / 1000).toFixed(0)}k`} />
-                    <YAxis type="category" dataKey="name" fontSize={10} width={120} tick={{ fill: '#666' }} />
-                    <Tooltip formatter={(v: number) => fmtMoney(v)} contentStyle={{ fontSize: 12 }} />
-                    <Bar dataKey="revenue" name="Ingresos" fill="#0891b2" radius={[0, 4, 4, 0]} />
-                  </BarChart>
-                </ResponsiveContainer>
-              )}
-            </div>
+            {topServices.length === 0 ? (
+              <div className="text-center text-sm text-muted-foreground py-8">
+                Sin consultas en el periodo
+              </div>
+            ) : (
+              <div className="max-h-72 overflow-y-auto">
+                <Table>
+                  <TableHeader className="sticky top-0 bg-background">
+                    <TableRow>
+                      <TableHead>Servicio</TableHead>
+                      <TableHead className="text-right">Citas</TableHead>
+                      <TableHead className="text-right">Precio prom.</TableHead>
+                      <TableHead className="text-right">Descuentos</TableHead>
+                      <TableHead className="text-right">Productos</TableHead>
+                      <TableHead className="text-right">Total</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {topServices.map((s, i) => (
+                      <TableRow key={i}>
+                        <TableCell className="font-medium">{s.name}</TableCell>
+                        <TableCell className="text-right">{s.count}</TableCell>
+                        <TableCell className="text-right text-muted-foreground">
+                          {fmtMoney(s.avgPrice ?? s.revenue / Math.max(s.count, 1))}
+                        </TableCell>
+                        <TableCell className="text-right">
+                          {(s.descuento ?? 0) > 0 ? (
+                            <span className="text-amber-700 font-medium">{fmtMoney(s.descuento ?? 0)}</span>
+                          ) : (
+                            <span className="text-muted-foreground">—</span>
+                          )}
+                        </TableCell>
+                        <TableCell className="text-right">
+                          {(s.productos ?? 0) > 0 ? (
+                            <span className="text-amber-700">{s.productos}</span>
+                          ) : (
+                            <span className="text-muted-foreground">—</span>
+                          )}
+                        </TableCell>
+                        <TableCell className="text-right font-semibold" style={{ color: BRAND }}>
+                          {fmtMoney(s.revenue)}
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+            )}
           </CardContent>
         </Card>
       </div>
+
+      {/* Descuentos aplicados */}
+      {(descuentos?.total ?? 0) > 0 && (
+        <Card className="shadow-sm border-amber-200 bg-amber-50/30">
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base flex items-center gap-2">
+              <DollarSign className="h-4 w-4 text-amber-700" /> Descuentos aplicados en consultas
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              <div>
+                <div className="text-xs text-muted-foreground">Consultas con descuento</div>
+                <div className="text-lg font-bold text-amber-700">{descuentos?.count ?? 0}</div>
+              </div>
+              <div>
+                <div className="text-xs text-muted-foreground">Total descontado</div>
+                <div className="text-lg font-bold text-amber-700">{fmtMoney(descuentos?.total ?? 0)}</div>
+              </div>
+              <div>
+                <div className="text-xs text-muted-foreground">Bruto (antes descuento)</div>
+                <div className="text-lg font-semibold text-muted-foreground line-through">
+                  {fmtMoney(descuentos?.bruto ?? 0)}
+                </div>
+              </div>
+              <div>
+                <div className="text-xs text-muted-foreground">% de ahorro</div>
+                <div className="text-lg font-bold text-amber-700">
+                  {(descuentos?.pctAhorro ?? 0).toFixed(1)}%
+                </div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Productos vendidos */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
