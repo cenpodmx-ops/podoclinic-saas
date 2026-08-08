@@ -110,10 +110,8 @@ export async function GET(req: NextRequest) {
         date: { gte: consultRangeStart, lte: consultRangeEnd },
         paid: true,
       },
-      include: {
-        podologist: { select: { id: true, name: true, commissionPct: true } },
-        appointment: { select: { id: true, serviceName: true, serviceId: true } },
-      },
+      // Nota: no se puede usar `include` y `select` al mismo tiempo en Prisma.
+      // Las relaciones van dentro de `select`.
       select: {
         id: true,
         date: true,
