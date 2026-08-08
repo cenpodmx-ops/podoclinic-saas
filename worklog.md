@@ -1690,3 +1690,44 @@ Stage Summary:
 - BUG COMPLETAMENTE RESUELTO. Finanzas ahora muestra el rango de fechas correcto y las gráficas (diaria, por podólogo, top servicios) muestran las cantidades correctas del período seleccionado.
 - La causa raíz era usar startOfDayHermosillo(parseISO(dateStr)) que aplica un doble offset (parseISO → midnight UTC, startOfDayHermosillo → trata como instante Hermosillo → midnight del día anterior).
 - Ahora se construyen rangos UTC directamente desde el string YYYY-MM-DD.
+
+---
+Task ID: FIX-AGENDA-ESTATUS-PODOLOGOS-2026-07-30
+Agent: main (fix agenda: colores de estatus + podólogos de todas las clínicas)
+Task: Arreglar agenda: colores de estatus + etiqueta visible + bug de podólogos de todas las clínicas
+
+Work Log:
+- Usuario reportó: "que en la agenda con la cita se cumplan adecuadamente los colores de confirmada, cancelada etc, pero además diga el estatus ahí a un lado del nombre. Otra cosa, a veces como que se buguea y muestra a todos los podologos de todas las clinicas en la agenda"
+
+- BUG 1: COLORES Y ETIQUETA DE ESTATUS
+  * Los colores ya estaban definidos en globals.css (appt-pendiente, appt-confirmada, etc.)
+  * PERO no se mostraba la etiqueta del estatus en la tarjeta de la cita
+  * Fix: AppointmentCard ahora muestra un badge con etiqueta corta (Pend, Conf, En consulta, Hecha, Cancel, No asist) junto al nombre del paciente
+  * Arreglado isDark para incluir BLOQUEADA
+
+- BUG 2: MOSTRABA PODÓLOGOS DE TODAS LAS CLÍNICAS
+  Causa raíz (doble problema):
+  1. API /api/podologos: si SUPER no tenía cookie active-clinic seteada, where.clinicId = undefined
+     → Prisma devolvía TODOS los podólogos de TODAS las clínicas
+  2. Frontend agenda: queryKey ['podologos'] no incluía clinicId → React Query devolvía
+     datos cacheados de la sucursal anterior cuando SUPER cambiaba de clínica
+
+  Fix:
+  * API /api/podologos: safety net — si no se resuelve clinicId, devolver [] en vez de TODOS
+  * Agenda page: incluir activeClinicId (de useActiveClinic store) en queryKeys de
+    ['podologos'] y ['citas'] para que React Query refresque al cambiar sucursal
+  * Reset selected podologist a 'all' cuando cambie la sucursal activa
+
+- Verificación en PRODUCCIÓN:
+  * CENPOD Quiroga: muestra solo "Uziel Montaño Cordova" ✓ (no podólogos de otras clínicas)
+  * CENPOD OCOTILLO: muestra "Dr. Ricardo Méndez" y "Dra. Laura Quijano" ✓
+  * CENPOD Portillo: muestra "No hay podólogos activos en esta clínica" ✓ (no mezcla)
+  * Citas muestran etiqueta de estatus: "11:00 Nicolas Morales Hecha" ✓
+  * Citas muestran etiqueta: "16:00 Arick Leonardo Rotano Arredondo Hecha" ✓
+
+- Commit 6c6d6f2, push exitoso, deployado en Vercel.
+
+Stage Summary:
+- BUG COMPLETAMENTE RESUELTO.
+  1. Las citas ahora muestran colores correctos por estatus + etiqueta visible (Pend, Conf, En consulta, Hecha, Cancel, No asist)
+  2. La agenda ya NO mezcla podólogos de diferentes clínicas — cada clínica muestra solo sus propios podólogos
