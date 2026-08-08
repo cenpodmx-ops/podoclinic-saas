@@ -1847,3 +1847,53 @@ Stage Summary:
   era midnight UTC como Appointment.date, pero en realidad es @default(now()).
 - Consultation.date y CashMovement.createdAt ahora se filtran con el mismo
   rango Hermosillo day, asegurando conteos consistentes.
+
+---
+Task ID: FEAT-FINANZAS-TIPO-CONSULTA-DESCUENTOS-2026-07-30
+Agent: main (finanzas: desglose por tipo de consulta + descuentos)
+Task: Diferenciar tipo de consulta (chequeo, servicio, etc.) + descuentos aplicados en finanzas
+
+Work Log:
+- Usuario solicitó: "También sería bueno diferenciar el tipo de consulta, si fue chequeo, si se aplicó algún descuento, si fue servicio, etc para saber mejor el desglose"
+
+- IMPLEMENTACIÓN:
+  1. API /api/finanzas/route.ts:
+     * Añadidos campos a la consulta de consultations: consultPrice, productsTotal, discount, paymentMethod, date
+     * Ampliado topServices: ahora incluye bruto, descuento, productos, avgPrice, podologosCount
+     * Nuevo objeto 'descuentos': count (consultas con descuento), total (monto descontado), bruto (antes), neto (después), pctAhorro
+
+  2. Frontend types.ts: actualizado FinanzasDashboard con campos nuevos
+
+  3. Frontend finanzas/page.tsx:
+     * Reemplazada gráfica 'Top servicios' por tabla detallada 'Desglose por tipo de consulta':
+       - Servicio (nombre del tipo: Chequeo, Consulta Podologica, etc.)
+       - Citas (count)
+       - Precio promedio (revenue / count)
+       - Descuentos (total descontado en ese tipo)
+       - Productos (piezas vendidas en ese tipo)
+       - Total (revenue con descuento aplicado)
+     * Nueva card 'Descuentos aplicados en consultas' (solo si hay descuentos):
+       - Consultas con descuento (count)
+       - Total descontado
+       - Bruto (antes del descuento, con tachado)
+       - % de ahorro
+
+- BUG ENCONTRADO Y ARREGLADO:
+  Al añadir campos a la consulta de consultations, usé tanto `include` como `select`
+  al mismo tiempo, lo cual Prisma no permite → error 500 → dashboard no renderizaba.
+  Fix: remover include, dejar solo select (que ya incluye las relaciones).
+
+- Verificación en PRODUCCIÓN (CENPOD Quiroga, 24-30 julio):
+  * API: topServices=[{name:"Consulta Podologica", count:10, avgPrice:547.5, descuento:1080, productos:5, revenue:5475}]
+  * API: descuentos={count:9, total:1080, bruto:6555, neto:5475, pctAhorro:16.5%}
+  * UI: Tabla "Desglose por tipo de consulta" muestra correctamente todos los campos
+  * UI: Card "Descuentos aplicados en consultas" muestra 9 consultas, $1,080 descontado, 16.5% ahorro
+  * Dashboard se renderiza correctamente (sin error 500)
+
+- Commits: afd1a98 (feature), 6893917 (fix Prisma include/select)
+
+Stage Summary:
+- FEATURE COMPLETA. Ahora finanzas muestra:
+  1. Desglose por tipo de consulta (tabla con citas, precio promedio, descuentos, productos, total)
+  2. Descuentos aplicados (card con count, total descontado, bruto, % ahorro)
+- Bug de Prisma include+select arreglado (estaba causando error 500)
