@@ -1897,3 +1897,60 @@ Stage Summary:
   1. Desglose por tipo de consulta (tabla con citas, precio promedio, descuentos, productos, total)
   2. Descuentos aplicados (card con count, total descontado, bruto, % ahorro)
 - Bug de Prisma include+select arreglado (estaba causando error 500)
+
+---
+Task ID: FIX-COMISION-SOLO-CONSULTA-2026-07-30
+Agent: main (fix comisión incluye productos + serviceName incorrecto)
+Task: Arreglar que la comisión incluía productos/medicamentos + unificar serviceName a 'Consulta Podologica'
+
+Work Log:
+- Usuario reportó 2 bugs:
+  1. "la comisión solo es por consulta, no por medicamento, y estas contando el % del medicamento o producto tambien"
+  2. "cuando es consulta y medicamento o producto, le pones como consulta general y cuando es pura consulta le pones consulta podologica, pero esta mal, todas son consultas podologicas"
+
+- BUG 1: COMISIÓN INCLUÍA PRODUCTOS
+  Antes: commission = total * commissionPct / 100
+  donde total = consultPrice + productsTotal - discount
+  → La comisión incluía 40% de los productos vendidos
+
+  Ahora: commission = consultRevenue * commissionPct / 100
+  donde consultRevenue = sum of consultPrice
+  → La comisión es SOLO sobre el precio de la consulta
+
+  Verificado (CENPOD Quiroga, 24-30 julio, Uziel 40%):
+  - Antes: $5,475 (total) × 40% = $2,190 (incluía $955 de productos)
+  - Ahora: $5,600 (consultPrice) × 40% = $2,240 (solo consulta)
+
+  Aplicado a:
+  - finanzas/route.ts: byPodologist ahora tiene consultRevenue, productsRevenue
+  - finanzas/comisiones/route.ts: rows ahora tienen consultRevenue
+  - finanzas/reportes/route.ts: reporteComisiones arreglado
+
+- BUG 2: SERVICE NAME 'CONSULTA GENERAL'
+  Cuando appointment.serviceName era null (cita creada sin servicio explícito),
+  el default era 'Consulta general'. Pero todas son consultas podológicas —
+  algunas tienen medicamentos adicionales pero es el mismo servicio.
+
+  Fix: cambiar default de 'Consulta general' a 'Consulta Podologica'
+  en finanzas/route.ts (topServices)
+
+- MEJORAS DE UI:
+  - Tabla de comisiones ahora muestra columna 'Ingreso consulta' separada
+    de 'Ingreso productos' y 'Total generado'
+  - Nota explicativa: 'ℹ La comisión se calcula solo sobre el precio de la
+    consulta, no sobre productos o medicamentos vendidos.'
+  - Total ahora muestra desglose: consultRevenue + productsRevenue
+
+- Verificación en PRODUCCIÓN (CENPOD Quiroga, 24-30 julio):
+  * Comisiones table: Uziel 10 consultas, $5,600 consulta, 5 pzs $955 productos,
+    $5,475 total, 40%, $2,240 comisión ✓
+  * Top servicios: 'Consulta Podologica' (no 'Consulta general') ✓
+  * Nota explicativa visible ✓
+
+- Commit b7a915a, push exitoso, deployado en Vercel.
+
+Stage Summary:
+- BUGS RESUELTOS.
+  1. Comisión ahora se calcula solo sobre consultPrice (no sobre productos)
+  2. Todas las consultas se muestran como 'Consulta Podologica' (no 'Consulta general')
+  3. Tabla de comisiones más clara con desglose de ingreso por consulta vs productos
