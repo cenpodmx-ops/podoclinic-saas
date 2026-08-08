@@ -42,6 +42,13 @@ export async function GET(req: NextRequest) {
     where.clinicId = user!.clinicId
   }
 
+  // Safety net: si no se resolvió clinicId (SUPER sin sucursal activa),
+  // devolver [] para evitar mostrar podólogos de TODAS las clínicas.
+  // Antes: where.clinicId = undefined → Prisma devolvía TODOS los podólogos.
+  if (!where.clinicId && !(user!.role === 'SUPER' && all === '1')) {
+    return ok([])
+  }
+
   const podologos = await db.podologist.findMany({
     where,
     select: {

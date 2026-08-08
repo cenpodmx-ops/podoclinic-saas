@@ -110,7 +110,18 @@ function AppointmentCard({
   const height = Math.max(((endMin - startMin) / slotMin) * SLOT_HEIGHT - 2, 24)
   const cls = `appt-${appt.status.toLowerCase()}`
   const patientName = `${appt.patient.firstName} ${appt.patient.lastName}`
-  const isDark = appt.status === 'EN_CONSULTA' || appt.status === 'CANCELADA'
+  const isDark = appt.status === 'EN_CONSULTA' || appt.status === 'CANCELADA' || appt.status === 'BLOQUEADA'
+
+  // Etiqueta corta del estatus para mostrar junto al nombre
+  const STATUS_SHORT: Record<string, string> = {
+    PENDIENTE: 'Pend',
+    CONFIRMADA: 'Conf',
+    EN_CONSULTA: 'En consulta',
+    FINALIZADA: 'Hecha',
+    CANCELADA: 'Cancel',
+    NO_ASISTIO: 'No asist',
+  }
+  const statusShort = STATUS_SHORT[appt.status] || appt.status
 
   return (
     <button
@@ -118,9 +129,18 @@ function AppointmentCard({
       className={`absolute left-1 right-1 rounded-md px-2 py-1.5 text-left overflow-hidden ${cls} hover:shadow-md transition-shadow`}
       style={{ top, height }}
     >
-      <p className={`text-xs font-semibold truncate ${isDark ? 'text-white' : ''}`}>
-        {fmtTimeShort(appt.startTime)} {patientName}
-      </p>
+      <div className="flex items-center gap-1">
+        <span className={`text-xs font-semibold truncate flex-1 ${isDark ? 'text-white' : ''}`}>
+          {fmtTimeShort(appt.startTime)} {patientName}
+        </span>
+        <span
+          className={`text-[9px] font-bold uppercase tracking-wide px-1 py-0.5 rounded shrink-0 ${
+            isDark ? 'bg-white/25 text-white' : 'bg-black/10 text-current'
+          }`}
+        >
+          {statusShort}
+        </span>
+      </div>
       {appt.serviceName && (
         <p className={`text-[10px] truncate ${isDark ? 'text-white/80' : 'text-muted-foreground'}`}>
           {compact ? `${fmtTimeShort(appt.startTime)}–${fmtTimeShort(appt.endTime)}` : appt.serviceName}

@@ -21,6 +21,7 @@ import { EditAppointmentDialog } from './_components/edit-appointment-dialog'
 import { BlockDialog } from './_components/block-dialog'
 import type { AppointmentItem, BlockItem, PodologistOption } from './_components/types'
 import { STATUS_COLORS, STATUS_LABELS, fmtTime } from '@/lib/format'
+import { useActiveClinic } from '@/lib/active-clinic-store'
 
 export default function AgendaPage() {
   const router = useRouter()
@@ -28,6 +29,10 @@ export default function AgendaPage() {
   const { data: session } = useSession()
   const qc = useQueryClient()
   const user = session?.user as any
+  // activeClinicId cambia en cliente cuando el SUPER cambia de sucursal,
+  // se usa en queryKey para forzar refetch de podólogos y citas
+  const { clinicId: activeClinicId, hydrate: hydrateClinic } = useActiveClinic()
+  useEffect(() => { hydrateClinic() }, [hydrateClinic])
   const canManage = user && ['SUPER', 'OWNER', 'RECEPTION'].includes(user.role)
 
   // ---- State ----
@@ -42,6 +47,12 @@ export default function AgendaPage() {
     setDate(format(new Date(), 'yyyy-MM-dd'))
   }, [])
 
+  // Reset selected podologist when active clinic changes
+  // (podologo de la sucursal anterior ya no existe en la nueva sucursal)
+  useEffect(() => {
+    setPodologistId('all')
+  }, [activeClinicId])
+
   const [newOpen, setNewOpen] = useState(false)
   const [newInitial, setNewInitial] = useState<{ podologistId?: string; date?: string; startTime?: string } | undefined>(undefined)
   const [rescheduleAppt, setRescheduleAppt] = useState<AppointmentItem | null>(null)
@@ -54,9 +65,13 @@ export default function AgendaPage() {
   const [deletingBlock, setDeletingBlock] = useState(false)
 
   // ---- Podologos ----
+  // Incluir activeClinicId en el queryKey para que React Query refresque
+  // los podólogos cuando el SUPER cambia de sucursal.
+  // Sin esto, el cache devolvía podólogos de la sucursal anterior.
   const { data: podologos = [] } = useQuery<PodologistOption[]>({
-    queryKey: ['podologos'],
+    queryKey: ['podologos', activeClinicId],
     queryFn: () => fetch('/api/podologos').then((r) => r.json()),
+    enabled: !!user,
   })
 
   // ---- Citas ----
@@ -67,7 +82,7 @@ export default function AgendaPage() {
   if (podologistId && podologistId !== 'all') queryParams.set('podologistId', podologistId)
 
   const { data, isPending } = useQuery({
-    queryKey: ['citas', date, podologistId, view, user?.role],
+    queryKey: ['citas', date, podologistId, view, user?.role, activeClinicId],
     queryFn: () => fetch(`/api/citas?${queryParams.toString()}`).then((r) => r.json()),
     enabled: !!user && !!date,
     staleTime: 30_000, // 30s — datos operativos sensibles
