@@ -1793,3 +1793,57 @@ Stage Summary:
   3. Ranking de podólogos que más productos vendieron (en consultas)
   4. Comisiones usan el mismo rango de fechas que el dashboard (eliminada confusión)
   5. Tabla de comisiones con columnas nuevas: Productos vendidos e Ingreso por productos
+
+---
+Task ID: FIX-FINANZAS-CONSULTAS-DUPLICADAS-2026-07-30
+Agent: main (fix comisiones contaba consultas duplicadas)
+Task: Arreglar bug: Comisiones por podólogo mostraba 2 consultas cuando solo había 1
+
+Work Log:
+- Usuario reportó: "Comisiones por podólogo sale que llevo dos consultas, cuando claramente llevo 1, arriba si aparece $480 de una que llevo"
+- Investigación: API /api/finanzas?period=dia devolvía:
+  * totals.ingresos = $480 (1 CashMovement source='CONSULTA') ✓
+  * bySource.consulta = $480 ✓
+  * byPodologist.consults = 2 ✗ (debería ser 1)
+  * byPodologist.revenue = $960 ✗ (debería ser $480)
+  * topServices.count = 2 ✗ (debería ser 1)
+
+- CAUSA RAÍZ: Consultation.date es @default(now()) → timestamp real (no midnight UTC)
+  Pero en commit anterior (996e053) cambié el filtro de consultations para usar
+  dateFieldStart/End (midnight UTC range), pensando que Consultation.date era
+  midnight UTC como Appointment.date. Error.
+
+  Para una consulta creada a las 5 PM Hermosillo del 7 ago (00:00 UTC del 8 ago):
+  * Consultation.date = 2026-08-08T00:00:00Z
+  * midnight UTC range del 8 ago (00:00 to 23:59) → MATCH ✓ (INCORRECTO — es del 7 ago)
+  * Hermosillo day range del 8 ago (07:00 to 06:59 next day) → NO MATCH ✗ (correcto)
+  
+  Mientras tanto, CashMovement.createdAt usa Hermosillo day range correctamente,
+  entonces bySource.consulta = $480 (1 movimiento) pero byPodologist.consults = 2
+  (consultas con date matching midnight UTC range, incluyendo la del día anterior).
+
+- FIX: Cambiar filtro de Consultation.date para usar Hermosillo day range
+  (createdAtFieldStart/End) igual que CashMovement.createdAt.
+
+  Aplicado a:
+  * finanzas/route.ts: consulta consultations (dashboard)
+  * finanzas/comisiones/route.ts: consulta consultations
+  * finanzas/reportes/route.ts: reporteComisiones
+
+  Eliminado imports no usados: dateFieldStart, dateFieldEnd de los 3 archivos.
+
+- Verificación en PRODUCCIÓN (CENPOD Quiroga, period=dia, 8 ago):
+  * Antes: bySource.consulta=$480, byPodologist.consults=2, revenue=$960 ✗
+  * Después: bySource.consulta=$480, byPodologist.consults=1, revenue=$480 ✓
+  * Comisiones: Uziel 1 consulta, $480 ✓ (antes 2 consultas, $960)
+  * UI muestra: Ingresos $480, Comisiones Uziel 1 consulta $480 ✓
+  * Texto: "Usa el mismo rango de fechas del dashboard (2026-08-08 al 2026-08-08)" ✓
+
+- Commit d6381ac, push exitoso, deployado en Vercel.
+
+Stage Summary:
+- BUG RESUELTO. Comisiones ahora cuenta consultas correctamente (1 en vez de 2).
+- La causa raíz era un error en commit 996e053 donde asumí que Consultation.date
+  era midnight UTC como Appointment.date, pero en realidad es @default(now()).
+- Consultation.date y CashMovement.createdAt ahora se filtran con el mismo
+  rango Hermosillo day, asegurando conteos consistentes.
