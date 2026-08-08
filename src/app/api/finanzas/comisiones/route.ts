@@ -92,19 +92,21 @@ export async function GET(req: NextRequest) {
   })
 
   // Agrupar por podólogo — incluye desglose de productos vendidos en consulta
-  // IMPORTANTE: la comisión se calcula SOLO sobre consultPrice (precio de la
-  // consulta), NO sobre productsTotal (productos/medicamentos vendidos).
-  // Antes se calculaba sobre `total` (que incluye productos) — eso estaba mal.
+  // IMPORTANTE: la comisión se calcula SOLO sobre el precio de la consulta
+  // DESPUÉS DEL DESCUENTO (no sobre consultPrice full, ni sobre productos).
+  // Ej: consultPrice=$600, discount=$120 → consultCharged=$480
+  //     comisión = $480 × pct (NO $600 × pct, NO ($480+$producto) × pct)
+  // El descuento se atribuye primero a la consulta; si sobra, a los productos.
   const map = new Map<
     string,
     {
       name: string
       consultCount: number
-      totalGenerated: number        // total (consulta + productos - descuento)
-      consultRevenue: number        // solo consulta (consultPrice), para comisión
+      totalGenerated: number        // total cobrado (consulta + productos - descuento)
+      consultRevenue: number        // solo consulta DESPUÉS del descuento (para comisión)
       commissionPct: number
       productsCount: number
-      productsRevenue: number
+      productsRevenue: number        // productos DESPUÉS del descuento (si aplica)
     }
   >()
   for (const c of consultations) {
@@ -112,9 +114,24 @@ export async function GET(req: NextRequest) {
     const podName = c.podologist?.name || 'Sin asignar'
     const commissionPct = c.podologist?.commissionPct ?? 0
     const cur = map.get(podId) || { name: podName, consultCount: 0, totalGenerated: 0, consultRevenue: 0, commissionPct, productsCount: 0, productsRevenue: 0 }
+
+    // Atribuir el descuento primero a la consulta, luego a los productos
+    let consultCharged = c.consultPrice || 0
+    let productsCharged = c.productsTotal || 0
+    let remainingDiscount = c.discount || 0
+    if (remainingDiscount > 0) {
+      const consultDiscount = Math.min(consultCharged, remainingDiscount)
+      consultCharged -= consultDiscount
+      remainingDiscount -= consultDiscount
+      if (remainingDiscount > 0) {
+        const productsDiscount = Math.min(productsCharged, remainingDiscount)
+        productsCharged -= productsDiscount
+      }
+    }
+
     cur.consultCount += 1
     cur.totalGenerated += c.total
-    cur.consultRevenue += c.consultPrice || 0
+    cur.consultRevenue += consultCharged
     // Mantener el commissionPct (siempre el último visto)
     if (commissionPct > 0) cur.commissionPct = commissionPct
     // Productos vendidos en esta consulta (iterar itemsJson)
@@ -125,16 +142,16 @@ export async function GET(req: NextRequest) {
         const qty = Number(it.qty) || 1
         const price = Number(it.price) || 0
         cur.productsCount += qty
-        cur.productsRevenue += qty * price
       }
     } catch {}
+    cur.productsRevenue += productsCharged
     map.set(podId, cur)
   }
 
   const rows = Array.from(map.values())
     .map((r) => ({
       ...r,
-      // Comisión SOLO sobre consulta (consultPrice), no sobre productos
+      // Comisión SOLO sobre consulta (después del descuento), no sobre productos
       commissionAmount: Math.round((r.consultRevenue * r.commissionPct) / 100 * 100) / 100,
     }))
     .sort((a, b) => b.totalGenerated - a.totalGenerated)

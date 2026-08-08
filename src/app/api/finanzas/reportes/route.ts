@@ -162,9 +162,18 @@ async function reporteComisiones(clinicId: string | undefined, fromStr: string, 
     const podName = c.podologist?.name || 'Sin asignar'
     const commissionPct = c.podologist?.commissionPct ?? 0
     const cur = map.get(podId) || { name: podName, consultCount: 0, totalGenerated: 0, consultRevenue: 0, commissionPct }
+
+    // Atribuir el descuento primero a la consulta (para comisión después de descuento)
+    let consultCharged = c.consultPrice || 0
+    const discount = c.discount || 0
+    if (discount > 0) {
+      const consultDiscount = Math.min(consultCharged, discount)
+      consultCharged -= consultDiscount
+    }
+
     cur.consultCount += 1
     cur.totalGenerated += c.total
-    cur.consultRevenue += c.consultPrice || 0
+    cur.consultRevenue += consultCharged
     if (commissionPct > 0) cur.commissionPct = commissionPct
     map.set(podId, cur)
   }

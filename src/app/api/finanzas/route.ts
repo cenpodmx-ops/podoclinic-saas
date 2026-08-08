@@ -177,16 +177,18 @@ export async function GET(req: NextRequest) {
 
   // ── Por podólogo
   // IMPORTANTE: la comisión se calcula SOLO sobre el precio de la consulta
-  // (consultPrice), NO sobre los productos/medicamentos vendidos.
-  // Antes se calculaba sobre `total` (que incluye productos) — eso estaba mal.
+  // DESPUÉS DEL DESCUENTO, no sobre el precio full.
+  // Ej: consultPrice=$600, discount=$120 → consultCharged=$480
+  //     comisión = $480 × pct (NO $600 × pct)
+  // El descuento se atribuye primero a la consulta; si sobra, a los productos.
   const byPodologistMap = new Map<
     string,
     {
       name: string
       consults: number
-      revenue: number           // total (consulta + productos - descuento)
-      consultRevenue: number    // solo consulta (consultPrice), para comisión
-      productsRevenue: number   // solo productos
+      revenue: number           // total cobrado (consulta + productos - descuento)
+      consultRevenue: number    // solo consulta DESPUÉS del descuento (para comisión)
+      productsRevenue: number   // solo productos DESPUÉS del descuento (si aplica)
       commissionPct: number
     }
   >()
@@ -195,10 +197,25 @@ export async function GET(req: NextRequest) {
     const podName = c.podologist?.name || 'Sin asignar'
     const commissionPct = c.podologist?.commissionPct ?? 0
     const cur = byPodologistMap.get(podId) || { name: podName, consults: 0, revenue: 0, consultRevenue: 0, productsRevenue: 0, commissionPct }
+
+    // Atribuir el descuento primero a la consulta, luego a los productos
+    let consultCharged = c.consultPrice || 0
+    let productsCharged = c.productsTotal || 0
+    let remainingDiscount = c.discount || 0
+    if (remainingDiscount > 0) {
+      const consultDiscount = Math.min(consultCharged, remainingDiscount)
+      consultCharged -= consultDiscount
+      remainingDiscount -= consultDiscount
+      if (remainingDiscount > 0) {
+        const productsDiscount = Math.min(productsCharged, remainingDiscount)
+        productsCharged -= productsDiscount
+      }
+    }
+
     cur.consults += 1
     cur.revenue += c.total
-    cur.consultRevenue += c.consultPrice || 0
-    cur.productsRevenue += c.productsTotal || 0
+    cur.consultRevenue += consultCharged
+    cur.productsRevenue += productsCharged
     byPodologistMap.set(podId, cur)
   }
   const byPodologist = Array.from(byPodologistMap.values()).map((p) => ({
@@ -208,19 +225,20 @@ export async function GET(req: NextRequest) {
     consultRevenue: p.consultRevenue,
     productsRevenue: p.productsRevenue,
     commissionPct: p.commissionPct,
-    // Comisión SOLO sobre consulta, no sobre productos
+    // Comisión SOLO sobre la consulta (después del descuento), no sobre productos
     commission: Math.round((p.consultRevenue * p.commissionPct) / 100 * 100) / 100,
   }))
 
   // ── Top servicios (basado en citas finalizaron consulta)
-  // Desglose detallado: count, revenue (con descuento), avgPrice, descuento total,
-  // productos vendidos por tipo de servicio
+  // Desglose detallado: count, revenue (con descuento), avgPrice (solo consulta),
+  // descuento total, productos vendidos por tipo de servicio
   const topServicesMap = new Map<
     string,
     {
       count: number
-      revenue: number
-      bruto: number
+      revenue: number               // total cobrado (consulta + productos - descuento)
+      consultCharged: number        // solo consulta DESPUÉS del descuento (para avgPrice)
+      bruto: number                 // consultPrice + productsTotal (antes de descuento)
       descuento: number
       productos: number
       podologos: Set<string>
@@ -228,11 +246,19 @@ export async function GET(req: NextRequest) {
   >()
   for (const c of consultations) {
     const name = c.appointment?.serviceName || 'Consulta Podologica'
-    const cur = topServicesMap.get(name) || { count: 0, revenue: 0, bruto: 0, descuento: 0, productos: 0, podologos: new Set() }
+    const cur = topServicesMap.get(name) || { count: 0, revenue: 0, consultCharged: 0, bruto: 0, descuento: 0, productos: 0, podologos: new Set() }
     cur.count += 1
     cur.revenue += c.total
     cur.bruto += (c.consultPrice || 0) + (c.productsTotal || 0)
     cur.descuento += c.discount || 0
+    // Calcular monto cobrado por consulta (después de atribuir descuento)
+    let consultCharged = c.consultPrice || 0
+    let remainingDiscount = c.discount || 0
+    if (remainingDiscount > 0) {
+      const consultDiscount = Math.min(consultCharged, remainingDiscount)
+      consultCharged -= consultDiscount
+    }
+    cur.consultCharged += consultCharged
     // Productos vendidos en esta consulta
     try {
       const items = JSON.parse(c.itemsJson || '[]') as any[]
@@ -253,7 +279,8 @@ export async function GET(req: NextRequest) {
       bruto: v.bruto,
       descuento: v.descuento,
       productos: v.productos,
-      avgPrice: v.count > 0 ? v.revenue / v.count : 0,
+      // avgPrice = promedio cobrado por consulta (después del descuento, sin productos)
+      avgPrice: v.count > 0 ? v.consultCharged / v.count : 0,
       podologosCount: v.podologos.size,
     }))
     .sort((a, b) => b.revenue - a.revenue)
