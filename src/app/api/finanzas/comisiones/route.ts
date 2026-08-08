@@ -4,8 +4,8 @@ import { requireSession, ok, bad, effectiveClinic } from '@/lib/api'
 import { canAccessFinance } from '@/lib/session'
 import {
   formatDateHermosillo,
-  dateFieldStart,
-  dateFieldEnd,
+  createdAtFieldStart,
+  createdAtFieldEnd,
   startOfDayHermosillo,
   endOfDayHermosillo,
   startOfWeekHermosillo,
@@ -65,9 +65,10 @@ export async function GET(req: NextRequest) {
     toStr = formatDateHermosillo(end)
   }
 
-  // Para campo `date` (consultas, guardado como midnight UTC del día calendario)
-  const start = dateFieldStart(fromStr)
-  const end = dateFieldEnd(toStr)
+  // Para Consultation.date (que es @default(now()), timestamp real):
+  // Usar Hermosillo day range (igual que CashMovement.createdAt)
+  const start = createdAtFieldStart(fromStr)
+  const end = createdAtFieldEnd(toStr)
 
   // Consultas pagadas en el rango
   const consultations = await db.consultation.findMany({

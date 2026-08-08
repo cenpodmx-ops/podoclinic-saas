@@ -23,8 +23,6 @@ import {
   startOfYearHermosillo,
   endOfYearHermosillo,
   formatDateHermosillo,
-  dateFieldStart,
-  dateFieldEnd,
   createdAtFieldStart,
   createdAtFieldEnd,
 } from '@/lib/timezone'
@@ -78,10 +76,10 @@ export async function GET(req: NextRequest) {
     prevEnd = p.end
   }
 
-  // Rango para campo `date` (consultas, citas): medianoche UTC del día calendario
-  // (distinto al rango de `createdAt` que usa Hermosillo day range)
-  const dateFieldRangeStart = dateFieldStart(fromParam || formatDateHermosillo(start))
-  const dateFieldRangeEnd = dateFieldEnd(fromParam ? toParam! : formatDateHermosillo(end))
+  // Para Consultation.date (que es @default(now()), timestamp real):
+  // Usar Hermosillo day range (igual que CashMovement.createdAt)
+  const consultRangeStart = createdAtFieldStart(fromParam || formatDateHermosillo(start))
+  const consultRangeEnd = createdAtFieldEnd(fromParam ? toParam! : formatDateHermosillo(end))
 
   // Cargar movimientos del periodo actual
   const where = {
@@ -105,10 +103,11 @@ export async function GET(req: NextRequest) {
     db.consultation.findMany({
       where: {
         ...(clinicId ? { clinicId } : {}),
-        // Campo `date` se guarda como medianoche UTC del día calendario,
-        // NO como timestamp real. Por eso se filtra con dateFieldRange (medianoche UTC)
-        // y NO con `start`/`end` (que son Hermosillo ranges para createdAt).
-        date: { gte: dateFieldRangeStart, lte: dateFieldRangeEnd },
+        // Consultation.date es @default(now()) → timestamp real (no midnight UTC).
+        // Por eso se filtra con Hermosillo day range (igual que CashMovement.createdAt),
+        // NO con midnight UTC range. Antes usabamos dateFieldRange y causaba que
+        // consultas creadas después de 5 PM Hermosillo se contaran en el día siguiente.
+        date: { gte: consultRangeStart, lte: consultRangeEnd },
         paid: true,
       },
       include: {

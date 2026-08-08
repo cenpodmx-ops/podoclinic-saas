@@ -5,8 +5,6 @@ import { canAccessFinance } from '@/lib/session'
 import { format } from 'date-fns'
 import {
   formatDateHermosillo,
-  dateFieldStart,
-  dateFieldEnd,
   createdAtFieldStart,
   createdAtFieldEnd,
   startOfMonthHermosillo,
@@ -131,10 +129,10 @@ async function reporteInventario(clinicId: string | undefined) {
 }
 
 // ── Comisiones: por podólogo en el periodo
-// `date` field se guarda como midnight UTC del día calendario
+// `Consultation.date` es @default(now()) → timestamp real → usar Hermosillo range
 async function reporteComisiones(clinicId: string | undefined, fromStr: string, toStr: string) {
-  const start = dateFieldStart(fromStr)
-  const end = dateFieldEnd(toStr)
+  const start = createdAtFieldStart(fromStr)
+  const end = createdAtFieldEnd(toStr)
 
   const consultations = await db.consultation.findMany({
     where: {
