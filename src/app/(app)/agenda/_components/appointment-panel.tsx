@@ -19,6 +19,61 @@ import { toast } from 'sonner'
 import { STATUS_COLORS, STATUS_LABELS, fmtTime, fmtDate, fmtMoney } from '@/lib/format'
 import type { AppointmentItem, PodologistOption } from './types'
 
+// Formatea hora en formato 12h con am/pm (ej: "4:00 pm" en vez de "16:00")
+function fmtTime12h(date: string | Date): string {
+  const d = typeof date === 'string' ? new Date(date) : date
+  // Extraer horas y minutos del ISO string sin convertir timezone
+  const s = typeof date === 'string' ? date : d.toISOString()
+  const match = s.match(/T(\d{2}):(\d{2})/)
+  if (match) {
+    let h = parseInt(match[1], 10)
+    const m = match[2]
+    const period = h >= 12 ? 'pm' : 'am'
+    // Convertir a 12h: 0→12am, 13→1pm, 12→12pm
+    h = h % 12
+    if (h === 0) h = 12
+    return `${h}:${m} ${period}`
+  }
+  // Fallback
+  let h = d.getUTCHours()
+  const min = String(d.getUTCMinutes()).padStart(2, '0')
+  const period = h >= 12 ? 'pm' : 'am'
+  h = h % 12
+  if (h === 0) h = 12
+  return `${h}:${min} ${period}`
+}
+
+// Formatea fecha de forma relativa para mensajes al paciente:
+// - Hoy → "hoy"
+// - Mañana → "mañana"
+// - Más de 1 día → "el día martes 13 de agosto" (día de la semana + día + mes)
+function fmtFechaRelativa(dateStr: string): string {
+  // dateStr viene como "2026-08-11" (YYYY-MM-DD) — interpretarlo como fecha calendario
+  const match = dateStr.match(/^(\d{4})-(\d{2})-(\d{2})/)
+  if (!match) return dateStr
+  const [, y, mo, d] = match
+  const targetDate = new Date(Number(y), Number(mo) - 1, Number(d))
+
+  // Fecha de hoy en zona horaria local del navegador (que debería ser Hermosillo)
+  const now = new Date()
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate())
+
+  // Diferencia en días (sin contar horas)
+  const diffMs = targetDate.getTime() - today.getTime()
+  const diffDays = Math.round(diffMs / (1000 * 60 * 60 * 24))
+
+  if (diffDays === 0) return 'hoy'
+  if (diffDays === 1) return 'mañana'
+
+  // Para más de 1 día: día de la semana + día + mes
+  const diasSemana = ['domingo', 'lunes', 'martes', 'miércoles', 'jueves', 'viernes', 'sábado']
+  const meses = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre']
+  const diaSemana = diasSemana[targetDate.getDay()]
+  const dia = targetDate.getDate()
+  const mes = meses[targetDate.getMonth()]
+  return `el día ${diaSemana} ${dia} de ${mes}`
+}
+
 type Props = {
   open: boolean
   onOpenChange: (v: boolean) => void
@@ -30,7 +85,7 @@ type Props = {
 }
 
 const DEFAULT_TPL_CONFIRM =
-  'Hola {{nombre_paciente}}, te recordamos tu cita en CENPOD {{clinica}} el día {{fecha}} a las {{hora}} con {{podologo}}. Confirmamos tu asistencia respondiendo a este mensaje.'
+  'Hola {{nombre_paciente}}, te recordamos tu cita en CENPOD {{clinica}} {{fecha}} a las {{hora}} con {{podologo}}. Confirmamos tu asistencia respondiendo a este mensaje.'
 const DEFAULT_TPL_GOOGLE =
   '¡Gracias por tu visita, {{nombre_paciente}}! Nos encantaría que nos califiques: https://g.page/r/CENPOD/review'
 
@@ -58,7 +113,6 @@ export function AppointmentPanel({ open, onOpenChange, appointment, podologos, o
     // Para el paciente: solo primer nombre (no nombre completo)
     const patientFirstName = a.patient.firstName || ''
     // Para el podólogo: solo primer nombre + artículo correcto (el/la)
-    // gender='F' → "la podóloga", gender='M' → "el podólogo", null → "el/la podólogo(a)"
     const podFullName = a.podologist?.name || ''
     const podFirstName = podFullName.split(' ')[0] || ''
     const podGender = (a.podologist as any)?.gender
@@ -67,8 +121,8 @@ export function AppointmentPanel({ open, onOpenChange, appointment, podologos, o
 
     return tpl
       .replace(/\{\{nombre_paciente\}\}/g, patientFirstName)
-      .replace(/\{\{fecha\}\}/g, fmtDate(a.date))
-      .replace(/\{\{hora\}\}/g, fmtTime(a.startTime))
+      .replace(/\{\{fecha\}\}/g, fmtFechaRelativa(a.date))
+      .replace(/\{\{hora\}\}/g, fmtTime12h(a.startTime))
       .replace(/\{\{podologo\}\}/g, podologoFrase)
       .replace(/\{\{clinica\}\}/g, clinicName)
       .replace(/\{\{link_reserva\}\}/g, 'https://cenpod.com/reservar')
