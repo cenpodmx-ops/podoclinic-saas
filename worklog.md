@@ -2056,3 +2056,44 @@ Stage Summary:
 - RESET COMPLETADO. Portillo ahora tiene caja limpia (sin fondo, sin cierre),
   pero las consultas finalizadas de hoy se preservaron intactas.
 - Endpoint temporal disponible por si se necesita resetear otra vez.
+
+---
+Task ID: FEAT-MENSAJES-PRIMER-NOMBRE-2026-08-10
+Agent: main (mensajes WhatsApp: solo primer nombre + el/la podólogo/a)
+Task: Mensajes WhatsApp no usen nombre completo del paciente, y podólogo con el/la según sexo
+
+Work Log:
+- Usuario: "es muy invasivo que ponga predeterminado el nombre completo del paciente. De igual forma con el podologo, en el caso del podologo que tome el sexo fem o masculino (hay que agregar) y el mensaje diga con el/la podologo/a 'Nombre' solamente"
+
+CAMBIOS:
+1. Nuevo campo 'gender' en modelo Podologist (Prisma):
+   - gender: String? — 'F', 'M' o null
+   - Prisma db push ejecutado en producción via endpoint /api/dev/migrate-gender
+   - SQL: ALTER TABLE "Podologist" ADD COLUMN "gender" TEXT
+
+2. Formulario de podólogo (Configuración → Equipo):
+   - Nuevo selector 'Sexo' (Femenino / Masculino / Sin especificar)
+   - Texto explicativo: "Para mensajes: con el/la podólogo(a)"
+   - POST y PATCH de /api/podologos aceptan gender
+
+3. API /api/citas ahora incluye podologist.gender en la respuesta
+
+4. AppointmentPanel.fillTemplate():
+   - {{nombre_paciente}}: ahora usa SOLO firstName (antes firstName + lastName)
+   - {{podologo}}: genera 'el podólogo Ricardo' / 'la podóloga Laura' /
+     'el/la podólogo(a) Ricardo' si no se especifica sexo
+   - Usa solo primer nombre del podólogo (split por espacio)
+
+Ejemplo verificado en producción (CENPOD Quiroga, Martha con Uziel gender=M):
+- Antes: 'Hola Martha Woolfolk Valenzuela... con Uziel Montaño Cordova'
+- Ahora: 'Hola Martha... con el podólogo Uziel'
+
+- Commit 5ae8ee8 (feature), a67dff1 (migrate endpoint)
+
+Stage Summary:
+- FEATURE COMPLETA. Mensajes de WhatsApp ahora:
+  1. Usan solo primer nombre del paciente (no nombre completo)
+  2. Usan 'el/la podólogo/a' según sexo del podólogo
+  3. Usan solo primer nombre del podólogo
+- Para que funcione correctamente, el usuario debe ir a Configuración → Equipo
+  y setear el sexo (F/M) de cada podólogo existente
