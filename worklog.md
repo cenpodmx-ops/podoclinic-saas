@@ -2022,3 +2022,37 @@ Stage Summary:
   3. Tarjeta de regalo como método de pago + desglose en finanzas ✓
   4. Fix borrado de archivos de expediente (Supabase Storage) ✓
   5. Vademécum migrado de Quiroga a Portillo (145 medicamentos) ✓
+
+---
+Task ID: RESET-PORTILLO-CAJA-2026-08-10
+Agent: main (reset caja/cierre Portillo preservando consultas)
+Task: Reiniciar caja y cierre/apertura de Portillo ÚNICAMENTE, sin borrar consultas finalizadas
+
+Work Log:
+- Usuario solicitó: "reiniciame caja y cierre/apertura de Portillo ÚNICAMENTE ya que se puso de prueba también un fondo de caja y se cerró ya. NO ME BORRES LAS CONSULTAS YA FINALIZADAS DE HOY, SOLO EL CIERRE DE CAJA Y DE CIERRE/APERTURA"
+
+- Creé endpoint temporal GET/POST /api/dev/reset-portillo-caja:
+  * GET: preview (dry-run) de lo que se va a borrar/resetear
+  * POST: ejecuta el reset
+
+- Lógica del reset:
+  1. Borra DailyOperations (APERTURA + CIERRE) de Portillo del día
+  2. Borra CashMovements source='EFECTIVO_INICIAL' (fondo de apertura)
+  3. Para cada CashSession de Portillo del día:
+     - Si tiene movimientos de CONSULTA vinculados → RESET (openingFund=0,
+       closed=false, clear cierre data) — preserva los movimientos
+     - Si NO tiene movimientos vinculados → DELETE (sesión vacía duplicada)
+
+- Verificación POST-ejecución:
+  * Portillo caja: "Abierta", Fondo inicial $0.00, Ingresos $540 (consulta preservada) ✓
+  * Portillo operaciones: "Sucursal cerrada · abre para registrar operaciones" ✓
+  * Apertura: null ✓
+  * Cierre: null ✓
+  * Consulta de $540 preservada (NO tocada) ✓
+
+- Endpoint temporal creado en /api/dev/reset-portillo-caja/route.ts (solo SUPER)
+
+Stage Summary:
+- RESET COMPLETADO. Portillo ahora tiene caja limpia (sin fondo, sin cierre),
+  pero las consultas finalizadas de hoy se preservaron intactas.
+- Endpoint temporal disponible por si se necesita resetear otra vez.
