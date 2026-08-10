@@ -43,10 +43,11 @@ function fmtTime12h(date: string | Date): string {
   return `${h}:${min} ${period}`
 }
 
-// Formatea fecha de forma relativa para mensajes al paciente:
-// - Hoy → "hoy"
-// - Mañana → "mañana"
-// - Más de 1 día → "el día martes 13 de agosto" (día de la semana + día + mes)
+// Formatea fecha de forma relativa para mensajes al paciente.
+// Diseñado para funcionar con la plantilla "el {{fecha}}":
+// - Hoy → "día de hoy" → "el día de hoy"
+// - Mañana → "día de mañana" → "el día de mañana"
+// - Más de 1 día → "día jueves 13 de agosto" → "el día jueves 13 de agosto"
 function fmtFechaRelativa(dateStr: string): string {
   // dateStr viene como "2026-08-11" (YYYY-MM-DD) — interpretarlo como fecha calendario
   const match = dateStr.match(/^(\d{4})-(\d{2})-(\d{2})/)
@@ -62,8 +63,8 @@ function fmtFechaRelativa(dateStr: string): string {
   const diffMs = targetDate.getTime() - today.getTime()
   const diffDays = Math.round(diffMs / (1000 * 60 * 60 * 24))
 
-  if (diffDays === 0) return 'hoy'
-  if (diffDays === 1) return 'mañana'
+  if (diffDays === 0) return 'día de hoy'
+  if (diffDays === 1) return 'día de mañana'
 
   // Para más de 1 día: día de la semana + día + mes
   const diasSemana = ['domingo', 'lunes', 'martes', 'miércoles', 'jueves', 'viernes', 'sábado']
@@ -71,7 +72,7 @@ function fmtFechaRelativa(dateStr: string): string {
   const diaSemana = diasSemana[targetDate.getDay()]
   const dia = targetDate.getDate()
   const mes = meses[targetDate.getMonth()]
-  return `el día ${diaSemana} ${dia} de ${mes}`
+  return `día ${diaSemana} ${dia} de ${mes}`
 }
 
 type Props = {
@@ -85,7 +86,7 @@ type Props = {
 }
 
 const DEFAULT_TPL_CONFIRM =
-  'Hola {{nombre_paciente}}, te recordamos tu cita en CENPOD {{clinica}} {{fecha}} a las {{hora}} con {{podologo}}. Confirmamos tu asistencia respondiendo a este mensaje.'
+  'Hola {{nombre_paciente}}, te recordamos tu cita en CENPOD {{clinica}} el {{fecha}} a las {{hora}} con {{podologo}}. Confirmamos tu asistencia respondiendo a este mensaje.'
 const DEFAULT_TPL_GOOGLE =
   '¡Gracias por tu visita, {{nombre_paciente}}! Nos encantaría que nos califiques: https://g.page/r/CENPOD/review'
 
