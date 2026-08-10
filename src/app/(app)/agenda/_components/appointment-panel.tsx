@@ -8,17 +8,9 @@ import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Separator } from '@/components/ui/separator'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogTrigger,
-} from '@/components/ui/alert-dialog'
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog'
+import { Textarea } from '@/components/ui/textarea'
+import { Label } from '@/components/ui/label'
 import {
   Phone, Clock, CalendarDays, Stethoscope, MessageCircle, Star, Pencil, CalendarClock,
   Trash2, ExternalLink, User, AlertTriangle, Loader2, CheckCircle2, PlayCircle, XCircle,
@@ -46,6 +38,7 @@ export function AppointmentPanel({ open, onOpenChange, appointment, podologos, o
   const qc = useQueryClient()
   const [busy, setBusy] = useState(false)
   const [deleteMotivo, setDeleteMotivo] = useState('')
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
 
   // Clinic config for WhatsApp templates
   const { data: cfg } = useQuery<any>({
@@ -126,6 +119,7 @@ export function AppointmentPanel({ open, onOpenChange, appointment, podologos, o
         throw new Error(e.error || 'Error al eliminar')
       }
       toast.success('Cita eliminada')
+      setDeleteDialogOpen(false)
       onOpenChange(false)
       qc.invalidateQueries({ queryKey: ['citas'] })
     } catch (e: any) {
@@ -311,50 +305,71 @@ export function AppointmentPanel({ open, onOpenChange, appointment, podologos, o
               </div>
 
               {(canDelete || canDeleteWithMotivo) && (
-                <AlertDialog>
-                  <AlertDialogTrigger asChild>
-                    <Button variant="outline" size="sm" className="w-full text-red-700 border-red-300 hover:bg-red-50">
-                      <Trash2 className="h-4 w-4 mr-1" /> Eliminar cita
-                    </Button>
-                  </AlertDialogTrigger>
-                  <AlertDialogContent>
-                    <AlertDialogHeader>
-                      <AlertDialogTitle>
-                        {canDeleteWithMotivo ? '¿Eliminar cita finalizada?' : '¿Eliminar cita?'}
-                      </AlertDialogTitle>
-                      <AlertDialogDescription>
-                        Esta acción no se puede deshacer. La cita de {a.patient.firstName} {a.patient.lastName} del {fmtDate(a.date)} será eliminada permanentemente.
-                      </AlertDialogDescription>
-                    </AlertDialogHeader>
-                    {canDeleteWithMotivo && (
-                      <div className="bg-amber-50 border border-amber-200 rounded-md p-3 text-amber-900 space-y-2">
-                        <p className="text-xs font-semibold">⚠ Esta cita ya está {a.status.toLowerCase()}.</p>
-                        <p className="text-xs">
-                          Se revertirán: cobro en caja, descuento de inventario y total acumulado del paciente.
-                          Describe el motivo para el registro:
-                        </p>
-                        <textarea
-                          value={deleteMotivo}
-                          onChange={(e) => setDeleteMotivo(e.target.value)}
-                          placeholder="Ej: Cita de prueba, error de registro, paciente canceló después de pago..."
-                          className="w-full text-sm px-2 py-1 border border-amber-300 rounded bg-white text-foreground resize-none"
-                          rows={3}
-                          autoFocus
-                        />
-                      </div>
-                    )}
-                    <AlertDialogFooter>
-                      <AlertDialogCancel onClick={() => setDeleteMotivo('')}>Cancelar</AlertDialogCancel>
-                      <AlertDialogAction
-                        onClick={eliminar}
-                        className="bg-red-600 hover:bg-red-700 text-white"
-                        disabled={canDeleteWithMotivo && !deleteMotivo.trim()}
-                      >
-                        {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Eliminar'}
-                      </AlertDialogAction>
-                    </AlertDialogFooter>
-                  </AlertDialogContent>
-                </AlertDialog>
+                <>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="w-full text-red-700 border-red-300 hover:bg-red-50"
+                    onClick={() => { setDeleteMotivo(''); setDeleteDialogOpen(true) }}
+                  >
+                    <Trash2 className="h-4 w-4 mr-1" /> Eliminar cita
+                  </Button>
+                  <Dialog open={deleteDialogOpen} onOpenChange={(v) => { setDeleteDialogOpen(v); if (!v) setDeleteMotivo('') }}>
+                    <DialogContent className="sm:max-w-md">
+                      <DialogHeader>
+                        <DialogTitle>
+                          {canDeleteWithMotivo ? '¿Eliminar cita finalizada?' : '¿Eliminar cita?'}
+                        </DialogTitle>
+                        <DialogDescription>
+                          Esta acción no se puede deshacer. La cita de {a.patient.firstName} {a.patient.lastName} del {fmtDate(a.date)} será eliminada permanentemente.
+                        </DialogDescription>
+                      </DialogHeader>
+                      {canDeleteWithMotivo && (
+                        <div className="bg-amber-50 border border-amber-200 rounded-md p-4 text-amber-900 space-y-3">
+                          <div className="flex items-start gap-2">
+                            <AlertTriangle className="h-4 w-4 mt-0.5 shrink-0 text-amber-600" />
+                            <div className="space-y-1">
+                              <p className="text-xs font-semibold">Esta cita ya está {a.status.toLowerCase()}.</p>
+                              <p className="text-xs text-amber-800">
+                                Se revertirán: cobro en caja, descuento de inventario y total acumulado del paciente.
+                              </p>
+                            </div>
+                          </div>
+                          <div className="space-y-1.5">
+                            <Label htmlFor="delete-motivo" className="text-xs font-semibold text-amber-900">
+                              Motivo de eliminación <span className="text-red-600">*</span>
+                            </Label>
+                            <Textarea
+                              id="delete-motivo"
+                              value={deleteMotivo}
+                              onChange={(e) => setDeleteMotivo(e.target.value)}
+                              placeholder="Ej: Cita de prueba, error de registro, paciente canceló después de pago..."
+                              className="bg-white border-amber-300 text-sm resize-none"
+                              rows={3}
+                              autoFocus
+                            />
+                          </div>
+                        </div>
+                      )}
+                      <DialogFooter className="gap-2">
+                        <Button
+                          variant="outline"
+                          onClick={() => { setDeleteDialogOpen(false); setDeleteMotivo('') }}
+                        >
+                          Cancelar
+                        </Button>
+                        <Button
+                          onClick={eliminar}
+                          disabled={busy || (canDeleteWithMotivo && !deleteMotivo.trim())}
+                          className="bg-red-600 hover:bg-red-700 text-white"
+                        >
+                          {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4 mr-1" />}
+                          Eliminar
+                        </Button>
+                      </DialogFooter>
+                    </DialogContent>
+                  </Dialog>
+                </>
               )}
             </>
           )}
