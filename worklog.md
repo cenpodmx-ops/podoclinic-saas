@@ -1954,3 +1954,71 @@ Stage Summary:
   1. Comisión ahora se calcula solo sobre consultPrice (no sobre productos)
   2. Todas las consultas se muestran como 'Consulta Podologica' (no 'Consulta general')
   3. Tabla de comisiones más clara con desglose de ingreso por consulta vs productos
+
+---
+Task ID: FEAT-MULTI-CAMBIOS-2026-08-10
+Agent: main (múltiples cambios sin afectar lo existente)
+Task: Editar consultas finalizadas + eliminar citas con motivo + tarjeta de regalo + fix archivos + migrar vademécum
+
+Work Log:
+- Usuario solicitó 5 cambios sin afectar lo existente, cuidando zonas horarias.
+
+1. EDITAR CONSULTAS FINALIZADAS:
+   - PATCH /api/consultas/[id] ahora maneja caso 'wasPaid && willPay'
+   - Actualiza CashMovement (amount y method) cuando se edita consulta pagada
+   - Ajusta Patient.totalSpent con la diferencia (nuevo - viejo total)
+   - Ajusta stock: devuelve productos removidos, descuenta nuevos, ajusta diferencias
+   - Se refleja en caja y finanzas automáticamente
+
+2. ELIMINAR CITAS FINALIZADAS (con motivo):
+   - DELETE /api/citas/[id] acepta body { motivo: string }
+   - Si cita finalizada o con consulta → requiere motivo
+   - Revierte: CashMovement, StockMovement (devuelve productos), Patient.totalSpent, FollowUps, Consultation
+   - Log de auditoría con motivo
+   - Frontend: textarea para motivo, botón deshabilitado hasta escribir motivo
+   - Aviso: "⚠ Esta cita ya está finalizada. Se revertirán: cobro en caja, descuento de inventario y total acumulado del paciente."
+
+3. TARJETA DE REGALO como método de pago:
+   - Añadido en 7 lugares (format.ts, caja/types, inventario/types, consulta/types, ventas-mostrador, reporte-view, finanzas types)
+   - API finanzas y caja trackean TARJETA_DE_REGALO separadamente
+   - UI finanzas: pie chart y Detalle por método muestran Tarjeta de regalo
+   - UI caja: nueva MethodCard (5 columnas)
+   - Verificado: API devuelve byMethod con TARJETA_DE_REGALO key
+
+4. FIX BORRADO DE ARCHIVOS DE EXPEDIENTE:
+   - DELETE /api/pacientes/[id]/archivos/[fileId] ahora borra de Supabase Storage
+   - Nueva función deleteFromSupabaseByUrl en supabase-storage.ts
+   - Extrae path del objeto del URL público y lo elimina del bucket 'clinics'
+   - Fallback para archivos locales (/uploads/...)
+
+5. MIGRAR VADEMECUM Quiroga → Portillo:
+   - Nuevo endpoint POST /api/vademecum/migrar
+   - Migra 145 medicamentos de Quiroga a Portillo
+   - Omite duplicados (mismo nombre case-insensitive)
+   - Solo SUPER puede ejecutarlo
+   - Ejecutado en producción: 145 medicamentos migrados ✓
+   - Verificado: Portillo ahora muestra 145 medicamentos en /inventario → Vademécum
+
+ZONAS HORARIAS:
+- Se respetan helpers de Hermosillo (formatDateHermosillo, createdAtFieldStart/End)
+- CashSession se busca/crea con medianoche UTC del día calendario de Hermosillo
+- Edición de consultas respeta la CashSession original del día del cobro
+- Eliminación de citas revierte CashMovement del día correcto
+
+Verificación en PRODUCCIÓN:
+- Comisiones: 1 consulta $600 (sin descuento), comisión correcta ✓
+- Finanzas: byMethod incluye TARJETA_DE_REGALO: 0 ✓
+- Caja: MethodCard para Tarjeta de regalo visible ✓
+- Agenda: botón "Eliminar cita" visible en cita finalizada ✓
+- Dialog de eliminar: textarea para motivo, botón deshabilitado hasta escribir ✓
+- Vademécum Portillo: 145 medicamentos migrados ✓
+
+Commits: 76cb43a (feature), b265df3 (fix vademécum clinicId param)
+
+Stage Summary:
+- TODOS LOS CAMBIOS IMPLEMENTADOS sin afectar lo existente:
+  1. Editar consultas finalizadas (método de pago, items, descuentos) ✓
+  2. Eliminar citas finalizadas con motivo (revierte caja, stock, totalSpent) ✓
+  3. Tarjeta de regalo como método de pago + desglose en finanzas ✓
+  4. Fix borrado de archivos de expediente (Supabase Storage) ✓
+  5. Vademécum migrado de Quiroga a Portillo (145 medicamentos) ✓
