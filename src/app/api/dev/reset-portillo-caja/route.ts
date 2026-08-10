@@ -86,24 +86,43 @@ export async function POST() {
     },
   })
 
-  // 3. Resetear (NO borrar) las CashSessions de Portillo del día
-  // Esto preserva los movimientos de CONSULTA que están linkeados a la sesión
-  // (cashSessionId es NOT NULL con onDelete: Cascade, así que si borramos
-  // la sesión, los movimientos de CONSULTA también se borrarían).
-  const resetSessions = await db.cashSession.updateMany({
+  // 3. Manejar TODAS las cashSessions de Portillo del día
+  // Puede haber varias (duplicadas por bugs anteriores). Para cada una:
+  //  - Si tiene movimientos de CONSULTA vinculados → resetearla (no borrar)
+  //  - Si NO tiene movimientos vinculados → borrarla
+  const allSessions = await db.cashSession.findMany({
     where: { clinicId: PORTILLO_ID, date: { gte: ds, lte: de } },
-    data: {
-      openingFund: 0,
-      closed: false,
-      closedAt: null,
-      closedBy: null,
-      countedCash: null,
-      expectedCash: null,
-      difference: null,
-      notes: null,
-      signatureData: null,
-    },
+    include: { movements: { select: { id: true, source: true } } },
   })
+
+  let deletedSessionsCount = 0
+  let resetSessionsCount = 0
+
+  for (const session of allSessions) {
+    const hasConsultaMovement = session.movements.some(m => m.source === 'CONSULTA')
+    if (hasConsultaMovement) {
+      // Reseteaar (no borrar) — preserva los movimientos de CONSULTA
+      await db.cashSession.update({
+        where: { id: session.id },
+        data: {
+          openingFund: 0,
+          closed: false,
+          closedAt: null,
+          closedBy: null,
+          countedCash: null,
+          expectedCash: null,
+          difference: null,
+          notes: null,
+          signatureData: null,
+        },
+      })
+      resetSessionsCount++
+    } else {
+      // Borrar — no tiene movimientos de CONSULTA que preservar
+      await db.cashSession.delete({ where: { id: session.id } })
+      deletedSessionsCount++
+    }
+  }
 
   // Verificar el resultado
   const after = await db.cashMovement.findMany({
@@ -118,9 +137,10 @@ export async function POST() {
       aperturas: deletedAperturas.count,
       cierres: deletedCierres.count,
       efectivo_inicial_movements: deletedEFECTIVO_INICIAL.count,
+      empty_sessions: deletedSessionsCount,
     },
     reset: {
-      sessions: resetSessions.count,
+      sessions_with_consultas: resetSessionsCount,
     },
     preserved: {
       message: 'Las consultas finalizadas y sus movimientos de CONSULTA NO fueron tocados.',
