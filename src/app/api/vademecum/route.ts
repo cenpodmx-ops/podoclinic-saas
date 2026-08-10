@@ -18,9 +18,11 @@ export async function GET(req: NextRequest) {
   const q = sp.get('q')?.trim() || ''
   const category = sp.get('category')
   const includeInactive = sp.get('includeInactive') === '1'
-
+  // Permitir a SUPER especificar clinicId por query param (para migración entre clínicas)
+  // Si no se especifica, usar la clínica efectiva del usuario
+  const clinicParam = sp.get('clinicId')
   const where: any = {
-    clinicId: effectiveClinic(user!),
+    clinicId: (user!.role === 'SUPER' && clinicParam) ? clinicParam : effectiveClinic(user!),
   }
   if (!includeInactive) where.active = true
   if (category && category !== '__all') where.category = category
