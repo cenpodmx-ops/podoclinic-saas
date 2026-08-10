@@ -85,6 +85,7 @@ model Podologist {
   clinicId      String
   clinic        Clinic   @relation(fields: [clinicId], references: [id], onDelete: Cascade)
   name          String
+  gender        String?  // "F" | "M" | null (para usar el/la en mensajes)
   specialty     String?
   cedula        String?
   certNumber    String?

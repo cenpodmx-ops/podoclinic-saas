@@ -55,11 +55,21 @@ export function AppointmentPanel({ open, onOpenChange, appointment, podologos, o
   const tplGoogle = cfg?.config?.tplGoogleReview || DEFAULT_TPL_GOOGLE
 
   function fillTemplate(tpl: string) {
+    // Para el paciente: solo primer nombre (no nombre completo)
+    const patientFirstName = a.patient.firstName || ''
+    // Para el podólogo: solo primer nombre + artículo correcto (el/la)
+    // gender='F' → "la podóloga", gender='M' → "el podólogo", null → "el/la podólogo(a)"
+    const podFullName = a.podologist?.name || ''
+    const podFirstName = podFullName.split(' ')[0] || ''
+    const podGender = (a.podologist as any)?.gender
+    const articulo = podGender === 'F' ? 'la' : podGender === 'M' ? 'el' : 'el/la'
+    const podologoFrase = podFirstName ? `${articulo} podólog${podGender === 'F' ? 'a' : podGender === 'M' ? 'o' : 'o(a)'} ${podFirstName}` : 'su podólogo'
+
     return tpl
-      .replace(/\{\{nombre_paciente\}\}/g, `${a.patient.firstName} ${a.patient.lastName}`)
+      .replace(/\{\{nombre_paciente\}\}/g, patientFirstName)
       .replace(/\{\{fecha\}\}/g, fmtDate(a.date))
       .replace(/\{\{hora\}\}/g, fmtTime(a.startTime))
-      .replace(/\{\{podologo\}\}/g, a.podologist?.name || 'su podólogo')
+      .replace(/\{\{podologo\}\}/g, podologoFrase)
       .replace(/\{\{clinica\}\}/g, clinicName)
       .replace(/\{\{link_reserva\}\}/g, 'https://cenpod.com/reservar')
   }

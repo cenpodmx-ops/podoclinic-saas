@@ -113,7 +113,7 @@ export async function GET(req: NextRequest) {
       where,
       include: {
         patient: { select: { id: true, firstName: true, lastName: true, phone: true, expNumber: true } },
-        podologist: { select: { id: true, name: true } },
+        podologist: { select: { id: true, name: true, gender: true } },
       },
       orderBy: { startTime: 'asc' },
     }),

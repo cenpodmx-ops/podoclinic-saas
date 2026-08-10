@@ -23,7 +23,7 @@ export async function GET(req: NextRequest) {
     const me = await db.podologist.findUnique({
       where: { id: user!.podologistId },
       select: {
-        id: true, name: true, specialty: true, cedula: true, certNumber: true,
+        id: true, name: true, gender: true, specialty: true, cedula: true, certNumber: true,
         phone: true, email: true, commissionPct: true,
         monthlyGoalConsults: true, monthlyGoalRevenue: true,
         openingTime: true, closingTime: true, slotMinutes: true,
@@ -52,7 +52,7 @@ export async function GET(req: NextRequest) {
   const podologos = await db.podologist.findMany({
     where,
     select: {
-      id: true, name: true, specialty: true, cedula: true, certNumber: true,
+      id: true, name: true, gender: true, specialty: true, cedula: true, certNumber: true,
       photoUrl: true, phone: true, email: true, commissionPct: true,
       monthlyGoalConsults: true, monthlyGoalRevenue: true,
       openingTime: true, closingTime: true, slotMinutes: true,
@@ -72,7 +72,7 @@ export async function POST(req: NextRequest) {
 
   const body = await req.json()
   const {
-    name, specialty, cedula, certNumber, photoUrl, phone, email,
+    name, gender, specialty, cedula, certNumber, photoUrl, phone, email,
     commissionPct, monthlyGoalConsults, monthlyGoalRevenue, clinicId,
     openingTime, closingTime, slotMinutes,
   } = body
@@ -81,6 +81,7 @@ export async function POST(req: NextRequest) {
   const created = await db.podologist.create({
     data: {
       name,
+      gender: (gender === 'F' || gender === 'M') ? gender : null,
       specialty: specialty || null,
       cedula: cedula || null,
       certNumber: certNumber || null,

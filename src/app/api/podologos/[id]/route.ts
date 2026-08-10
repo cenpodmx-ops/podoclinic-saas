@@ -14,7 +14,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
 
   const body = await req.json()
   const allowed = [
-    'name', 'specialty', 'cedula', 'certNumber', 'photoUrl', 'phone', 'email',
+    'name', 'gender', 'specialty', 'cedula', 'certNumber', 'photoUrl', 'phone', 'email',
     'commissionPct', 'monthlyGoalConsults', 'monthlyGoalRevenue', 'active',
     'openingTime', 'closingTime', 'slotMinutes',
   ]
@@ -26,6 +26,9 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
       } else if (k === 'active') {
         // Switch envía "on" vía FormData — convertir a boolean real
         data[k] = body[k] === 'on' || body[k] === true || body[k] === 'true' || body[k] === 1
+      } else if (k === 'gender') {
+        // gender solo acepta 'F' o 'M' o null
+        data[k] = (body[k] === 'F' || body[k] === 'M') ? body[k] : null
       } else {
         data[k] = body[k]
       }

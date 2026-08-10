@@ -331,6 +331,10 @@ function PodologoDialog({ open, onOpenChange, editing, onSave, saving }: any) {
             // openingTime/closingTime vacíos = null
             if (!body.openingTime) delete body.openingTime
             if (!body.closingTime) delete body.closingTime
+            // gender: __none = null (no especificado)
+            if (body.gender === '__none') {
+              body.gender = null
+            }
             // active: Switch envía "on" vía FormData, convertir a boolean real
             // Si no está en el form (podólogo nuevo), defaultar a true
             if (editing) {
@@ -348,23 +352,35 @@ function PodologoDialog({ open, onOpenChange, editing, onSave, saving }: any) {
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1">
-              <Label>Especialidad</Label>
-              <Input name="specialty" defaultValue={editing?.specialty || ''} />
+              <Label>Sexo</Label>
+              <Select name="gender" defaultValue={editing?.gender || '__none'}>
+                <SelectTrigger><SelectValue placeholder="Selecciona..." /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="__none">— Sin especificar —</SelectItem>
+                  <SelectItem value="F">Femenino</SelectItem>
+                  <SelectItem value="M">Masculino</SelectItem>
+                </SelectContent>
+              </Select>
+              <p className="text-[10px] text-muted-foreground">Para mensajes: "con el/la podólogo(a)"</p>
             </div>
             <div className="space-y-1">
-              <Label>Cédula profesional</Label>
-              <Input name="cedula" defaultValue={editing?.cedula || ''} />
+              <Label>Especialidad</Label>
+              <Input name="specialty" defaultValue={editing?.specialty || ''} />
             </div>
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1">
+              <Label>Cédula profesional</Label>
+              <Input name="cedula" defaultValue={editing?.cedula || ''} />
+            </div>
+            <div className="space-y-1">
               <Label>Teléfono</Label>
               <Input name="phone" defaultValue={editing?.phone || ''} />
             </div>
-            <div className="space-y-1">
-              <Label>Email</Label>
-              <Input name="email" type="email" defaultValue={editing?.email || ''} />
-            </div>
+          </div>
+          <div className="space-y-1">
+            <Label>Email</Label>
+            <Input name="email" type="email" defaultValue={editing?.email || ''} />
           </div>
           <div className="grid grid-cols-3 gap-3">
             <div className="space-y-1">

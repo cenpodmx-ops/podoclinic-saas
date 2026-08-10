@@ -11,6 +11,7 @@ export type ApptPatient = {
 export type ApptPodologist = {
   id: string
   name: string
+  gender?: string | null // "F" | "M" | null
 } | null
 
 export type AppointmentItem = {
