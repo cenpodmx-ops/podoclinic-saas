@@ -220,6 +220,7 @@ function computeSummary(
     DEBITO: 0,
     CREDITO: 0,
     TRANSFERENCIA: 0,
+    TARJETA_DE_REGALO: 0,
     OTRO: 0,
   }
   for (const m of movements) {
@@ -258,6 +259,7 @@ function computeSummary(
       EFECTIVO: byMethod.EFECTIVO,
       TARJETA: byMethod.DEBITO + byMethod.CREDITO,
       TRANSFERENCIA: byMethod.TRANSFERENCIA,
+      TARJETA_DE_REGALO: byMethod.TARJETA_DE_REGALO,
       OTRO: byMethod.OTRO,
     },
     methodLabels: METHOD_LABELS,

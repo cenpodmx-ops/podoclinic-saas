@@ -21,6 +21,7 @@ import {
   ArrowRightLeft,
   Receipt,
   AlertTriangle,
+  Gift,
 } from 'lucide-react'
 
 import { Button } from '@/components/ui/button'
@@ -347,10 +348,11 @@ export default function CajaPage() {
       </div>
 
       {/* Por método (cards pequeñas) */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+      <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
         <MethodCard icon={Banknote} label="Efectivo" value={summary.byMethod.EFECTIVO} />
         <MethodCard icon={CreditCard} label="Tarjeta" value={summary.byMethod.TARJETA} />
         <MethodCard icon={ArrowRightLeft} label="Transferencia" value={summary.byMethod.TRANSFERENCIA} />
+        <MethodCard icon={Gift} label="Tarjeta de regalo" value={summary.byMethod.TARJETA_DE_REGALO ?? 0} />
         <MethodCard icon={Wallet} label="Otro" value={summary.byMethod.OTRO} />
       </div>
 

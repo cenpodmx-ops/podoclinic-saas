@@ -148,5 +148,6 @@ export const PAYMENT_METHOD_OPTIONS = [
   { value: 'DEBITO', label: 'Tarjeta de débito' },
   { value: 'CREDITO', label: 'Tarjeta de crédito' },
   { value: 'TRANSFERENCIA', label: 'Transferencia' },
+  { value: 'TARJETA_DE_REGALO', label: 'Tarjeta de regalo' },
   { value: 'OTRO', label: 'Otro' },
 ] as const

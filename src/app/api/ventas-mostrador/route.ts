@@ -16,7 +16,7 @@ import { formatDateHermosillo } from '@/lib/timezone'
 // PODOLOGIST: 403
 // ============================================================
 
-const PAYMENT_METHODS = ['EFECTIVO', 'DEBITO', 'CREDITO', 'TRANSFERENCIA', 'OTRO']
+const PAYMENT_METHODS = ['EFECTIVO', 'DEBITO', 'CREDITO', 'TRANSFERENCIA', 'TARJETA_DE_REGALO', 'OTRO']
 
 export async function POST(req: NextRequest) {
   const { user, response } = await requireSession()

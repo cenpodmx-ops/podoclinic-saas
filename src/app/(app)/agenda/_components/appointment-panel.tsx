@@ -45,6 +45,7 @@ const DEFAULT_TPL_GOOGLE =
 export function AppointmentPanel({ open, onOpenChange, appointment, podologos, onEdit, onReschedule, canManage }: Props) {
   const qc = useQueryClient()
   const [busy, setBusy] = useState(false)
+  const [deleteMotivo, setDeleteMotivo] = useState('')
 
   // Clinic config for WhatsApp templates
   const { data: cfg } = useQuery<any>({
@@ -113,7 +114,13 @@ export function AppointmentPanel({ open, onOpenChange, appointment, podologos, o
   async function eliminar() {
     setBusy(true)
     try {
-      const res = await fetch(`/api/citas/${a.id}`, { method: 'DELETE' })
+      // Si la cita está finalizada o tiene consulta, enviar motivo
+      const requiresMotivo = !canDelete
+      const res = await fetch(`/api/citas/${a.id}`, {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(requiresMotivo ? { motivo: deleteMotivo || undefined } : {}),
+      })
       if (!res.ok) {
         const e = await res.json().catch(() => ({}))
         throw new Error(e.error || 'Error al eliminar')
@@ -135,6 +142,7 @@ export function AppointmentPanel({ open, onOpenChange, appointment, podologos, o
   const isCancelada = a.status === 'CANCELADA'
   const isNoAsistio = a.status === 'NO_ASISTIO'
   const canDelete = isPendiente || isCancelada
+  const canDeleteWithMotivo = isFinalizada || isEnConsulta || isConfirmada || isNoAsistio
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
@@ -302,7 +310,7 @@ export function AppointmentPanel({ open, onOpenChange, appointment, podologos, o
                 </Button>
               </div>
 
-              {canDelete && (
+              {(canDelete || canDeleteWithMotivo) && (
                 <AlertDialog>
                   <AlertDialogTrigger asChild>
                     <Button variant="outline" size="sm" className="w-full text-red-700 border-red-300 hover:bg-red-50">
@@ -311,16 +319,39 @@ export function AppointmentPanel({ open, onOpenChange, appointment, podologos, o
                   </AlertDialogTrigger>
                   <AlertDialogContent>
                     <AlertDialogHeader>
-                      <AlertDialogTitle>¿Eliminar cita?</AlertDialogTitle>
-                      <AlertDialogDescription>
-                        Esta acción no se puede deshacer. La cita de {a.patient.firstName} {a.patient.lastName} del {fmtDate(a.date)} será eliminada permanentemente.
+                      <AlertDialogTitle>
+                        {canDeleteWithMotivo ? '¿Eliminar cita finalizada?' : '¿Eliminar cita?'}
+                      </AlertDialogTitle>
+                      <AlertDialogDescription asChild>
+                        <div className="space-y-3">
+                          <p>
+                            Esta acción no se puede deshacer. La cita de {a.patient.firstName} {a.patient.lastName} del {fmtDate(a.date)} será eliminada permanentemente.
+                          </p>
+                          {canDeleteWithMotivo && (
+                            <div className="bg-amber-50 border border-amber-200 rounded-md p-3 text-amber-900">
+                              <p className="text-xs font-semibold mb-1">⚠ Esta cita ya está {a.status.toLowerCase()}.</p>
+                              <p className="text-xs">
+                                Se revertirán: cobro en caja, descuento de inventario y total acumulado del paciente.
+                                Describe el motivo para el registro:
+                              </p>
+                              <textarea
+                                value={deleteMotivo}
+                                onChange={(e) => setDeleteMotivo(e.target.value)}
+                                placeholder="Ej: Cita de prueba, error de registro, paciente canceló después de pago..."
+                                className="mt-2 w-full text-sm px-2 py-1 border border-amber-300 rounded bg-white text-foreground"
+                                rows={2}
+                              />
+                            </div>
+                          )}
+                        </div>
                       </AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter>
-                      <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                      <AlertDialogCancel onClick={() => setDeleteMotivo('')}>Cancelar</AlertDialogCancel>
                       <AlertDialogAction
                         onClick={eliminar}
                         className="bg-red-600 hover:bg-red-700 text-white"
+                        disabled={canDeleteWithMotivo && !deleteMotivo.trim()}
                       >
                         {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Eliminar'}
                       </AlertDialogAction>

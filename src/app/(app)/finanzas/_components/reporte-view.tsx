@@ -13,6 +13,7 @@ const METHOD_LABELS: Record<string, string> = {
   DEBITO: 'Tarjeta de débito',
   CREDITO: 'Tarjeta de crédito',
   TRANSFERENCIA: 'Transferencia',
+  TARJETA_DE_REGALO: 'Tarjeta de regalo',
   OTRO: 'Otro',
 }
 

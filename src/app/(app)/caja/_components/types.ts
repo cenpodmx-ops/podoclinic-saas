@@ -36,6 +36,7 @@ export type CashSummary = {
     EFECTIVO: number
     TARJETA: number
     TRANSFERENCIA: number
+    TARJETA_DE_REGALO: number
     OTRO: number
   }
   methodLabels: Record<string, string>
@@ -79,5 +80,6 @@ export const PAYMENT_METHODS = [
   { value: 'DEBITO', label: 'Tarjeta de débito' },
   { value: 'CREDITO', label: 'Tarjeta de crédito' },
   { value: 'TRANSFERENCIA', label: 'Transferencia' },
+  { value: 'TARJETA_DE_REGALO', label: 'Tarjeta de regalo' },
   { value: 'OTRO', label: 'Otro' },
 ]

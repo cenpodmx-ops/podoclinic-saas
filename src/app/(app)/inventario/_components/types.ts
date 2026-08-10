@@ -13,12 +13,13 @@ export const IVA_LABELS: Record<string, string> = {
   IVA16: 'IVA 16%',
 }
 
-export const PAYMENT_METHODS = ['EFECTIVO', 'DEBITO', 'CREDITO', 'TRANSFERENCIA', 'OTRO'] as const
+export const PAYMENT_METHODS = ['EFECTIVO', 'DEBITO', 'CREDITO', 'TRANSFERENCIA', 'TARJETA_DE_REGALO', 'OTRO'] as const
 export const PAYMENT_METHOD_LABELS: Record<string, string> = {
   EFECTIVO: 'Efectivo',
   DEBITO: 'Tarjeta de débito',
   CREDITO: 'Tarjeta de crédito',
   TRANSFERENCIA: 'Transferencia',
+  TARJETA_DE_REGALO: 'Tarjeta de regalo',
   OTRO: 'Otro',
 }
 

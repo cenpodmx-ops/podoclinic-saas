@@ -135,7 +135,7 @@ export async function GET(req: NextRequest) {
   // ── Totales por fuente
   const ingresosBySource = { consulta: 0, mostrador: 0, otros: 0 }
   const egresosByCategory: Record<string, number> = {}
-  const ingresosByMethod = { EFECTIVO: 0, TARJETA: 0, TRANSFERENCIA: 0, OTRO: 0 }
+  const ingresosByMethod = { EFECTIVO: 0, TARJETA: 0, TRANSFERENCIA: 0, TARJETA_DE_REGALO: 0, OTRO: 0 }
 
   for (const m of movements) {
     if (m.type === 'INGRESO') {
@@ -148,6 +148,7 @@ export async function GET(req: NextRequest) {
       if (m.method === 'EFECTIVO') ingresosByMethod.EFECTIVO += m.amount
       else if (m.method === 'DEBITO' || m.method === 'CREDITO') ingresosByMethod.TARJETA += m.amount
       else if (m.method === 'TRANSFERENCIA') ingresosByMethod.TRANSFERENCIA += m.amount
+      else if (m.method === 'TARJETA_DE_REGALO') ingresosByMethod.TARJETA_DE_REGALO += m.amount
       else ingresosByMethod.OTRO += m.amount
     } else if (m.type === 'EGRESO') {
       // Description format: "[CATEGORY] description"

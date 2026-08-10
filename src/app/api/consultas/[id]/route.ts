@@ -317,6 +317,118 @@ export async function PATCH(req: NextRequest, ctx: { params: Promise<{ id: strin
         })
       }
     }
+  } else if (wasPaid && willPay) {
+    // ── Consulta YA ESTABA PAGADA y se está editando ──
+    // Hay que reflejar los cambios en caja (CashMovement), inventario (stock) y totalSpent.
+    //
+    // Casos que manejamos:
+    //  1. Cambio de método de pago → actualizar CashMovement.method
+    //  2. Cambio de total (por items, precio, descuento) → actualizar CashMovement.amount
+    //     y ajustar Patient.totalSpent con la diferencia (nuevo - viejo)
+    //  3. Cambio de items de productos → ajustar stock:
+    //     - Items que ya no están: devolver stock (incrementar)
+    //     - Items nuevos: descontar stock
+    //     - Items con qty cambiada: ajustar diferencia
+
+    const oldTotal = existing.total
+    const totalDiff = total - oldTotal
+
+    // 1. Buscar el CashMovement asociado y actualizarlo
+    const existingMovement = await db.cashMovement.findFirst({
+      where: { refId: existing.id, source: 'CONSULTA', type: 'INGRESO' },
+    })
+    if (existingMovement) {
+      await db.cashMovement.update({
+        where: { id: existingMovement.id },
+        data: {
+          amount: total, // nuevo total
+          method: paymentMethod !== undefined ? (paymentMethod || 'EFECTIVO') : existingMovement.method,
+        },
+      })
+    }
+
+    // 2. Ajustar Patient.totalSpent con la diferencia
+    if (totalDiff !== 0) {
+      await db.patient.update({
+        where: { id: existing.patientId },
+        data: { totalSpent: { increment: totalDiff } },
+      })
+    }
+
+    // 3. Ajustar stock si cambiaron los items de productos
+    if (Array.isArray(items)) {
+      // Parsear items viejos para comparar
+      const oldItems: ConsultaItem[] = safeParse(existing.itemsJson)
+      const oldProducts = oldItems.filter((i) => (i.type === 'PRODUCTO' || i.type === 'MEDICAMENTO') && i.productId)
+      const newProducts = itemsList.filter((i) => (i.type === 'PRODUCTO' || i.type === 'MEDICAMENTO') && i.productId)
+
+      // Productos viejos que ya no están o cambiaron qty → devolver diferencia
+      for (const oldIt of oldProducts) {
+        const newIt = newProducts.find((p) => p.productId === oldIt.productId)
+        const oldQty = oldIt.qty
+        const newQty = newIt ? newIt.qty : 0
+        const diff = oldQty - newQty // positivo = devolver al inventario
+        if (diff > 0) {
+          await db.product.update({
+            where: { id: oldIt.productId! },
+            data: { stock: { increment: diff } },
+          })
+          await db.stockMovement.create({
+            data: {
+              productId: oldIt.productId!,
+              clinicId: existing.clinicId,
+              type: 'ENTRADA',
+              quantity: diff,
+              reason: `Devolución por edición de consulta ${existing.id}`,
+            },
+          })
+        } else if (diff < 0) {
+          // Menos qty vieja que nueva → descontar diferencia
+          const abs = Math.abs(diff)
+          // Validar stock antes de decrementar
+          const prod = await db.product.findUnique({ where: { id: oldIt.productId! } })
+          if (prod && prod.stock >= abs) {
+            await db.product.update({
+              where: { id: oldIt.productId! },
+              data: { stock: { decrement: abs } },
+            })
+            await db.stockMovement.create({
+              data: {
+                productId: oldIt.productId!,
+                clinicId: existing.clinicId,
+                type: 'SALIDA',
+                quantity: abs,
+                reason: `Ajuste por edición de consulta ${existing.id}`,
+              },
+            })
+          }
+        }
+      }
+
+      // Productos nuevos que no estaban antes → descontar stock
+      for (const newIt of newProducts) {
+        const oldIt = oldProducts.find((p) => p.productId === newIt.productId)
+        if (!oldIt) {
+          // Producto nuevo → descontar stock completo
+          const prod = await db.product.findUnique({ where: { id: newIt.productId! } })
+          if (prod && prod.stock >= newIt.qty) {
+            await db.product.update({
+              where: { id: newIt.productId! },
+              data: { stock: { decrement: newIt.qty } },
+            })
+            await db.stockMovement.create({
+              data: {
+                productId: newIt.productId!,
+                clinicId: existing.clinicId,
+                type: 'SALIDA',
+                quantity: newIt.qty,
+                reason: `Venta en consulta ${existing.id} (edición)`,
+              },
+            })
+          }
+        }
+      }
+    }
   }
 
   return ok({ id: updated.id, paid: updated.paid, total: updated.total, ticketPrinted: updated.ticketPrinted })

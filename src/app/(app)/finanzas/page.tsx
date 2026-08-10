@@ -21,6 +21,7 @@ import {
   DollarSign,
   Calendar,
   ShieldAlert,
+  Gift,
 } from 'lucide-react'
 import {
   AreaChart,
@@ -483,6 +484,7 @@ function FinanzasDashboardView({ data }: { data: FinanzasDashboard }) {
     { name: 'Efectivo', value: byMethod.EFECTIVO },
     { name: 'Tarjeta', value: byMethod.TARJETA },
     { name: 'Transferencia', value: byMethod.TRANSFERENCIA },
+    { name: 'Tarjeta de regalo', value: byMethod.TARJETA_DE_REGALO ?? 0 },
     { name: 'Otro', value: byMethod.OTRO },
   ].filter((d) => d.value > 0)
 
@@ -869,6 +871,7 @@ function FinanzasDashboardView({ data }: { data: FinanzasDashboard }) {
             <MethodRow icon={Banknote} label="Efectivo" value={byMethod.EFECTIVO} total={totals.ingresos} />
             <MethodRow icon={CreditCard} label="Tarjeta (débito + crédito)" value={byMethod.TARJETA} total={totals.ingresos} />
             <MethodRow icon={ArrowRightLeft} label="Transferencia" value={byMethod.TRANSFERENCIA} total={totals.ingresos} />
+            <MethodRow icon={Gift} label="Tarjeta de regalo" value={byMethod.TARJETA_DE_REGALO ?? 0} total={totals.ingresos} />
             <MethodRow icon={Wallet} label="Otro" value={byMethod.OTRO} total={totals.ingresos} />
           </CardContent>
         </Card>

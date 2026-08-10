@@ -93,3 +93,46 @@ export async function uploadToSupabaseRaw(
   const { data } = supabase.storage.from('clinics').getPublicUrl(path)
   return { url: data.publicUrl, error: null }
 }
+
+/**
+ * Elimina un archivo de Supabase Storage dada su URL pública.
+ *
+ * La URL pública tiene la forma:
+ *   https://{project}.supabase.co/storage/v1/object/public/clinics/{path}
+ *
+ * Esta función extrae el {path} de la URL y lo elimina del bucket 'clinics'.
+ * Si la URL no corresponde a Supabase o el path no se puede resolver, no hace nada
+ * (no lanza error) para permitir borrado best-effort.
+ *
+ * Devuelve { ok: boolean, error: string | null }.
+ */
+export async function deleteFromSupabaseByUrl(publicUrl: string): Promise<{ ok: boolean; error: string | null }> {
+  const supabase = getSupabaseAdmin()
+  if (!supabase) {
+    return { ok: false, error: 'SUPABASE_URL o SUPABASE_SERVICE_ROLE_KEY no configuradas' }
+  }
+  if (!publicUrl) {
+    return { ok: false, error: 'URL vacía' }
+  }
+
+  // Extraer el path del objeto del URL público de Supabase.
+  // URL format: https://{project}.supabase.co/storage/v1/object/public/clinics/{path}
+  //             o /storage/v1/object/public/clinics/{path}
+  const marker = '/storage/v1/object/public/clinics/'
+  const idx = publicUrl.indexOf(marker)
+  if (idx === -1) {
+    // No es una URL de Supabase válida → no se puede borrar
+    return { ok: false, error: 'URL no corresponde a Supabase Storage (bucket clinics)' }
+  }
+  const objectPath = decodeURIComponent(publicUrl.slice(idx + marker.length))
+  if (!objectPath) {
+    return { ok: false, error: 'Path del objeto vacío' }
+  }
+
+  const { error } = await supabase.storage.from('clinics').remove([objectPath])
+  if (error) {
+    console.error('[SUPABASE STORAGE] delete error:', error.message)
+    return { ok: false, error: error.message }
+  }
+  return { ok: true, error: null }
+}

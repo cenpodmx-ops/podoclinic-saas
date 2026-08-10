@@ -133,11 +133,15 @@ export async function PATCH(req: NextRequest, ctx: { params: Promise<{ id: strin
 
 /**
  * DELETE /api/citas/[id]
- *  - Only allow if status is PENDIENTE or CANCELADA
  *  - 403 for PODOLOGIST
- *  - Block delete if a Consultation is already attached
+ *  - body (opcional): { motivo?: string }
+ *  - Si la cita está PENDIENTE/CANCELADA y sin consulta → se borra directo
+ *  - Si la cita está FINALIZADA o tiene consulta asociada → se requiere un motivo
+ *    y se revierten: CashMovement, StockMovement (devolver productos),
+ *    Patient.totalSpent (restar), y luego se borra consulta + cita.
+ *  - En todos los casos se audita el motivo.
  */
-export async function DELETE(_req: NextRequest, ctx: { params: Promise<{ id: string }> }) {
+export async function DELETE(req: NextRequest, ctx: { params: Promise<{ id: string }> }) {
   const { user, response } = await requireSession()
   if (response) return response
   if (user!.role === 'PODOLOGIST') return bad('Sin permisos para eliminar citas', 403)
@@ -148,15 +152,74 @@ export async function DELETE(_req: NextRequest, ctx: { params: Promise<{ id: str
   if (user!.role !== 'SUPER' && existing.clinicId !== user!.clinicId) {
     return bad('Cita fuera de tu clínica', 403)
   }
-  if (existing.status !== 'PENDIENTE' && existing.status !== 'CANCELADA') {
-    return bad('Solo se pueden eliminar citas pendientes o canceladas', 400)
+
+  // Parsear body para obtener motivo (acepta body vacío para compatibilidad)
+  let motivo = ''
+  try {
+    const body = await req.json()
+    motivo = typeof body?.motivo === 'string' ? body.motivo.trim() : ''
+  } catch {
+    // body vacío o JSON inválido → no hay motivo
   }
 
   const consultation = await db.consultation.findUnique({ where: { appointmentId: id } })
-  if (consultation) {
-    return bad('La cita ya tiene una consulta asociada y no puede eliminarse', 400)
+
+  // Si hay consulta asociada o la cita está finalizada → requerir motivo
+  const requiresMotivo = !!consultation || existing.status === 'FINALIZADA' || existing.status === 'EN_CONSULTA' || existing.status === 'CONFIRMADA' || existing.status === 'NO_ASISTIO'
+
+  if (requiresMotivo && !motivo) {
+    return bad('Se requiere un motivo para eliminar esta cita (está finalizada o tiene consulta asociada). Por favor describe el motivo del borrado.', 400)
   }
 
+  // Si hay consulta asociada, revertir todo (CashMovement, stock, totalSpent)
+  if (consultation) {
+    // 1. Borrar CashMovement asociado (si existe)
+    await db.cashMovement.deleteMany({
+      where: { refId: consultation.id, source: 'CONSULTA' },
+    })
+
+    // 2. Devolver stock de los productos vendidos en la consulta
+    try {
+      const items = JSON.parse(consultation.itemsJson || '[]') as any[]
+      for (const it of items) {
+        if ((it.type === 'PRODUCTO' || it.type === 'MEDICAMENTO') && it.productId) {
+          const qty = Number(it.qty) || 1
+          await db.product.update({
+            where: { id: it.productId },
+            data: { stock: { increment: qty } },
+          })
+          await db.stockMovement.create({
+            data: {
+              productId: it.productId,
+              clinicId: existing.clinicId,
+              type: 'ENTRADA',
+              quantity: qty,
+              reason: `Devolución por eliminación de cita ${id}${motivo ? ` — ${motivo}` : ''}`,
+            },
+          })
+        }
+      }
+    } catch {}
+
+    // 3. Ajustar Patient.totalSpent (restar el total de la consulta)
+    if (consultation.paid && consultation.total > 0) {
+      await db.patient.update({
+        where: { id: consultation.patientId },
+        data: { totalSpent: { decrement: consultation.total } },
+      })
+    }
+
+    // 4. Borrar FollowUps de esta consulta
+    await db.followUp.deleteMany({ where: { consultationId: consultation.id } })
+
+    // 5. Borrar la consulta
+    await db.consultation.delete({ where: { id: consultation.id } })
+  }
+
+  // Auditar el motivo (log simple en consola para no crear modelo nuevo)
+  console.log(`[DELETE CITA] Cita ${id} eliminada por ${user!.email} — motivo: ${motivo || '(sin motivo, cita pendiente)'}`)
+
+  // Finalmente borrar la cita
   await db.appointment.delete({ where: { id } })
-  return ok({ deleted: true })
+  return ok({ deleted: true, motivo: motivo || undefined })
 }

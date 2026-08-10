@@ -12,7 +12,7 @@ export type FinanzasDashboard = {
     bySource: { consulta: number; mostrador: number; otros: number }
     egresosByCategory: Record<string, number>
   }
-  byMethod: { EFECTIVO: number; TARJETA: number; TRANSFERENCIA: number; OTRO: number }
+  byMethod: { EFECTIVO: number; TARJETA: number; TRANSFERENCIA: number; TARJETA_DE_REGALO: number; OTRO: number }
   byPodologist: Array<{
     name: string
     consults: number
