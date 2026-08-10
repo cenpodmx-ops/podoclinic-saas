@@ -322,30 +322,27 @@ export function AppointmentPanel({ open, onOpenChange, appointment, podologos, o
                       <AlertDialogTitle>
                         {canDeleteWithMotivo ? '¿Eliminar cita finalizada?' : '¿Eliminar cita?'}
                       </AlertDialogTitle>
-                      <AlertDialogDescription asChild>
-                        <div className="space-y-3">
-                          <p>
-                            Esta acción no se puede deshacer. La cita de {a.patient.firstName} {a.patient.lastName} del {fmtDate(a.date)} será eliminada permanentemente.
-                          </p>
-                          {canDeleteWithMotivo && (
-                            <div className="bg-amber-50 border border-amber-200 rounded-md p-3 text-amber-900">
-                              <p className="text-xs font-semibold mb-1">⚠ Esta cita ya está {a.status.toLowerCase()}.</p>
-                              <p className="text-xs">
-                                Se revertirán: cobro en caja, descuento de inventario y total acumulado del paciente.
-                                Describe el motivo para el registro:
-                              </p>
-                              <textarea
-                                value={deleteMotivo}
-                                onChange={(e) => setDeleteMotivo(e.target.value)}
-                                placeholder="Ej: Cita de prueba, error de registro, paciente canceló después de pago..."
-                                className="mt-2 w-full text-sm px-2 py-1 border border-amber-300 rounded bg-white text-foreground"
-                                rows={2}
-                              />
-                            </div>
-                          )}
-                        </div>
+                      <AlertDialogDescription>
+                        Esta acción no se puede deshacer. La cita de {a.patient.firstName} {a.patient.lastName} del {fmtDate(a.date)} será eliminada permanentemente.
                       </AlertDialogDescription>
                     </AlertDialogHeader>
+                    {canDeleteWithMotivo && (
+                      <div className="bg-amber-50 border border-amber-200 rounded-md p-3 text-amber-900 space-y-2">
+                        <p className="text-xs font-semibold">⚠ Esta cita ya está {a.status.toLowerCase()}.</p>
+                        <p className="text-xs">
+                          Se revertirán: cobro en caja, descuento de inventario y total acumulado del paciente.
+                          Describe el motivo para el registro:
+                        </p>
+                        <textarea
+                          value={deleteMotivo}
+                          onChange={(e) => setDeleteMotivo(e.target.value)}
+                          placeholder="Ej: Cita de prueba, error de registro, paciente canceló después de pago..."
+                          className="w-full text-sm px-2 py-1 border border-amber-300 rounded bg-white text-foreground resize-none"
+                          rows={3}
+                          autoFocus
+                        />
+                      </div>
+                    )}
                     <AlertDialogFooter>
                       <AlertDialogCancel onClick={() => setDeleteMotivo('')}>Cancelar</AlertDialogCancel>
                       <AlertDialogAction
