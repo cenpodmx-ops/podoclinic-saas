@@ -77,7 +77,6 @@ export async function POST() {
   })
 
   // 2. Borrar movimientos EFECTIVO_INICIAL (fondo de apertura de caja)
-  // NO tocar los source='CONSULTA'
   const deletedEFECTIVO_INICIAL = await db.cashMovement.deleteMany({
     where: {
       clinicId: PORTILLO_ID,
@@ -87,9 +86,6 @@ export async function POST() {
   })
 
   // 3. Manejar TODAS las cashSessions de Portillo del día
-  // Puede haber varias (duplicadas por bugs anteriores). Para cada una:
-  //  - Si tiene movimientos de CONSULTA vinculados → resetearla (no borrar)
-  //  - Si NO tiene movimientos vinculados → borrarla
   const allSessions = await db.cashSession.findMany({
     where: { clinicId: PORTILLO_ID, date: { gte: ds, lte: de } },
     include: { movements: { select: { id: true, source: true } } },
@@ -101,7 +97,6 @@ export async function POST() {
   for (const session of allSessions) {
     const hasConsultaMovement = session.movements.some(m => m.source === 'CONSULTA')
     if (hasConsultaMovement) {
-      // Reseteaar (no borrar) — preserva los movimientos de CONSULTA
       await db.cashSession.update({
         where: { id: session.id },
         data: {
@@ -118,13 +113,11 @@ export async function POST() {
       })
       resetSessionsCount++
     } else {
-      // Borrar — no tiene movimientos de CONSULTA que preservar
       await db.cashSession.delete({ where: { id: session.id } })
       deletedSessionsCount++
     }
   }
 
-  // Verificar el resultado
   const after = await db.cashMovement.findMany({
     where: { clinicId: PORTILLO_ID, createdAt: { gte: dayCreatedStart, lte: dayCreatedEnd } },
     select: { id: true, source: true, amount: true, description: true },
