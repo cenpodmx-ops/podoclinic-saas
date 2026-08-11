@@ -230,22 +230,31 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           )}
         >
           <div
-            className="flex flex-col items-center justify-center gap-0 px-4 py-5 border-b border-sidebar-border text-white shrink-0"
+            className="flex flex-col items-center justify-center gap-1 px-4 py-5 border-b border-sidebar-border text-white shrink-0"
             style={{ backgroundColor: 'var(--clinic-primary, #0a3143)' }}
           >
             {!collapsed ? (
               <>
-                <span className="text-2xl font-extrabold tracking-[0.15em] leading-none">
+                <img
+                  src="/podoclinic-logo.png"
+                  alt="PodoClinic"
+                  className="h-10 w-auto object-contain mb-1"
+                  onError={(e) => { (e.target as HTMLImageElement).style.display = 'none' }}
+                />
+                <span className="text-sm font-bold tracking-wide leading-tight text-center">
                   {clinicName}
                 </span>
-                <span className="text-[9px] font-medium tracking-[0.2em] mt-1 text-white/70 text-center">
+                <span className="text-[9px] font-medium tracking-[0.2em] text-white/70 text-center">
                   PodoClinic
                 </span>
               </>
             ) : (
-              <span className="text-lg font-extrabold tracking-wider leading-none">
-                {clinicInitials}
-              </span>
+              <img
+                src="/podoclinic-logo.png"
+                alt="PodoClinic"
+                className="h-8 w-auto object-contain"
+                onError={(e) => { (e.target as HTMLImageElement).style.display = 'none' }}
+              />
             )}
           </div>
           <div className="flex-1 overflow-y-auto cenpod-sidebar-scroll">
@@ -272,7 +281,13 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               style={{ backgroundColor: 'var(--clinic-primary, #0a3143)' }}
             >
               <div className="flex flex-col">
-                <span className="text-xl font-extrabold tracking-[0.15em] leading-none">
+                <img
+                  src="/podoclinic-logo.png"
+                  alt="PodoClinic"
+                  className="h-8 w-auto object-contain mb-1"
+                  onError={(e) => { (e.target as HTMLImageElement).style.display = 'none' }}
+                />
+                <span className="text-sm font-bold tracking-wide leading-tight">
                   {clinicName}
                 </span>
                 <span className="text-[8px] font-medium tracking-[0.2em] mt-1 text-white/70">

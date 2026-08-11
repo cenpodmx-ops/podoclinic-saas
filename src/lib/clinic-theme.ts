@@ -9,7 +9,7 @@ export const PODOCLINIC_DEFAULTS = {
   name: 'PodoClinic',
   primaryColor: '#0d9488', // teal-600 — color de marca PodoClinic
   secondaryColor: '#0f766e', // teal-700
-  logoUrl: null as string | null,
+  logoUrl: '/podoclinic-logo.png' as string | null,
   timezone: 'America/Hermosillo',
 }
 
