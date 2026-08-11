@@ -18,6 +18,9 @@ export type SessionUser = {
   clinicId: string
   clinicName: string
   clinicSlug: string
+  clinicTimezone: string
+  clinicPrimaryColor: string
+  clinicSecondaryColor: string
   podologistId?: string
 }
 

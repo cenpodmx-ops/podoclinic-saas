@@ -8,6 +8,9 @@ declare module 'next-auth' {
       clinicId: string
       clinicName: string
       clinicSlug: string
+      clinicTimezone: string
+      clinicPrimaryColor: string
+      clinicSecondaryColor: string
       podologistId?: string
     } & DefaultSession['user']
   }
@@ -16,6 +19,9 @@ declare module 'next-auth' {
     clinicId: string
     clinicName: string
     clinicSlug: string
+      clinicTimezone: string
+      clinicPrimaryColor: string
+      clinicSecondaryColor: string
     podologistId?: string
   }
 }
@@ -26,6 +32,9 @@ declare module 'next-auth/jwt' {
     clinicId: string
     clinicName: string
     clinicSlug: string
+      clinicTimezone: string
+      clinicPrimaryColor: string
+      clinicSecondaryColor: string
     podologistId?: string
   }
 }

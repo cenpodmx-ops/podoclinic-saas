@@ -7,9 +7,9 @@ generator client {
 }
 
 datasource db {
-  provider  = "postgresql"
+  provider  = "sqlite"
   url       = env("DATABASE_URL")
-  directUrl = env("DIRECT_URL")
+
 }
 
 // ============================================================
@@ -39,6 +39,10 @@ model Clinic {
   facturapiToken String?
   facturapiSeries String? // JSON string con series por tipo
   facturapiOrgId String?  // ID de la organización en FacturAPI (una por sucursal)
+  // Branding y zona horaria dinamicos por clinica (PodoClinic SaaS)
+  timezone      String? @default("America/Hermosillo") // IANA timezone, ej: America/Mexico_City
+  primaryColor   String? @default("#0a3143") // color principal de la clinica
+  secondaryColor String?  // color secundario/acento
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
@@ -820,3 +824,4 @@ model Vademecum {
   @@index([clinicId])
   @@index([name])
 }
+
