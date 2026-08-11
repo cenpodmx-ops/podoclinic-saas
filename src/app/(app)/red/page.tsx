@@ -22,7 +22,7 @@ export default function RedPage() {
     <div className="p-4 md:p-6 space-y-4 max-w-[1400px] mx-auto">
       <div className="flex items-center justify-between gap-3 flex-wrap">
         <div>
-          <h1 className="text-2xl font-bold">Red CENPOD</h1>
+          <h1 className="text-2xl font-bold">Red PodoClinic</h1>
           <p className="text-sm text-muted-foreground">
             Comunicación interna, avisos de Matriz y pedidos a distribuidora
           </p>

@@ -78,7 +78,7 @@ export async function POST(req: NextRequest) {
 
   const tplRaw = cfg?.[templateKey] || DEFAULT_TEMPLATES[templateKey]
   const linkReserva = `${process.env.NEXT_PUBLIC_APP_URL || ''}/reserva?slug=${clinic?.slug || ''}`
-  const clinicaName = clinic?.name || 'CENPOD'
+  const clinicaName = clinic?.name || 'PodoClinic'
 
   // ── Llamar internamente a la lógica del endpoint segmentos (re-cálculo)
   // Para no duplicar la lógica, importamos segmentos usando fetch interno no es ideal.

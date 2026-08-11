@@ -75,7 +75,7 @@ export function NewMessageDialog({
       <DialogContent className="sm:max-w-lg">
         <DialogHeader>
           <DialogTitle>Nuevo mensaje</DialogTitle>
-          <DialogDescription>Envía un mensaje a otra clínica del grupo CENPOD.</DialogDescription>
+          <DialogDescription>Envía un mensaje a otra clínica del la cl.nica.</DialogDescription>
         </DialogHeader>
 
         <div className="space-y-4 py-2">

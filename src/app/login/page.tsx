@@ -149,7 +149,7 @@ export default function LoginPage() {
         </Card>
 
         <p className="text-center text-xs text-white/50 mt-6">
-          © 2026 Grupo CENPOD · Sistema de gestión clínica
+          © 2026 la cl.nica · Sistema de gestión clínica
         </p>
       </div>
     </div>

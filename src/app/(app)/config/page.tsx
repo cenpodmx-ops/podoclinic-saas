@@ -645,7 +645,7 @@ function FacturacionTab() {
                 name="razon_social"
                 required
                 defaultValue={clinic?.razonSocial || org?.legal_name || ''}
-                placeholder="Ej. Grupo CENPOD Clínica 1"
+                placeholder="Ej. la cl.nica Clínica 1"
               />
             </div>
             <div className="space-y-1">

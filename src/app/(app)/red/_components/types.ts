@@ -1,4 +1,4 @@
-// Tipos compartidos del módulo Red CENPOD.
+// Tipos compartidos del módulo Red PodoClinic.
 
 export type ClinicRef = {
   id: string

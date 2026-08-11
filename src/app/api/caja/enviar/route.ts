@@ -63,7 +63,7 @@ export async function POST(req: NextRequest) {
 
   const lines: string[] = []
   lines.push(`*CORTE DE CAJA*`)
-  lines.push(`${clinic?.name || 'CENPOD'}`)
+  lines.push(`${clinic?.name || 'PodoClinic'}`)
   lines.push(`Fecha: ${dateLabel}`)
   lines.push(`Responsable: ${session.closedBy || user!.name}`)
   lines.push('')
@@ -86,7 +86,7 @@ export async function POST(req: NextRequest) {
     }
   }
   lines.push('')
-  lines.push(`_Enviado desde Sistema CENPOD_`)
+  lines.push(`_Enviado desde PodoClinic_`)
 
   const text = encodeURIComponent(lines.join('\n'))
   // Si el teléfono tiene 10 dígitos, asumir México (52)

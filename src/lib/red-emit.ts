@@ -1,5 +1,5 @@
 /**
- * Helper para emitir eventos en tiempo real al mini-servicio de Red CENPOD.
+ * Helper para emitir eventos en tiempo real al mini-servicio de Red PodoClinic.
  *
  * Las API routes de Next.js llaman a `redEmit()` DESPUÉS de escribir en la BD.
  * El mini-servicio (mini-services/red-service, puerto 3003) recibe el POST y

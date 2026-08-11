@@ -6,7 +6,7 @@ import { db } from '@/lib/db'
 export const authOptions: NextAuthOptions = {
   providers: [
     CredentialsProvider({
-      name: 'CENPOD',
+      name: 'PodoClinic',
       credentials: {
         email: { label: 'Correo', type: 'email' },
         password: { label: 'Contraseña', type: 'password' },

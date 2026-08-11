@@ -496,7 +496,7 @@ function InvoicePreview({
       )}
       <div className="flex items-start justify-between mb-3">
         <div>
-          <div className="font-bold text-base text-[#0a3143]">CENPOD</div>
+          <div className="font-bold text-base text-[#0a3143]">PodoClinic</div>
           <div className="text-xs text-muted-foreground">Factura · CFDI 4.0</div>
         </div>
         <div className="text-right text-xs">

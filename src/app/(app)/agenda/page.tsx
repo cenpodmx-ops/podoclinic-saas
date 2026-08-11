@@ -206,7 +206,7 @@ export default function AgendaPage() {
             const podName = podologistId && podologistId !== 'all'
               ? (podologos.find((p: PodologistOption) => p.id === podologistId)?.name || 'Podólogo')
               : 'Todos los podólogos'
-            const clinicName = data?.clinic?.name || user?.clinicName || 'CENPOD'
+            const clinicName = data?.clinic?.name || user?.clinicName || 'PodoClinic'
             return (
               <div className="podologo-header">
                 <span className="podologo-label">Podólogo</span>
@@ -217,7 +217,7 @@ export default function AgendaPage() {
 
           {/* Info grid con clínica y estadísticas */}
           <div className="info-grid">
-            <div><b>Clínica:</b> {data?.clinic?.name || user?.clinicName || 'CENPOD'}</div>
+            <div><b>Clínica:</b> {data?.clinic?.name || user?.clinicName || 'PodoClinic'}</div>
             <div><b>Fecha:</b> {dateLabel}</div>
             <div><b>Total de citas:</b> {stats.total}</div>
             <div><b>Confirmadas:</b> {stats.confirmadas} · Pendientes: {stats.pendientes} · Finalizadas: {stats.finalizadas}</div>
@@ -309,7 +309,7 @@ export default function AgendaPage() {
           })()}
 
           <div className="footer">
-            Impreso el {new Date().toLocaleString('es-MX')} • Sistema CENPOD • {data?.clinic?.name || user?.clinicName || 'CENPOD'}
+            Impreso el {new Date().toLocaleString('es-MX')} • PodoClinic • {data?.clinic?.name || user?.clinicName || 'PodoClinic'}
           </div>
         </div>
       </div>

@@ -48,7 +48,7 @@
    vía ClinicThemeProvider (ver src/lib/clinic-theme.ts) */
 :root {
   /* Variables de clínica (overrideadas dinámicamente por ClinicThemeProvider) */
-  --clinic-primary: #0a3143; /* default temporal = color CENPOD actual, cambiar a PodoClinic */
+  --clinic-primary: #0a3143; /* default temporal, cambiar a color oficial PodoClinic */
   --clinic-secondary: #0f766e;
   --radius: 0.625rem;
   --background: oklch(1 0 0);

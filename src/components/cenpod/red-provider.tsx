@@ -1,7 +1,7 @@
 'use client'
 
 /**
- * RedProvider — contexto de tiempo real para el módulo Red CENPOD.
+ * RedProvider — contexto de tiempo real para el módulo Red PodoClinic.
  *
  * Conecta al mini-servicio socket.io en puerto 3003 vía Caddy:
  *   io("/?XTransformPort=3003", { path: "/red-ws" })

@@ -263,7 +263,7 @@ function WhatsAppButton({ patient, segment }: { patient: SegmentPatient; segment
   const tplKey = SEGMENT_LABELS[segment].tplKey
   const text = fillTemplate(DEFAULT_TEMPLATES[tplKey], {
     nombre_paciente: patient.firstName,
-    clinica: 'CENPOD',
+    clinica: 'PodoClinic',
     link_reserva: '',
     fecha: '',
     hora: '',

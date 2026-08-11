@@ -220,7 +220,7 @@ function FinanzasContent() {
             <BarChart3 className="h-6 w-6" style={{ color: BRAND }} /> Finanzas
           </h1>
           <p className="text-sm text-muted-foreground">
-            Análisis financiero, comisiones y reportes · {user?.clinicName || 'CENPOD'}
+            Análisis financiero, comisiones y reportes · {user?.clinicName || 'PodoClinic'}
           </p>
         </div>
       </header>
@@ -450,7 +450,7 @@ function FinanzasContent() {
             {reporteQ.data && (
               <ReporteView
                 data={reporteQ.data}
-                clinicName={configQ.data?.clinic?.name || user?.clinicName || 'CENPOD'}
+                clinicName={configQ.data?.clinic?.name || user?.clinicName || 'PodoClinic'}
               />
             )}
           </div>

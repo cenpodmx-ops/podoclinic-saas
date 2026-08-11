@@ -137,7 +137,7 @@ export const MODULES: ModuleDef[] = [
   },
   {
     id: 'red',
-    label: 'Red CENPOD',
+    label: 'Red PodoClinic',
     icon: Network,
     href: '/red',
     roles: ['SUPER', 'OWNER', 'RECEPTION'],

@@ -55,7 +55,7 @@ export function CorteReport({ data, responsable, clinicName, clinicAddress, clin
         <div className="flex items-center gap-3">
           <div>
             <h1 className="text-xl font-bold" style={{ color: '#0a3143' }}>
-              {clinicName || 'CENPOD'}
+              {clinicName || 'PodoClinic'}
             </h1>
             {clinicAddress && <p className="text-xs text-slate-600">{clinicAddress}</p>}
             {clinicPhone && <p className="text-xs text-slate-600">Tel. {clinicPhone}</p>}
@@ -213,7 +213,7 @@ export function CorteReport({ data, responsable, clinicName, clinicAddress, clin
       </div>
 
       <p className="text-center text-[10px] text-slate-400 mt-8">
-        Documento generado por Sistema CENPOD · {toHermosilloDateTime(new Date().toISOString())}
+        Documento generado por PodoClinic · {toHermosilloDateTime(new Date().toISOString())}
       </p>
     </div>
   )

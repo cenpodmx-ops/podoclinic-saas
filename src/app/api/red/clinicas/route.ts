@@ -4,7 +4,7 @@ import { requireSession, ok, bad } from '@/lib/api'
 
 /**
  * GET /api/red/clinicas
- * Lista de clínicas activas para el módulo Red CENPOD (mensajes, avisos, pedidos).
+ * Lista de clínicas activas para el módulo Red PodoClinic (mensajes, avisos, pedidos).
  * Incluye distribuidora y matriz.
  *
  * - SUPER ve todas las clínicas (incluida distribuidora).

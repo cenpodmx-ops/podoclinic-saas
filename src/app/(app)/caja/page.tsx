@@ -470,7 +470,7 @@ export default function CajaPage() {
             <CorteReport
               data={cajaQ.data}
               responsable={cashSession.closedBy || user?.name || 'Responsable'}
-              clinicName={configQ.data?.clinic?.name || 'CENPOD'}
+              clinicName={configQ.data?.clinic?.name || 'PodoClinic'}
               clinicAddress={configQ.data?.clinic?.address}
               clinicPhone={configQ.data?.clinic?.phone}
             />

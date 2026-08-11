@@ -1,5 +1,5 @@
 // Constantes compartidas cliente/servidor
-export const ACTIVE_CLINIC_COOKIE = 'cenpod_active_clinic'
+export const ACTIVE_CLINIC_COOKIE = 'podoclinic_active_clinic'
 
 export const ROLES = {
   SUPER: 'Súper Dueño',

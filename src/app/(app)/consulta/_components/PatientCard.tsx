@@ -141,7 +141,7 @@ export function TicketPreview({
   const showPhone = tc?.showPhone ?? true
   const logoUrl = tc?.logoUrl || clinic?.logoUrl || null
   const logoSize = tc?.logoSize || 60
-  const clinicName = tc?.clinicName || clinic?.name || 'CENPOD'
+  const clinicName = tc?.clinicName || clinic?.name || 'PodoClinic'
   const address = tc?.address || clinic?.address || ''
   const phone = tc?.phone || clinic?.phone || ''
   const footerMessage = tc?.footerMessage || '¡Gracias por su visita!'

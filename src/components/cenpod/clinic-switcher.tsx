@@ -61,7 +61,7 @@ export function ClinicSwitcher() {
     return (
       <div className="hidden md:flex items-center gap-2 text-sm">
         <Building2 className="h-4 w-4 text-muted-foreground" />
-        <span className="font-medium">{user?.clinicName || 'CENPOD'}</span>
+        <span className="font-medium">{user?.clinicName || 'PodoClinic'}</span>
       </div>
     )
   }

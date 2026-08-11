@@ -574,7 +574,7 @@ export function TabResumen() {
       {resumenQ.data && (
         <>
           <div className="print-only mb-4 hidden">
-            <div className="text-2xl font-bold text-[#0a3143]">CENPOD</div>
+            <div className="text-2xl font-bold text-[#0a3143]">PodoClinic</div>
             <div className="text-sm text-muted-foreground">Resumen mensual de facturación</div>
             <div className="text-base mt-2 capitalize">{monthLabel}</div>
           </div>

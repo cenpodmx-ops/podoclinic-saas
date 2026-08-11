@@ -50,7 +50,7 @@ export function ReporteView({ data, clinicName }: Props) {
           <img src="/logo.svg" alt="CENPOD" className="h-12" />
           <div>
             <h1 className="text-xl font-bold" style={{ color: '#0a3143' }}>
-              {clinicName || 'CENPOD'}
+              {clinicName || 'PodoClinic'}
             </h1>
             <p className="text-xs text-slate-600">Sistema de Gestión CENPOD</p>
           </div>
@@ -67,7 +67,7 @@ export function ReporteView({ data, clinicName }: Props) {
       <ReporteBody data={data} />
 
       <p className="text-center text-[10px] text-slate-400 mt-8 border-t border-slate-200 pt-3">
-        Documento generado por Sistema CENPOD · {new Date().toLocaleString('es-MX')}
+        Documento generado por PodoClinic · {new Date().toLocaleString('es-MX')}
       </p>
     </div>
   )

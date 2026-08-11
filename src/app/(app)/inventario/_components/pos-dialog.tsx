@@ -369,7 +369,7 @@ function TicketView({ data }: { data: VentaMostradorResponse }) {
     <div className="ticket-print mx-auto">
       <div className="ticket-header">
         {clinic?.logoUrl && <img src={clinic.logoUrl} alt={clinic.name} />}
-        <div style={{ fontWeight: 700, fontSize: 14 }}>{clinic?.name || 'CENPOD'}</div>
+        <div style={{ fontWeight: 700, fontSize: 14 }}>{clinic?.name || 'PodoClinic'}</div>
         {clinic?.address && <div>{clinic.address}</div>}
         {clinic?.phone && <div>Tel: {clinic.phone}</div>}
       </div>

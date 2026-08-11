@@ -67,7 +67,7 @@ export function NewNoticeDialog({
         <DialogHeader>
           <DialogTitle>Nuevo aviso</DialogTitle>
           <DialogDescription>
-            Publica un aviso a todas las clínicas del grupo CENPOD.
+            Publica un aviso a todas las clínicas del la cl.nica.
           </DialogDescription>
         </DialogHeader>
 
