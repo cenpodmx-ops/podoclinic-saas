@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { signIn } from 'next-auth/react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { Button } from '@/components/ui/button'
@@ -19,6 +19,12 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false)
 
   const callback = params.get('callbackUrl') || '/'
+
+  useEffect(() => {
+    if (params.get('onboarding') === 'done') {
+      toast.success('¡Configuración completada! Inicia sesión para entrar a tu panel.')
+    }
+  }, [params])
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault()

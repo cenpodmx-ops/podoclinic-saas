@@ -2,7 +2,9 @@
 
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { useSession } from 'next-auth/react'
+import { useSession, signOut } from 'next-auth/react'
+// useSession no se usa directamente — userEmail viene como prop del server component
+// signOut se usa para forzar re-login después del onboarding
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -48,7 +50,6 @@ type ClinicData = {
 
 export function OnboardingWizard({ initialClinic, userEmail, clinicId }: { initialClinic: ClinicData | null; userEmail: string; clinicId: string }) {
   const router = useRouter()
-  const { update: updateSession } = useSession()
   const [step, setStep] = useState(1)
   const [loading, setLoading] = useState(false)
   const [form, setForm] = useState({
@@ -88,10 +89,14 @@ export function OnboardingWizard({ initialClinic, userEmail, clinicId }: { initi
       const res = await fetch('/api/onboarding', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ step: 'all', data: { ...form, users: newUsers }, complete: true }) })
       const json = await res.json()
       if (!res.ok) throw new Error(json.error || 'Error al finalizar')
-      toast.success('¡Configuración completada!')
-      await updateSession({ onboardingComplete: true })
-      router.push('/dashboard')
-      router.refresh()
+      toast.success('¡Configuración completada! Reiniciando sesión...')
+      // El JWT no se puede actualizar en runtime — necesitamos re-login
+      // para que el token se regenere con onboardingComplete = true
+      setTimeout(() => {
+        signOut({ redirect: false })
+        router.push('/login?onboarding=done')
+        router.refresh()
+      }, 1500)
     } catch (e: any) { toast.error(e.message) }
     setLoading(false)
   }
