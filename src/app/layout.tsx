@@ -18,8 +18,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Sistema CENPOD · Gestión Clínica",
-  description: "Plataforma de gestión clínica del Grupo CENPOD",
+  title: "PodoClinic · Gestión Clínica",
+  description: "Plataforma SaaS de gestión clínica para podología",
   icons: {
     icon: "/logopagina.png",
     apple: "/logopagina.png",

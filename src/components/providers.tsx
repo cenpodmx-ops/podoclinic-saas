@@ -4,6 +4,7 @@ import { SessionProvider } from 'next-auth/react'
 import { ThemeProvider } from 'next-themes'
 import { QueryClient, QueryClientProvider, keepPreviousData } from '@tanstack/react-query'
 import { useState } from 'react'
+import { ClinicThemeProvider } from '@/components/cenpod/clinic-theme-provider'
 
 export function Providers({ children, session }: { children: React.ReactNode; session: any }) {
   const [client] = useState(
@@ -28,7 +29,9 @@ export function Providers({ children, session }: { children: React.ReactNode; se
   return (
     <SessionProvider session={session}>
       <ThemeProvider attribute="class" defaultTheme="light" enableSystem={false}>
-        <QueryClientProvider client={client}>{children}</QueryClientProvider>
+        <ClinicThemeProvider>
+          <QueryClientProvider client={client}>{children}</QueryClientProvider>
+        </ClinicThemeProvider>
       </ThemeProvider>
     </SessionProvider>
   )

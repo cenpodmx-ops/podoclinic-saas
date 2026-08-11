@@ -205,6 +205,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const [mobileOpen, setMobileOpen] = useState(false)
   const { data: session } = useSession()
   const role = (session?.user as any)?.role as string
+  const clinicName = (session?.user as any)?.clinicName || 'PodoClinic'
+  const clinicInitials = clinicName.substring(0, 2).toUpperCase()
 
   // Podólogo: layout fijo de solo lectura
   if (role === 'PODOLOGIST') {
@@ -229,17 +231,21 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         >
           <div
             className="flex flex-col items-center justify-center gap-0 px-4 py-5 border-b border-sidebar-border text-white shrink-0"
-            style={{ backgroundColor: '#0a3143' }}
+            style={{ backgroundColor: 'var(--clinic-primary, #0a3143)' }}
           >
             {!collapsed ? (
               <>
-                <span className="text-2xl font-extrabold tracking-[0.15em] leading-none">CENPOD</span>
+                <span className="text-2xl font-extrabold tracking-[0.15em] leading-none">
+                  {clinicName}
+                </span>
                 <span className="text-[9px] font-medium tracking-[0.2em] mt-1 text-white/70 text-center">
-                  CENTRO PODOLÓGICO
+                  PodoClinic
                 </span>
               </>
             ) : (
-              <span className="text-lg font-extrabold tracking-wider leading-none">CP</span>
+              <span className="text-lg font-extrabold tracking-wider leading-none">
+                {clinicInitials}
+              </span>
             )}
           </div>
           <div className="flex-1 overflow-y-auto cenpod-sidebar-scroll">
@@ -263,12 +269,14 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           <SheetContent side="left" className="w-72 p-0 bg-sidebar text-sidebar-foreground">
             <div
               className="flex items-center justify-between gap-2 px-4 py-5 border-b border-sidebar-border text-white"
-              style={{ backgroundColor: '#0a3143' }}
+              style={{ backgroundColor: 'var(--clinic-primary, #0a3143)' }}
             >
               <div className="flex flex-col">
-                <span className="text-xl font-extrabold tracking-[0.15em] leading-none">CENPOD</span>
+                <span className="text-xl font-extrabold tracking-[0.15em] leading-none">
+                  {clinicName}
+                </span>
                 <span className="text-[8px] font-medium tracking-[0.2em] mt-1 text-white/70">
-                  CENTRO PODOLÓGICO
+                  PodoClinic
                 </span>
               </div>
               <Button

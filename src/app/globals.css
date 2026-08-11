@@ -43,8 +43,13 @@
   --radius-xl: calc(var(--radius) + 4px);
 }
 
-/* CENPOD brand: blanco + azul #0a3143 */
+/* PodoClinic brand: defaults de la plataforma SaaS. 
+   Las clínicas pueden overridear --clinic-primary y --clinic-secondary 
+   vía ClinicThemeProvider (ver src/lib/clinic-theme.ts) */
 :root {
+  /* Variables de clínica (overrideadas dinámicamente por ClinicThemeProvider) */
+  --clinic-primary: #0a3143; /* default temporal = color CENPOD actual, cambiar a PodoClinic */
+  --clinic-secondary: #0f766e;
   --radius: 0.625rem;
   --background: oklch(1 0 0);
   --foreground: oklch(0.20 0.04 245);
