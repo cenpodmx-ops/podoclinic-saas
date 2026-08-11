@@ -10,17 +10,17 @@ async function main() {
     where: { slug: 'clinica-1' },
     update: {},
     create: {
-      name: 'Clínica CENPOD 1',
+      name: 'Clínica Demo PodoClinic 1',
       slug: 'clinica-1',
-      address: 'Av. Obregón 123, Hermosillo, Sonora',
-      phone: '6621234567',
-      email: 'clinica1@cenpod.com',
+      address: 'Av. Reforma 123, Ciudad de México',
+      phone: '5512345678',
+      email: 'clinica1@demo.podoclinic.com',
       openingTime: '08:00',
       closingTime: '20:00',
       slotMinutes: 30,
-      rfc: 'CEN010101AB1',
-      razonSocial: 'Grupo CENPOD Clínica 1 S.A. de C.V.',
-      regimenFiscal: '601 - General de Ley Personas Morales',
+      timezone: 'America/Mexico_City',
+      primaryColor: '#0d9488',
+      secondaryColor: '#0f766e',
     },
   })
 
@@ -28,14 +28,17 @@ async function main() {
     where: { slug: 'clinica-2' },
     update: {},
     create: {
-      name: 'Clínica CENPOD 2',
+      name: 'Clínica Demo PodoClinic 2',
       slug: 'clinica-2',
-      address: 'Blvd. Navarrete 456, Hermosillo, Sonora',
-      phone: '6627654321',
-      email: 'clinica2@cenpod.com',
+      address: 'Calle Madero 456, Guadalajara, Jalisco',
+      phone: '3387654321',
+      email: 'clinica2@demo.podoclinic.com',
       openingTime: '09:00',
       closingTime: '19:00',
       slotMinutes: 30,
+      timezone: 'America/Mexico_City',
+      primaryColor: '#2563eb',
+      secondaryColor: '#1d4ed8',
     },
   })
 
@@ -43,14 +46,17 @@ async function main() {
     where: { slug: 'clinica-3' },
     update: {},
     create: {
-      name: 'Clínica CENPOD 3',
+      name: 'Clínica Demo PodoClinic 3',
       slug: 'clinica-3',
-      address: 'Calle Sonora 789, Hermosillo, Sonora',
-      phone: '6629876543',
-      email: 'clinica3@cenpod.com',
+      address: 'Blvd. Kukulcán 789, Cancún, Quintana Roo',
+      phone: '9981234567',
+      email: 'clinica3@demo.podoclinic.com',
       openingTime: '08:00',
       closingTime: '18:00',
       slotMinutes: 30,
+      timezone: 'America/Cancun',
+      primaryColor: '#7c3aed',
+      secondaryColor: '#6d28d9',
     },
   })
 
@@ -58,11 +64,11 @@ async function main() {
     where: { slug: 'distribuidora' },
     update: {},
     create: {
-      name: 'CENPOD Distribuidora',
+      name: 'PodoClinic Distribuidora',
       slug: 'distribuidora',
-      address: 'Bodega Central, Hermosillo, Sonora',
-      phone: '6621112222',
-      email: 'distribuidora@cenpod.com',
+      address: 'Bodega Central, Ciudad de México',
+      phone: '5511122222',
+      email: 'distribuidora@demo.podoclinic.com',
       isDistributor: true,
     },
   })
@@ -71,11 +77,11 @@ async function main() {
     where: { slug: 'matriz' },
     update: {},
     create: {
-      name: 'Matriz CENPOD',
+      name: 'Matriz PodoClinic',
       slug: 'matriz',
       isMatrix: true,
-      phone: '6620000000',
-      email: 'matriz@cenpod.com',
+      phone: '5500000000',
+      email: 'matriz@demo.podoclinic.com',
     },
   })
 
@@ -91,7 +97,7 @@ async function main() {
       cedula: '12345678',
       certNumber: 'CPOD-001',
       phone: '6621000001',
-      email: 'ricardo@cenpod.com',
+      email: 'ricardo@demo.podoclinic.com',
       commissionPct: 25,
       monthlyGoalConsults: 80,
       monthlyGoalRevenue: 60000,
@@ -109,7 +115,7 @@ async function main() {
       cedula: '87654321',
       certNumber: 'CPOD-002',
       phone: '6621000002',
-      email: 'laura@cenpod.com',
+      email: 'laura@demo.podoclinic.com',
       commissionPct: 22,
       monthlyGoalConsults: 70,
       monthlyGoalRevenue: 55000,
@@ -127,7 +133,7 @@ async function main() {
       cedula: '11223344',
       certNumber: 'CPOD-003',
       phone: '6621000003',
-      email: 'andres@cenpod.com',
+      email: 'andres@demo.podoclinic.com',
       commissionPct: 28,
       monthlyGoalConsults: 75,
       monthlyGoalRevenue: 65000,
@@ -138,48 +144,48 @@ async function main() {
   const hash = (s: string) => bcrypt.hashSync(s, 10)
 
   await prisma.user.upsert({
-    where: { email: 'super@cenpod.com' },
+    where: { email: 'super@demo.podoclinic.com' },
     update: {},
     create: {
-      email: 'super@cenpod.com',
-      name: 'Súper Dueño CENPOD',
-      passwordHash: hash('cenpod123'),
+      email: 'super@demo.podoclinic.com',
+      name: 'Súper Admin PodoClinic',
+      passwordHash: hash('podoclinic123'),
       role: 'SUPER',
       clinicId: matrix.id,
     },
   })
 
   await prisma.user.upsert({
-    where: { email: 'dueno@cenpod.com' },
+    where: { email: 'dueno@demo.podoclinic.com' },
     update: {},
     create: {
-      email: 'dueno@cenpod.com',
+      email: 'dueno@demo.podoclinic.com',
       name: 'Dueño Clínica 1',
-      passwordHash: hash('cenpod123'),
+      passwordHash: hash('podoclinic123'),
       role: 'OWNER',
       clinicId: c1.id,
     },
   })
 
   await prisma.user.upsert({
-    where: { email: 'recepcion@cenpod.com' },
+    where: { email: 'recepcion@demo.podoclinic.com' },
     update: {},
     create: {
-      email: 'recepcion@cenpod.com',
+      email: 'recepcion@demo.podoclinic.com',
       name: 'Recepción Clínica 1',
-      passwordHash: hash('cenpod123'),
+      passwordHash: hash('podoclinic123'),
       role: 'RECEPTION',
       clinicId: c1.id,
     },
   })
 
   await prisma.user.upsert({
-    where: { email: 'ricardo@cenpod.com' },
+    where: { email: 'ricardo@demo.podoclinic.com' },
     update: {},
     create: {
-      email: 'ricardo@cenpod.com',
+      email: 'ricardo@demo.podoclinic.com',
       name: 'Dr. Ricardo Méndez',
-      passwordHash: hash('cenpod123'),
+      passwordHash: hash('podoclinic123'),
       role: 'PODOLOGIST',
       clinicId: c1.id,
       podologistId: p1.id,
@@ -289,14 +295,14 @@ async function main() {
 
   // ===== Productos de inventario =====
   const productos = [
-    { name: 'Crema hidratante podal', category: 'PRODUCTO', costPrice: 80, salePrice: 180, ivaType: 'IVA16', stock: 25, minStock: 5, supplier: 'Distribuidora CENPOD' },
-    { name: 'Talco antifúngico', category: 'PRODUCTO', costPrice: 45, salePrice: 120, ivaType: 'IVA16', stock: 3, minStock: 5, supplier: 'Distribuidora CENPOD' },
+    { name: 'Crema hidratante podal', category: 'PRODUCTO', costPrice: 80, salePrice: 180, ivaType: 'IVA16', stock: 25, minStock: 5, supplier: 'PodoClinic Distribuidora' },
+    { name: 'Talco antifúngico', category: 'PRODUCTO', costPrice: 45, salePrice: 120, ivaType: 'IVA16', stock: 3, minStock: 5, supplier: 'PodoClinic Distribuidora' },
     { name: 'Ibuprofeno 400mg', category: 'MEDICAMENTO', costPrice: 5, salePrice: 25, ivaType: 'IVA0', stock: 100, minStock: 20, supplier: 'Farmacia del Norte' },
     { name: 'Amoxicilina 500mg', category: 'MEDICAMENTO', costPrice: 8, salePrice: 40, ivaType: 'IVA0', stock: 50, minStock: 10, supplier: 'Farmacia del Norte' },
     { name: 'Gasa estéril', category: 'MATERIAL', costPrice: 2, salePrice: 10, ivaType: 'IVA0', stock: 200, minStock: 30, supplier: 'Insumos Médicos SA' },
     { name: 'Hojas de bisturí N°15', category: 'MATERIAL', costPrice: 3, salePrice: 15, ivaType: 'IVA0', stock: 80, minStock: 20, supplier: 'Insumos Médicos SA' },
     { name: 'Anestésico lidocaína', category: 'MEDICAMENTO', costPrice: 20, salePrice: 60, ivaType: 'IVA0', stock: 30, minStock: 10, supplier: 'Farmacia del Norte' },
-    { name: 'Aceite esencial de árbol de té', category: 'PRODUCTO', costPrice: 60, salePrice: 150, ivaType: 'IVA16', stock: 8, minStock: 5, supplier: 'Distribuidora CENPOD' },
+    { name: 'Aceite esencial de árbol de té', category: 'PRODUCTO', costPrice: 60, salePrice: 150, ivaType: 'IVA16', stock: 8, minStock: 5, supplier: 'PodoClinic Distribuidora' },
   ]
 
   for (const p of productos) {
@@ -310,10 +316,10 @@ async function main() {
       update: {},
       create: {
         clinicId: c.id,
-        tplConfirm: 'Hola {{nombre_paciente}}, te recordamos tu cita en CENPOD {{clinica}} el día {{fecha}} a las {{hora}} con {{podologo}}. Confirmamos tu asistencia respondiendo a este mensaje.',
-        tplReminder: 'Hola {{nombre_paciente}}, en 24h tienes cita en CENPOD con {{podologo}} el {{fecha}} a las {{hora}}. ¡Te esperamos!',
+        tplConfirm: 'Hola {{nombre_paciente}}, te recordamos tu cita en {{clinica}} {{clinica}} el día {{fecha}} a las {{hora}} con {{podologo}}. Confirmamos tu asistencia respondiendo a este mensaje.',
+        tplReminder: 'Hola {{nombre_paciente}}, en 24h tienes cita en {{clinica}} con {{podologo}} el {{fecha}} a las {{hora}}. ¡Te esperamos!',
         tplGoogleReview: '¡Gracias por tu visita, {{nombre_paciente}}! Nos encantaría que nos califiques: {{link_reserva}}',
-        tplBirthday: '¡Feliz cumpleaños, {{nombre_paciente}}! 🎂 CENPOD te desea un excelente día. Agenda tu revisión anual con un 10% de descuento.',
+        tplBirthday: '¡Feliz cumpleaños, {{nombre_paciente}}! 🎂 {{clinica}} te desea un excelente día. Agenda tu revisión anual con un 10% de descuento.',
         tplInactive: 'Hola {{nombre_paciente}}, notamos que no nos visitas hace tiempo. Tu salud podológica es importante. Agenda con {{link_reserva}}',
         tplFollowUp: 'Hola {{nombre_paciente}}, es momento de tu seguimiento podológico. Agenda con {{podologo}} en {{link_reserva}}',
         diagnosesList: JSON.stringify(['Onicocriptosis', 'Onicomicosis', 'Hallux valgus', 'Pie diabético', 'Heloma', 'Verruga plantar', 'Hiperqueratosis', 'Grieta plantar']),
