@@ -33,15 +33,15 @@ export default function LoginPage() {
       toast.error('Credenciales incorrectas. Revisa tu correo y contraseña.')
       return
     }
-    toast.success('Bienvenido a CENPOD')
+    toast.success('Bienvenido a PodoClinic')
     router.push(callback)
     router.refresh()
   }
 
   return (
     <div className="min-h-screen relative flex items-center justify-center p-4 overflow-hidden">
-      {/* Fondo azul CENPOD con textura sutil */}
-      <div className="absolute inset-0" style={{ backgroundColor: '#0a3143' }} />
+      {/* Fondo con color de marca PodoClinic */}
+      <div className="absolute inset-0" style={{ backgroundColor: 'var(--clinic-primary, #0d9488)' }} />
 
       {/* Textura: patrón de puntos sutiles + rejilla diagonal */}
       <div
@@ -62,28 +62,28 @@ export default function LoginPage() {
       />
 
       {/* Manchas decorativas sutiles para profundidad */}
-      <div className="absolute -top-40 -right-40 w-[600px] h-[600px] rounded-full opacity-25 blur-3xl"
-           style={{ background: 'radial-gradient(circle, #1a5a7a 0%, transparent 70%)' }} />
-      <div className="absolute -bottom-40 -left-40 w-[600px] h-[600px] rounded-full opacity-25 blur-3xl"
-           style={{ background: 'radial-gradient(circle, #1a5a7a 0%, transparent 70%)' }} />
+      <div className="absolute -top-40 -right-40 w-[600px] h-[600px] rounded-full opacity-20 blur-3xl"
+           style={{ background: 'radial-gradient(circle, rgba(255,255,255,0.3) 0%, transparent 70%)' }} />
+      <div className="absolute -bottom-40 -left-40 w-[600px] h-[600px] rounded-full opacity-20 blur-3xl"
+           style={{ background: 'radial-gradient(circle, rgba(255,255,255,0.3) 0%, transparent 70%)' }} />
 
       {/* Formulario centrado */}
       <div className="relative z-10 w-full max-w-md">
         <Card className="shadow-2xl border-white/10 bg-white/95 backdrop-blur-xl">
           <CardContent className="pt-10 pb-8 px-8">
-            {/* Texto CENPOD + CENTRO PODOLÓGICO en vez del logo */}
+            {/* Logo de PodoClinic */}
             <div className="flex flex-col items-center mb-8">
+              <img
+                src="/podoclinic-logo.png"
+                alt="PodoClinic"
+                className="h-20 w-auto object-contain"
+                onError={(e) => { (e.target as HTMLImageElement).style.display = 'none' }}
+              />
               <span
-                className="font-extrabold tracking-[0.15em] leading-none"
-                style={{ color: '#0a3143', fontSize: '2.5rem' }}
+                className="font-medium tracking-[0.2em] mt-3 text-center"
+                style={{ color: 'var(--clinic-primary, #0d9488)', opacity: 0.6, fontSize: '0.7rem' }}
               >
-                CENPOD
-              </span>
-              <span
-                className="font-medium tracking-[0.2em] mt-2 text-center"
-                style={{ color: '#0a3143', opacity: 0.6, fontSize: '0.7rem' }}
-              >
-                CENTRO PODOLÓGICO
+                Gestión Clínica Podológica
               </span>
             </div>
 
@@ -98,7 +98,7 @@ export default function LoginPage() {
                     required
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
-                    placeholder="tu@cenpod.com"
+                    placeholder="tu@podoclinic.com"
                     autoComplete="email"
                     className="pl-9"
                   />
@@ -133,7 +133,7 @@ export default function LoginPage() {
                 type="submit"
                 className="w-full h-11 text-base font-medium"
                 disabled={loading}
-                style={{ backgroundColor: '#0a3143' }}
+                style={{ backgroundColor: 'var(--clinic-primary, #0d9488)' }}
               >
                 {loading ? (
                   <>
@@ -149,7 +149,7 @@ export default function LoginPage() {
         </Card>
 
         <p className="text-center text-xs text-white/50 mt-6">
-          © 2026 la cl.nica · Sistema de gestión clínica
+          © 2026 PodoClinic · Sistema de gestión clínica
         </p>
       </div>
     </div>

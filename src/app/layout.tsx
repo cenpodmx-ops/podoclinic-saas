@@ -21,8 +21,8 @@ export const metadata: Metadata = {
   title: "PodoClinic · Gestión Clínica",
   description: "Plataforma SaaS de gestión clínica para podología",
   icons: {
-    icon: "/logopagina.png",
-    apple: "/logopagina.png",
+    icon: "/podoclinic-logo.png",
+    apple: "/podoclinic-logo.png",
   },
 };
 
