@@ -71,12 +71,12 @@ export default function LoginPage() {
       <div className="relative z-10 w-full max-w-md">
         <Card className="shadow-2xl border-white/10 bg-white/95 backdrop-blur-xl">
           <CardContent className="pt-10 pb-8 px-8">
-            {/* Logo de PodoClinic */}
+            {/* Logo de PodoClinic en el recuadro blanco */}
             <div className="flex flex-col items-center mb-8">
               <img
-                src="/podoclinic-logo.png"
+                src="/login-logo.png"
                 alt="PodoClinic"
-                className="h-20 w-auto object-contain"
+                className="h-24 w-auto object-contain rounded-lg"
                 onError={(e) => { (e.target as HTMLImageElement).style.display = 'none' }}
               />
               <span

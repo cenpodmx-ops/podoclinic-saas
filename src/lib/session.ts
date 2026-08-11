@@ -27,7 +27,7 @@ export async function getSession(): Promise<SessionUser | null> {
       if (activeClinicId) {
         const clinic = await db.clinic.findUnique({
           where: { id: activeClinicId },
-        select: { id: true, name: true, slug: true, timezone: true, primaryColor: true, secondaryColor: true },
+        select: { id: true, name: true, slug: true, timezone: true, primaryColor: true, secondaryColor: true, onboardingComplete: true },
         })
         if (clinic) {
           user.clinicId = clinic.id
@@ -36,6 +36,7 @@ export async function getSession(): Promise<SessionUser | null> {
           user.clinicTimezone = clinic.timezone || 'America/Hermosillo'
           user.clinicPrimaryColor = clinic.primaryColor || '#0a3143'
           user.clinicSecondaryColor = clinic.secondaryColor || ''
+          user.onboardingComplete = clinic.onboardingComplete ?? false
         }
       }
     } catch {

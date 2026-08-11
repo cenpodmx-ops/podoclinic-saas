@@ -43,6 +43,7 @@ model Clinic {
   timezone      String? @default("America/Hermosillo") // IANA timezone, ej: America/Mexico_City
   primaryColor   String? @default("#0a3143") // color principal de la clinica
   secondaryColor String?  // color secundario/acento
+  onboardingComplete Boolean @default(false) // wizard de configuracion inicial completado
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 

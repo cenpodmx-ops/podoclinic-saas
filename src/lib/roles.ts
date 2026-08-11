@@ -21,6 +21,7 @@ export type SessionUser = {
   clinicTimezone: string
   clinicPrimaryColor: string
   clinicSecondaryColor: string
+  onboardingComplete: boolean
   podologistId?: string
 }
 

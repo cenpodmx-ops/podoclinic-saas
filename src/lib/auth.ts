@@ -33,6 +33,7 @@ export const authOptions: NextAuthOptions = {
             clinicTimezone: user.clinic?.timezone || 'America/Hermosillo',
             clinicPrimaryColor: user.clinic?.primaryColor || '#0a3143',
             clinicSecondaryColor: user.clinic?.secondaryColor || '',
+            onboardingComplete: user.clinic?.onboardingComplete ?? false,
             podologistId: user.podologistId ?? '',
           } as any
         } catch {
@@ -55,6 +56,7 @@ export const authOptions: NextAuthOptions = {
         token.clinicTimezone = (user as any).clinicTimezone
         token.clinicPrimaryColor = (user as any).clinicPrimaryColor
         token.clinicSecondaryColor = (user as any).clinicSecondaryColor
+        token.onboardingComplete = (user as any).onboardingComplete
       }
       return token
     },
@@ -69,6 +71,7 @@ export const authOptions: NextAuthOptions = {
         ;(session.user as any).clinicTimezone = token.clinicTimezone
         ;(session.user as any).clinicPrimaryColor = token.clinicPrimaryColor
         ;(session.user as any).clinicSecondaryColor = token.clinicSecondaryColor
+        ;(session.user as any).onboardingComplete = token.onboardingComplete
       }
       return session
     },
