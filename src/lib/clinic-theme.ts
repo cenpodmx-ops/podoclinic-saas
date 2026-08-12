@@ -35,18 +35,24 @@ export function applyClinicTheme(opts: {
   const secondary = opts.secondaryColor || PODOCLINIC_DEFAULTS.secondaryColor
 
   const root = document.documentElement
-  // Establecer variables CSS personalizadas de clínica
+  // Variables CSS personalizadas de clínica
   root.style.setProperty('--clinic-primary', primary)
   root.style.setProperty('--clinic-secondary', secondary)
   
-  // Mapear también a las variables de shadcn/ui para que TODA la UI cambie
-  // --primary controla botones, sidebar, rings, etc.
-  root.style.setProperty('--primary', hexToOklch(primary))
-  root.style.setProperty('--ring', hexToOklch(primary))
-  root.style.setProperty('--sidebar', hexToOklch(primary))
-  root.style.setProperty('--chart-1', hexToOklch(primary))
-  root.style.setProperty('--accent-foreground', hexToOklch(primary))
-  root.style.setProperty('--secondary-foreground', hexToOklch(primary))
+  // Mapear a TODAS las variables de shadcn/ui para que la UI complete cambie
+  root.style.setProperty('--primary', primary)
+  root.style.setProperty('--primary-foreground', '#ffffff')
+  root.style.setProperty('--ring', primary)
+  root.style.setProperty('--sidebar', primary)
+  root.style.setProperty('--sidebar-primary', '#ffffff')
+  root.style.setProperty('--sidebar-primary-foreground', primary)
+  root.style.setProperty('--sidebar-accent', primary)
+  root.style.setProperty('--sidebar-accent-foreground', '#ffffff')
+  root.style.setProperty('--sidebar-ring', secondary)
+  root.style.setProperty('--chart-1', primary)
+  root.style.setProperty('--accent-foreground', primary)
+  root.style.setProperty('--secondary-foreground', primary)
+  root.style.setProperty('--secondary', secondary + '15') // secondary con baja opacidad
 }
 
 /** Resetea el tema a los defaults de PodoClinic. */
@@ -55,11 +61,18 @@ export function resetToPodoclinicDefault() {
   const root = document.documentElement
   root.style.removeProperty('--clinic-primary')
   root.style.removeProperty('--clinic-secondary')
-  // Las variables --primary etc. volverán a los valores de globals.css
+  // Resetear TODAS las variables para que vuelvan a defaults de globals.css
   root.style.removeProperty('--primary')
+  root.style.removeProperty('--primary-foreground')
   root.style.removeProperty('--ring')
   root.style.removeProperty('--sidebar')
+  root.style.removeProperty('--sidebar-primary')
+  root.style.removeProperty('--sidebar-primary-foreground')
+  root.style.removeProperty('--sidebar-accent')
+  root.style.removeProperty('--sidebar-accent-foreground')
+  root.style.removeProperty('--sidebar-ring')
   root.style.removeProperty('--chart-1')
   root.style.removeProperty('--accent-foreground')
   root.style.removeProperty('--secondary-foreground')
+  root.style.removeProperty('--secondary')
 }

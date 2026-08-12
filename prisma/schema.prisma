@@ -44,6 +44,7 @@ model Clinic {
   primaryColor   String? @default("#0a3143") // color principal de la clinica
   secondaryColor String?  // color secundario/acento
   onboardingComplete Boolean @default(false) // wizard de configuracion inicial completado
+  ownerId String?  // ID del usuario SUPER que es dueno de esta clinica (SaaS multitenant)
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 

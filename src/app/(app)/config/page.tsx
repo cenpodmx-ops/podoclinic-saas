@@ -36,6 +36,7 @@ export default function ConfigPage() {
       <Tabs defaultValue="clinica">
         <TabsList className="flex flex-wrap h-auto">
           <TabsTrigger value="clinica" className="gap-1"><Building2 className="h-3.5 w-3.5" /> Clínica</TabsTrigger>
+          <TabsTrigger value="sucursales" className="gap-1"><Building2 className="h-3.5 w-3.5" /> Sucursales</TabsTrigger>
           <TabsTrigger value="equipo" className="gap-1"><Users className="h-3.5 w-3.5" /> Equipo</TabsTrigger>
           <TabsTrigger value="plantillas" className="gap-1"><MessageSquare className="h-3.5 w-3.5" /> Plantillas WhatsApp</TabsTrigger>
           <TabsTrigger value="recetas" className="gap-1"><Pill className="h-3.5 w-3.5" /> Recetas</TabsTrigger>
@@ -46,6 +47,7 @@ export default function ConfigPage() {
         </TabsList>
 
         <TabsContent value="clinica"><ClinicaTab /></TabsContent>
+        <TabsContent value="sucursales"><SucursalesTab /></TabsContent>
         <TabsContent value="equipo"><EquipoTab /></TabsContent>
         <TabsContent value="plantillas"><PlantillasTab /></TabsContent>
         <TabsContent value="recetas"><RecetasTab /></TabsContent>
@@ -1121,5 +1123,26 @@ function UsuarioDialog({
         </form>
       </DialogContent>
     </Dialog>
+  )
+}
+
+// SUCURSALES TAB — Gestionar múltiples clínicas (solo SUPER)
+function SucursalesTab() {
+  const qc = useQueryClient()
+  const [showNew, setShowNew] = useState(false)
+  const [nf, setNf] = useState({ name: '', slug: '', timezone: 'America/Mexico_City', address: '', phone: '', email: '', openingTime: '09:00', closingTime: '18:00', primaryColor: '#0d9488', secondaryColor: '#0f766e' })
+  const { data: cd, isLoading } = useQuery({ queryKey: ['clinicas-suc'], queryFn: () => fetch('/api/clinicas').then((r) => r.json()) })
+  const clinics: any[] = cd?.data || []
+  const cm = useMutation({
+    mutationFn: (d: any) => fetch('/api/clinicas', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(d) }).then(async (r) => { const j = await r.json(); if (!r.ok) throw new Error(j.error); return j }),
+    onSuccess: () => { toast.success('Sucursal creada'); qc.invalidateQueries({ queryKey: ['clinicas-suc'] }); setShowNew(false) },
+    onError: (e: any) => toast.error(e.message),
+  })
+  return (
+    <Card>
+      <CardHeader><div className="flex items-center justify-between"><div><CardTitle className="flex items-center gap-2"><Building2 className="h-5 w-5" /> Mis Sucursales</CardTitle><p className="text-sm text-muted-foreground mt-1">Gestiona las clínicas de tu cuenta.</p></div><Button onClick={() => setShowNew(true)} size="sm"><Plus className="h-4 w-4 mr-1" /> Nueva</Button></div></CardHeader>
+      <CardContent>{isLoading ? <Skeleton className="h-20 w-full" /> : clinics.length === 0 ? <p className="text-sm text-muted-foreground text-center py-8">Sin sucursales.</p> : <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">{clinics.map((c) => (<div key={c.id} className="rounded-lg border p-4 space-y-2"><div className="flex items-center gap-2"><div className="w-3 h-3 rounded-full" style={{ backgroundColor: c.primaryColor || '#0d9488' }} /><span className="font-medium">{c.name}</span></div><div className="text-xs text-muted-foreground"><div>Slug: {c.slug}</div><div>Zona: {c.timezone || 'N/A'}</div></div></div>))}</div>}</CardContent>
+      {showNew && (<Dialog open={showNew} onOpenChange={setShowNew}><DialogContent className="max-w-lg"><DialogHeader><DialogTitle>Nueva sucursal</DialogTitle></DialogHeader><div className="space-y-3"><div className="grid grid-cols-2 gap-3"><div><Label>Nombre *</Label><Input value={nf.name} onChange={e => setNf(f => ({ ...f, name: e.target.value }))} /></div><div><Label>Slug *</Label><Input value={nf.slug} onChange={e => setNf(f => ({ ...f, slug: e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, '-') }))} /></div></div><div><Label>Zona horaria</Label><select value={nf.timezone} onChange={e => setNf(f => ({ ...f, timezone: e.target.value }))} className="w-full h-10 rounded-md border border-input bg-background px-3 text-sm"><option value="America/Mexico_City">CDMX</option><option value="America/Cancun">Cancún</option><option value="America/Hermosillo">Hermosillo</option><option value="America/Tijuana">Tijuana</option></select></div><div className="grid grid-cols-2 gap-3"><div><Label>Apertura</Label><Input type="time" value={nf.openingTime} onChange={e => setNf(f => ({ ...f, openingTime: e.target.value }))} /></div><div><Label>Cierre</Label><Input type="time" value={nf.closingTime} onChange={e => setNf(f => ({ ...f, closingTime: e.target.value }))} /></div></div><div><Label>Dirección</Label><Input value={nf.address} onChange={e => setNf(f => ({ ...f, address: e.target.value }))} /></div><div className="grid grid-cols-2 gap-3"><div><Label>Teléfono</Label><Input value={nf.phone} onChange={e => setNf(f => ({ ...f, phone: e.target.value }))} /></div><div><Label>Email</Label><Input value={nf.email} onChange={e => setNf(f => ({ ...f, email: e.target.value }))} /></div></div><div className="flex items-center gap-3"><div><Label>Color</Label><input type="color" value={nf.primaryColor} onChange={e => setNf(f => ({ ...f, primaryColor: e.target.value }))} className="w-10 h-10 rounded cursor-pointer" /></div></div></div><DialogFooter><Button variant="outline" onClick={() => setShowNew(false)}>Cancelar</Button><Button onClick={() => cm.mutate(nf)} disabled={cm.isPending || !nf.name || !nf.slug}>{cm.isPending ? 'Creando...' : 'Crear'}</Button></DialogFooter></DialogContent></Dialog>)}
+    </Card>
   )
 }
