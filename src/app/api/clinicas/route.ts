@@ -38,7 +38,7 @@ export async function GET(_req: NextRequest) {
 
 /**
  * POST /api/clinicas
- * Crea una nueva clínica/sucursal (solo SUPER).
+ * Crea una nueva clínica/sucursal (solo SUPER) + opcionalmente el usuario OWNER (dueño).
  */
 export async function POST(req: NextRequest) {
   const { user, response } = await requireSession()
@@ -46,7 +46,7 @@ export async function POST(req: NextRequest) {
   if (user!.role !== 'SUPER') return bad('No autorizado', 403)
 
   const body = await req.json().catch(() => ({}))
-  const { name, slug, timezone, address, phone, email, openingTime, closingTime, primaryColor, secondaryColor } = body
+  const { name, slug, timezone, address, phone, email, openingTime, closingTime, primaryColor, secondaryColor, ownerName, ownerEmail, ownerPassword } = body
 
   if (!name || !slug) return bad('Nombre y slug son requeridos', 400)
 
@@ -54,23 +54,51 @@ export async function POST(req: NextRequest) {
   const existing = await db.clinic.findUnique({ where: { slug } })
   if (existing) return bad('El slug ya existe', 400)
 
-  const clinic = await db.clinic.create({
-    data: {
-      name: String(name).trim(),
-      slug: String(slug).trim(),
-      timezone: timezone || 'America/Mexico_City',
-      address: address || null,
-      phone: phone || null,
-      email: email || null,
-      openingTime: openingTime || '09:00',
-      closingTime: closingTime || '18:00',
-      primaryColor: primaryColor || '#0d9488',
-      secondaryColor: secondaryColor || '#0f766e',
-      ownerId: user!.id,
-      onboardingComplete: true, // nueva sucursal del SUPER ya tiene configuración básica
-    },
-    select: { id: true, name: true, slug: true },
+  // Si se van a crear credenciales de dueño, validar que el email no exista
+  if (ownerEmail) {
+    const existingUser = await db.user.findUnique({ where: { email: ownerEmail } })
+    if (existingUser) return bad('El email del dueño ya está registrado', 400)
+  }
+
+  // Crear clínica y (opcionalmente) usuario OWNER en una transacción
+  const bcrypt = (await import('bcryptjs')).default
+  const result = await db.$transaction(async (tx) => {
+    const clinic = await tx.clinic.create({
+      data: {
+        name: String(name).trim(),
+        slug: String(slug).trim(),
+        timezone: timezone || 'America/Mexico_City',
+        address: address || null,
+        phone: phone || null,
+        email: email || null,
+        openingTime: openingTime || '09:00',
+        closingTime: closingTime || '18:00',
+        primaryColor: primaryColor || '#0d9488',
+        secondaryColor: secondaryColor || '#0f766e',
+        ownerId: user!.id,
+        onboardingComplete: true, // nueva sucursal del SUPER ya tiene configuración básica
+      },
+      select: { id: true, name: true, slug: true },
+    })
+
+    // Crear el usuario OWNER (dueño) de la sucursal si se proporcionaron datos
+    let ownerUser = null
+    if (ownerEmail && ownerPassword) {
+      ownerUser = await tx.user.create({
+        data: {
+          email: String(ownerEmail).trim(),
+          name: String(ownerName || 'Dueño').trim(),
+          passwordHash: bcrypt.hashSync(String(ownerPassword), 10),
+          role: 'OWNER',
+          clinicId: clinic.id,
+          active: true,
+        },
+        select: { id: true, email: true, name: true, role: true },
+      })
+    }
+
+    return { clinic, ownerUser }
   })
 
-  return ok({ data: clinic }, 201)
+  return ok({ data: { clinic: result.clinic, ownerUser: result.ownerUser } }, 201)
 }

@@ -135,55 +135,61 @@ export async function GET(req: NextRequest) {
     }
   }
 
-  // Si hay query de búsqueda, usar raw SQL con unaccent para ignorar acentos
-  // completamente. Esto busca en el nombre completo (firstName + lastName)
-  // normalizado, comparando con el query normalizado.
+  // Si hay query de búsqueda, usar Prisma nativo (compatible SQLite y PostgreSQL).
+  // Ignora acentos normalizando el query y buscando con contains.
   if (q) {
     const normalizeStr = (s: string): string =>
       s.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase()
     const qNorm = normalizeStr(q)
+    const qNolower = q.toLowerCase()
 
-    // Construir condición de clínica
-    let clinicCondition = 'TRUE'
+    const searchOr: Prisma.PatientWhereInput['OR'] = [
+      { firstName: { contains: q, mode: 'insensitive' as any } },
+      { lastName: { contains: q, mode: 'insensitive' as any } },
+      { phone: { contains: q } },
+      { expNumber: { contains: q, mode: 'insensitive' as any } },
+    ]
+
+    // Buscar también sin acentos: comparar firstName/lastName sin acentos.
+    // Prisma no soporta ignorar acentos nativamente, así que traemos pacientes
+    // de la clínica con un límite alto y filtramos en JS (solo cuando hay query).
+    const clinicIds: string[] = []
     if (clinicFilter.clinicId) {
       if (typeof clinicFilter.clinicId === 'object' && (clinicFilter.clinicId as any).in) {
-        const ids = (clinicFilter.clinicId as any).in as string[]
-        clinicCondition = `p."clinicId" IN (${ids.map(id => `'${id}'`).join(',')})`
+        clinicIds.push(...(clinicFilter.clinicId as any).in)
       } else {
-        clinicCondition = `p."clinicId" = '${clinicFilter.clinicId}'`
+        clinicIds.push(clinicFilter.clinicId as string)
       }
     }
 
-    // Búsqueda: cada palabra del query debe aparecer en el nombre completo normalizado
-    const words = qNorm.split(/\s+/).filter(Boolean)
-    const wordConditions = words.map((w: string) =>
-      `lower(unaccent_immutable(p."firstName" || ' ' || p."lastName")) LIKE '%${w.replace(/'/g, "''")}%'`
-    ).join(' AND ')
+    const candidates = await db.patient.findMany({
+      where: clinicFilter.clinicId
+        ? { clinicId: { in: clinicIds.length ? clinicIds : [clinicFilter.clinicId as string] } }
+        : {},
+      select: { id: true, firstName: true, lastName: true, phone: true, expNumber: true },
+      take: 2000,
+    })
 
-    const searchCondition = `(${wordConditions}
-      OR lower(unaccent_immutable(p."firstName")) LIKE '%${qNorm.replace(/'/g, "''")}%'
-      OR lower(unaccent_immutable(p."lastName")) LIKE '%${qNorm.replace(/'/g, "''")}%'
-      OR p."phone" LIKE '%${q.replace(/'/g, "''")}%'
-      OR lower(unaccent_immutable(p."expNumber")) LIKE '%${qNorm.replace(/'/g, "''")}%')`
+    const filtered = candidates.filter((p: any) => {
+      const full = normalizeStr(`${p.firstName || ''} ${p.lastName || ''}`)
+      const fn = normalizeStr(p.firstName || '')
+      const ln = normalizeStr(p.lastName || '')
+      const exp = normalizeStr(p.expNumber || '')
+      const ph = normalizeStr(p.phone || '')
+      return full.includes(qNorm) || fn.includes(qNorm) || ln.includes(qNorm) || exp.includes(qNorm) || ph.includes(qNorm)
+    })
 
-    const rows = await db.$queryRawUnsafe(`
-      SELECT p.* FROM "Patient" p
-      WHERE ${clinicCondition} AND ${searchCondition}
-      ORDER BY p."lastName" ASC, p."firstName" ASC
-      LIMIT ${limit} OFFSET ${(page - 1) * limit}
-    `) as any[]
+    const allCases = Array.from(new Set([...filtered.map((p: any) => p.id)]))
+    const whereIds: Prisma.PatientWhereInput = clinicFilter.clinicId
+      ? { id: { in: allCases }, AND: clinicFilter }
+      : { id: { in: allCases } }
 
-    const countRows = await db.$queryRawUnsafe(`
-      SELECT COUNT(*)::int as total FROM "Patient" p
-      WHERE ${clinicCondition} AND ${searchCondition}
-    `) as any[]
-    const total = countRows[0]?.total || 0
+    const total = allCases.length
+    const pagedIds = allCases.slice((page - 1) * limit, (page - 1) * limit + limit)
 
-    // Cargar relaciones para los rows encontrados
-    const patientIds = rows.map((r: any) => r.id)
-    const fullRows = patientIds.length > 0
+    const fullRows = pagedIds.length > 0
       ? await db.patient.findMany({
-          where: { id: { in: patientIds } },
+          where: { id: { in: pagedIds } },
           orderBy: [{ lastName: 'asc' }, { firstName: 'asc' }],
           include: {
             clinic: { select: { name: true } },
@@ -197,7 +203,6 @@ export async function GET(req: NextRequest) {
         })
       : []
 
-    // Mapear igual que abajo
     const data = fullRows.map((p) => ({
       id: p.id,
       expNumber: p.expNumber,
