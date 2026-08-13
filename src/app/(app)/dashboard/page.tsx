@@ -73,7 +73,7 @@ export default function DashboardPage() {
         </div>
         <div className="flex gap-2">
           <Link href="/agenda?nueva=1">
-            <Button size="sm" style={{ backgroundColor: '#0a3143' }}>
+            <Button size="sm" style={{ backgroundColor: 'var(--primary)' }}>
               <CalendarPlus className="h-4 w-4 mr-1" /> Nueva cita
             </Button>
           </Link>
@@ -122,7 +122,7 @@ export default function DashboardPage() {
                   <XAxis dataKey="date" fontSize={10} tick={{ fill: '#666' }} />
                   <YAxis fontSize={10} tick={{ fill: '#666' }} tickFormatter={(v) => `$${(v / 1000).toFixed(0)}k`} />
                   <Tooltip formatter={(v: number) => fmtMoney(v)} contentStyle={{ fontSize: 12 }} />
-                  <Line type="monotone" dataKey="total" stroke="#0a3143" strokeWidth={2} dot={false} />
+                  <Line type="monotone" dataKey="total" stroke="var(--primary)" strokeWidth={2} dot={false} />
                 </LineChart>
               </ResponsiveContainer>
             </div>
@@ -194,7 +194,7 @@ export default function DashboardPage() {
                     <div className="w-24 h-2 bg-muted rounded overflow-hidden">
                       <div
                         className="h-full"
-                        style={{ width: `${p.total ? (p.done / p.total) * 100 : 0}%`, backgroundColor: '#0a3143' }}
+                        style={{ width: `${p.total ? (p.done / p.total) * 100 : 0}%`, backgroundColor: 'var(--primary)' }}
                       />
                     </div>
                   </div>

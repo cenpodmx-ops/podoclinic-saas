@@ -45,18 +45,18 @@ export function ReporteView({ data, clinicName }: Props) {
   return (
     <div className="reporte-print bg-white text-slate-900 p-8 mx-auto" style={{ maxWidth: 900 }}>
       {/* Encabezado */}
-      <div className="flex items-center justify-between border-b-2 border-[#0a3143] pb-3 mb-4">
+      <div className="flex items-center justify-between border-b-2 border-primary pb-3 mb-4">
         <div className="flex items-center gap-3">
           <img src="/logo.svg" alt="CENPOD" className="h-12" />
           <div>
-            <h1 className="text-xl font-bold" style={{ color: '#0a3143' }}>
+            <h1 className="text-xl font-bold" style={{ color: 'var(--primary)' }}>
               {clinicName || 'PodoClinic'}
             </h1>
             <p className="text-xs text-slate-600">Sistema de Gestión CENPOD</p>
           </div>
         </div>
         <div className="text-right">
-          <div className="text-lg font-bold uppercase tracking-wider" style={{ color: '#0a3143' }}>
+          <div className="text-lg font-bold uppercase tracking-wider" style={{ color: 'var(--primary)' }}>
             {data.title}
           </div>
           {rangeText && <div className="text-xs text-slate-600">{rangeText}</div>}
@@ -233,7 +233,7 @@ function ComisionesBody({ data }: { data: any }) {
         </div>
         <div className="resumen-item">
           <span>Total comisiones:</span>
-          <strong style={{ color: '#0a3143' }}>{fmtMoney(data.totalCommission)}</strong>
+          <strong style={{ color: 'var(--primary)' }}>{fmtMoney(data.totalCommission)}</strong>
         </div>
       </div>
 
@@ -255,7 +255,7 @@ function ComisionesBody({ data }: { data: any }) {
               <td className="text-right">{r.consultCount}</td>
               <td className="text-right">{fmtMoney(r.totalGenerated)}</td>
               <td className="text-right">{r.commissionPct}%</td>
-              <td className="text-right font-bold" style={{ color: '#0a3143' }}>
+              <td className="text-right font-bold" style={{ color: 'var(--primary)' }}>
                 {fmtMoney(r.commissionAmount)}
               </td>
             </tr>
@@ -299,7 +299,7 @@ function IngresosBody({ data }: { data: any }) {
         </div>
         <div className="resumen-item" style={{ gridColumn: '1 / 3' }}>
           <span>Neto:</span>
-          <strong style={{ color: data.neto >= 0 ? '#0a3143' : '#dc2626' }}>{fmtMoney(data.neto)}</strong>
+          <strong style={{ color: data.neto >= 0 ? 'var(--primary)' : '#dc2626' }}>{fmtMoney(data.neto)}</strong>
         </div>
       </div>
 

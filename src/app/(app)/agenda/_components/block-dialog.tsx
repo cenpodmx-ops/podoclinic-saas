@@ -88,7 +88,7 @@ export function BlockDialog({ open, onOpenChange, podologos, defaultDate }: Prop
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <Ban className="h-4 w-4" style={{ color: '#0a3143' }} /> Bloquear horario
+            <Ban className="h-4 w-4" style={{ color: 'var(--primary)' }} /> Bloquear horario
           </DialogTitle>
           <DialogDescription>
             Marca un rango horario como no disponible para un podólogo.
@@ -154,7 +154,7 @@ export function BlockDialog({ open, onOpenChange, podologos, defaultDate }: Prop
 
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)}>Cancelar</Button>
-          <Button onClick={save} disabled={saving} style={{ backgroundColor: '#0a3143' }}>
+          <Button onClick={save} disabled={saving} style={{ backgroundColor: 'var(--primary)' }}>
             {saving ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : null}
             Crear bloqueo
           </Button>

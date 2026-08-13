@@ -123,14 +123,14 @@ export default function EquiposPage() {
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
         <div>
           <h1 className="text-2xl font-bold flex items-center gap-2">
-            <Wrench className="h-6 w-6" style={{ color: '#0a3143' }} />
+            <Wrench className="h-6 w-6" style={{ color: 'var(--primary)' }} />
             Control de Equipos
           </h1>
           <p className="text-sm text-muted-foreground">
             Gestión de equipos médicos y mantenimiento preventivo
           </p>
         </div>
-        <Button onClick={() => setNewOpen(true)} style={{ backgroundColor: '#0a3143' }}>
+        <Button onClick={() => setNewOpen(true)} style={{ backgroundColor: 'var(--primary)' }}>
           <Plus className="h-4 w-4 mr-1" /> Nuevo equipo
         </Button>
       </div>
@@ -194,7 +194,7 @@ export default function EquiposPage() {
                 <CardContent className="p-4 flex-1 flex flex-col">
                   <div className="flex items-start justify-between mb-2">
                     <div className="flex items-center gap-2">
-                      <div className="p-2 rounded-md" style={{ backgroundColor: '#0a3143' }}>
+                      <div className="p-2 rounded-md" style={{ backgroundColor: 'var(--primary)' }}>
                         <Wrench className="h-4 w-4 text-white" />
                       </div>
                       <div>
@@ -487,7 +487,7 @@ function EquipoFormDialog({
         </div>
         <DialogFooter>
           <Button variant="outline" onClick={onClose}>Cancelar</Button>
-          <Button onClick={submit} disabled={saving} style={{ backgroundColor: '#0a3143' }}>
+          <Button onClick={submit} disabled={saving} style={{ backgroundColor: 'var(--primary)' }}>
             {saving ? 'Guardando…' : isEdit ? 'Guardar cambios' : 'Crear equipo'}
           </Button>
         </DialogFooter>
@@ -541,7 +541,7 @@ function EquipoDetailDialog({
       <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <Wrench className="h-5 w-5" style={{ color: '#0a3143' }} />
+            <Wrench className="h-5 w-5" style={{ color: 'var(--primary)' }} />
             {isLoading ? 'Cargando…' : detail?.name}
           </DialogTitle>
           <DialogDescription>
@@ -633,7 +633,7 @@ function EquipoDetailDialog({
                 <Button size="sm" variant="outline" onClick={() => onEdit(detail)}>
                   <Pencil className="h-4 w-4 mr-1" /> Editar
                 </Button>
-                <Button size="sm" onClick={() => onRegisterMaint(detail)} style={{ backgroundColor: '#0a3143' }}>
+                <Button size="sm" onClick={() => onRegisterMaint(detail)} style={{ backgroundColor: 'var(--primary)' }}>
                   <Plus className="h-4 w-4 mr-1" /> Registrar mantenimiento
                 </Button>
               </div>
@@ -747,7 +747,7 @@ function MantenimientoDialog({
         </div>
         <DialogFooter>
           <Button variant="outline" onClick={onClose}>Cancelar</Button>
-          <Button onClick={submit} disabled={saving} style={{ backgroundColor: '#0a3143' }}>
+          <Button onClick={submit} disabled={saving} style={{ backgroundColor: 'var(--primary)' }}>
             {saving ? 'Registrando…' : 'Registrar'}
           </Button>
         </DialogFooter>

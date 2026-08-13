@@ -166,7 +166,7 @@ function Body({
             type="button"
             size="sm"
             className="mt-2"
-            style={{ backgroundColor: '#0a3143' }}
+            style={{ backgroundColor: 'var(--primary)' }}
             disabled={addMutation.isPending || quantity === 0}
             onClick={() =>
               addMutation.mutate({

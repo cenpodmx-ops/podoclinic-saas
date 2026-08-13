@@ -128,7 +128,7 @@ export function EditAppointmentDialog({ open, onOpenChange, appointment, podolog
 
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)}>Cancelar</Button>
-          <Button onClick={save} disabled={saving} style={{ backgroundColor: '#0a3143' }}>
+          <Button onClick={save} disabled={saving} style={{ backgroundColor: 'var(--primary)' }}>
             {saving ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : null}
             Guardar
           </Button>

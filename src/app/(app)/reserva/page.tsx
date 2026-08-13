@@ -20,7 +20,7 @@ import {
   Building2,
 } from 'lucide-react'
 
-const BRAND = '#0a3143'
+const BRAND = 'var(--primary)'
 
 type ClinicOption = { id: string; name: string; slug: string }
 
@@ -231,7 +231,7 @@ function KpiCard({
   label,
   value,
   icon: Icon,
-  color = 'text-[#0a3143] bg-[#0a3143]/10',
+  color = 'text-primary bg-[#0a3143]/10',
 }: {
   label: string
   value: number | null

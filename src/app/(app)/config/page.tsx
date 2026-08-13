@@ -179,7 +179,7 @@ function ClinicaTab() {
         </div>
 
         <div className="flex justify-end">
-          <Button onClick={() => save.mutate(form)} disabled={save.isPending} style={{ backgroundColor: '#0a3143' }}>
+          <Button onClick={() => save.mutate(form)} disabled={save.isPending} style={{ backgroundColor: 'var(--primary)' }}>
             <Save className="h-4 w-4 mr-1" /> {save.isPending ? 'Guardando...' : 'Guardar'}
           </Button>
         </div>
@@ -241,7 +241,7 @@ function EquipoTab() {
     <Card className="shadow-sm">
       <CardHeader className="flex flex-row items-center justify-between">
         <CardTitle className="text-base">Equipo de podólogos</CardTitle>
-        <Button size="sm" onClick={() => { setEditing(null); setOpen(true) }} style={{ backgroundColor: '#0a3143' }}>
+        <Button size="sm" onClick={() => { setEditing(null); setOpen(true) }} style={{ backgroundColor: 'var(--primary)' }}>
           <Plus className="h-4 w-4 mr-1" /> Nuevo
         </Button>
       </CardHeader>
@@ -436,7 +436,7 @@ function PodologoDialog({ open, onOpenChange, editing, onSave, saving }: any) {
           )}
           <DialogFooter>
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>Cancelar</Button>
-            <Button type="submit" disabled={saving} style={{ backgroundColor: '#0a3143' }}>
+            <Button type="submit" disabled={saving} style={{ backgroundColor: 'var(--primary)' }}>
               {saving ? 'Guardando...' : 'Guardar'}
             </Button>
           </DialogFooter>
@@ -521,7 +521,7 @@ function PlantillasTab() {
           </div>
         ))}
         <div className="flex justify-end">
-          <Button onClick={() => save.mutate(form)} disabled={save.isPending} style={{ backgroundColor: '#0a3143' }}>
+          <Button onClick={() => save.mutate(form)} disabled={save.isPending} style={{ backgroundColor: 'var(--primary)' }}>
             <Save className="h-4 w-4 mr-1" /> {save.isPending ? 'Guardando...' : 'Guardar plantillas'}
           </Button>
         </div>
@@ -718,7 +718,7 @@ function FacturacionTab() {
 
           {/* Submit */}
           <div className="flex justify-end">
-            <Button type="submit" disabled={loading} style={{ backgroundColor: '#0a3143' }}>
+            <Button type="submit" disabled={loading} style={{ backgroundColor: 'var(--primary)' }}>
               <Save className="h-4 w-4 mr-1" />
               {loading
                 ? 'Configurando...'
@@ -840,7 +840,7 @@ function DiagnosticosTab() {
           {list.length === 0 && <p className="text-sm text-muted-foreground">Sin diagnósticos. Agrega arriba.</p>}
         </div>
         <div className="flex justify-end">
-          <Button onClick={() => save.mutate({ diagnosesList: list })} disabled={save.isPending} style={{ backgroundColor: '#0a3143' }}>
+          <Button onClick={() => save.mutate({ diagnosesList: list })} disabled={save.isPending} style={{ backgroundColor: 'var(--primary)' }}>
             <Save className="h-4 w-4 mr-1" /> Guardar lista
           </Button>
         </div>
@@ -945,7 +945,7 @@ function UsuariosTab() {
             Gestiona quién puede entrar al sistema y con qué permisos. Las contraseñas se guardan encriptadas (bcrypt).
           </p>
         </div>
-        <Button size="sm" onClick={() => { setEditing(null); setOpen(true) }} style={{ backgroundColor: '#0a3143' }}>
+        <Button size="sm" onClick={() => { setEditing(null); setOpen(true) }} style={{ backgroundColor: 'var(--primary)' }}>
           <Plus className="h-4 w-4 mr-1" /> Nuevo usuario
         </Button>
       </CardHeader>
@@ -1116,7 +1116,7 @@ function UsuarioDialog({
 
           <DialogFooter>
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>Cancelar</Button>
-            <Button type="submit" disabled={saving} style={{ backgroundColor: '#0a3143' }}>
+            <Button type="submit" disabled={saving} style={{ backgroundColor: 'var(--primary)' }}>
               {saving ? 'Guardando...' : 'Guardar'}
             </Button>
           </DialogFooter>

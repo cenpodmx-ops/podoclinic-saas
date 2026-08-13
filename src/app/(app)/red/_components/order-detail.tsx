@@ -146,7 +146,7 @@ export function OrderDetail({
         <CardHeader className="pb-3">
           <div className="flex items-center justify-between gap-2 flex-wrap">
             <CardTitle className="text-lg flex items-center gap-2">
-              <Package className="h-5 w-5 text-[#0a3143]" />
+              <Package className="h-5 w-5 text-primary" />
               Pedido
             </CardTitle>
             <div className="flex items-center gap-2 flex-wrap">

@@ -33,7 +33,7 @@ export default function RedPage() {
               <Bell className="h-4 w-4 mr-1" /> Nuevo aviso
             </Button>
           )}
-          <Button size="sm" onClick={() => setMsgOpen(true)} style={{ backgroundColor: '#0a3143' }}>
+          <Button size="sm" onClick={() => setMsgOpen(true)} style={{ backgroundColor: 'var(--primary)' }}>
             <Send className="h-4 w-4 mr-1" /> Nuevo mensaje
           </Button>
         </div>

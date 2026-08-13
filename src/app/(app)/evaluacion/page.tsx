@@ -141,7 +141,7 @@ export default function EvaluacionPage() {
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
         <div>
           <h1 className="text-2xl font-bold flex items-center gap-2">
-            <Gauge className="h-6 w-6" style={{ color: '#0a3143' }} />
+            <Gauge className="h-6 w-6" style={{ color: 'var(--primary)' }} />
             Evaluación de Podólogos
           </h1>
           <p className="text-sm text-muted-foreground">
@@ -246,7 +246,7 @@ export default function EvaluacionPage() {
                             {r.photoUrl ? (
                               <img src={r.photoUrl} alt={r.name} className="h-8 w-8 rounded-full object-cover" />
                             ) : (
-                              <AvatarFallback className="text-xs" style={{ backgroundColor: '#0a3143', color: '#fff' }}>
+                              <AvatarFallback className="text-xs" style={{ backgroundColor: 'var(--primary)', color: '#fff' }}>
                                 {r.name.split(' ').slice(0, 2).map((s) => s[0]).join('')}
                               </AvatarFallback>
                             )}
@@ -500,7 +500,7 @@ function PodologistDetailDialog({
                   {pod.photoUrl ? (
                     <img src={pod.photoUrl} alt={pod.name} className="h-9 w-9 rounded-full object-cover" />
                   ) : (
-                    <AvatarFallback className="text-xs" style={{ backgroundColor: '#0a3143', color: '#fff' }}>
+                    <AvatarFallback className="text-xs" style={{ backgroundColor: 'var(--primary)', color: '#fff' }}>
                       {pod.name.split(' ').slice(0, 2).map((s) => s[0]).join('')}
                     </AvatarFallback>
                   )}
@@ -547,7 +547,7 @@ function PodologistDetailDialog({
                     <YAxis fontSize={10} tick={{ fill: '#666' }} />
                     <Tooltip contentStyle={{ fontSize: 12 }} />
                     <Legend wrapperStyle={{ fontSize: 11 }} />
-                    <Line type="monotone" dataKey="consults" name="Consultas" stroke="#0a3143" strokeWidth={2} dot={{ r: 3 }} />
+                    <Line type="monotone" dataKey="consults" name="Consultas" stroke="var(--primary)" strokeWidth={2} dot={{ r: 3 }} />
                     <Line type="monotone" dataKey="revenue" name="Ingresos" stroke="#15803d" strokeWidth={2} dot={{ r: 3 }} />
                   </LineChart>
                 </ResponsiveContainer>
@@ -591,7 +591,7 @@ function PodologistDetailDialog({
               <Button variant="outline" size="sm" onClick={() => pod && onEditGoals(pod)}>
                 <Pencil className="h-4 w-4 mr-1" /> Editar metas
               </Button>
-              <Button size="sm" onClick={() => pod && onPrintReport(pod)} style={{ backgroundColor: '#0a3143' }}>
+              <Button size="sm" onClick={() => pod && onPrintReport(pod)} style={{ backgroundColor: 'var(--primary)' }}>
                 <FileDown className="h-4 w-4 mr-1" /> Descargar reporte PDF
               </Button>
             </div>
@@ -708,7 +708,7 @@ function EditGoalsDialog({
         </div>
         <DialogFooter>
           <Button variant="outline" onClick={onClose}>Cancelar</Button>
-          <Button onClick={save} disabled={saving} style={{ backgroundColor: '#0a3143' }}>
+          <Button onClick={save} disabled={saving} style={{ backgroundColor: 'var(--primary)' }}>
             {saving ? 'Guardando…' : 'Guardar'}
           </Button>
         </DialogFooter>
@@ -751,7 +751,7 @@ function ReportPrintDialog({ report, onClose }: { report: Reporte | null; onClos
                     <YAxis fontSize={10} />
                     <Tooltip contentStyle={{ fontSize: 12 }} />
                     <Legend wrapperStyle={{ fontSize: 11 }} />
-                    <Line type="monotone" dataKey="consults" name="Consultas" stroke="#0a3143" strokeWidth={2} />
+                    <Line type="monotone" dataKey="consults" name="Consultas" stroke="var(--primary)" strokeWidth={2} />
                     <Line type="monotone" dataKey="revenue" name="Ingresos" stroke="#15803d" strokeWidth={2} />
                   </LineChart>
                 </ResponsiveContainer>
@@ -760,7 +760,7 @@ function ReportPrintDialog({ report, onClose }: { report: Reporte | null; onClos
 
             <div className="flex justify-end gap-2 pt-2 border-t">
               <Button variant="outline" onClick={onClose}>Cerrar</Button>
-              <Button onClick={() => window.print()} style={{ backgroundColor: '#0a3143' }}>
+              <Button onClick={() => window.print()} style={{ backgroundColor: 'var(--primary)' }}>
                 <FileDown className="h-4 w-4 mr-1" /> Imprimir / Guardar PDF
               </Button>
             </div>

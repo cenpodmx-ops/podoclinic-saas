@@ -137,7 +137,7 @@ export function PatientSearcher({ onSelect, initial }: Props) {
           type="button"
           size="sm"
           className="w-full"
-          style={{ backgroundColor: '#0a3143' }}
+          style={{ backgroundColor: 'var(--primary)' }}
           onClick={saveNew}
           disabled={savingNew || !npFirst.trim() || !npLast.trim() || !npPhone.trim()}
         >

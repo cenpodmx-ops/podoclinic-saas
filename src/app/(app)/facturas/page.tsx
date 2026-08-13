@@ -48,7 +48,7 @@ export default function FacturasPage() {
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <h1 className="text-2xl font-bold flex items-center gap-2">
-            <FileText className="h-6 w-6" style={{ color: '#0a3143' }} />
+            <FileText className="h-6 w-6" style={{ color: 'var(--primary)' }} />
             Facturación
           </h1>
           <p className="text-sm text-muted-foreground">Módulo 04 · CFDI 4.0 vía FacturAPI</p>

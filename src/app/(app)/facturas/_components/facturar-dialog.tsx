@@ -236,7 +236,7 @@ export function FacturarDialog({
       <DialogContent className="max-w-3xl max-h-[92vh] overflow-y-auto p-6">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2 text-lg">
-            <FileText className="h-5 w-5" style={{ color: '#0a3143' }} />
+            <FileText className="h-5 w-5" style={{ color: 'var(--primary)' }} />
             Generar factura
           </DialogTitle>
           <DialogDescription>
@@ -269,14 +269,14 @@ export function FacturarDialog({
             <div className="flex gap-1 border-b">
               <button
                 type="button"
-                className={`px-3 py-1.5 text-sm font-medium border-b-2 -mb-px ${tab === 'datos' ? 'border-[#0a3143] text-[#0a3143]' : 'border-transparent text-muted-foreground'}`}
+                className={`px-3 py-1.5 text-sm font-medium border-b-2 -mb-px ${tab === 'datos' ? 'border-primary text-primary' : 'border-transparent text-muted-foreground'}`}
                 onClick={() => setTab('datos')}
               >
                 1 · Datos fiscales
               </button>
               <button
                 type="button"
-                className={`px-3 py-1.5 text-sm font-medium border-b-2 -mb-px ${tab === 'preview' ? 'border-[#0a3143] text-[#0a3143]' : 'border-transparent text-muted-foreground'}`}
+                className={`px-3 py-1.5 text-sm font-medium border-b-2 -mb-px ${tab === 'preview' ? 'border-primary text-primary' : 'border-transparent text-muted-foreground'}`}
                 onClick={() => setTab('preview')}
               >
                 2 · Vista previa
@@ -403,7 +403,7 @@ export function FacturarDialog({
 
                 <Button
                   className="w-full"
-                  style={{ backgroundColor: '#0a3143' }}
+                  style={{ backgroundColor: 'var(--primary)' }}
                   onClick={() => setTab('preview')}
                   disabled={!consultaQ.data}
                 >
@@ -431,7 +431,7 @@ export function FacturarDialog({
                     ← Editar datos
                   </Button>
                   <Button
-                    style={{ backgroundColor: '#0a3143' }}
+                    style={{ backgroundColor: 'var(--primary)' }}
                     onClick={() => createMut.mutate()}
                     disabled={!canTimbrar || createMut.isPending}
                   >
@@ -488,7 +488,7 @@ function InvoicePreview({
     PRODUCTO: '41111501',
   }
   return (
-    <div className="rounded-lg border-2 border-[#0a3143]/30 p-4 bg-white">
+    <div className="rounded-lg border-2 border-primary/30 p-4 bg-white">
       {simulated && (
         <div className="mb-3 rounded-md bg-amber-50 border border-amber-200 text-amber-900 px-2 py-1 text-xs text-center font-semibold">
           ⚠ Modo simulación — no se timbrará ante el SAT
@@ -496,7 +496,7 @@ function InvoicePreview({
       )}
       <div className="flex items-start justify-between mb-3">
         <div>
-          <div className="font-bold text-base text-[#0a3143]">PodoClinic</div>
+          <div className="font-bold text-base text-primary">PodoClinic</div>
           <div className="text-xs text-muted-foreground">Factura · CFDI 4.0</div>
         </div>
         <div className="text-right text-xs">
@@ -552,7 +552,7 @@ function InvoicePreview({
         <div className="space-y-1">
           <div className="flex justify-between gap-8"><span className="text-muted-foreground">Subtotal:</span><span className="font-mono">{fmtMoney(subtotal)}</span></div>
           <div className="flex justify-between gap-8"><span className="text-muted-foreground">IVA (16%):</span><span className="font-mono">{fmtMoney(iva)}</span></div>
-          <div className="flex justify-between gap-8 font-bold text-base text-[#0a3143] border-t pt-1"><span>Total:</span><span className="font-mono">{fmtMoney(total)} MXN</span></div>
+          <div className="flex justify-between gap-8 font-bold text-base text-primary border-t pt-1"><span>Total:</span><span className="font-mono">{fmtMoney(total)} MXN</span></div>
         </div>
       </div>
     </div>
@@ -595,7 +595,7 @@ function SuccessPanel({
         <div className="mx-auto mb-3 flex h-14 w-14 items-center justify-center rounded-full bg-emerald-100">
           <FileText className="h-7 w-7 text-emerald-600" />
         </div>
-        <div className="text-lg font-bold text-[#0a3143]">
+        <div className="text-lg font-bold text-primary">
           {simulated ? 'Factura generada (simulación)' : 'Factura timbrada ✓'}
         </div>
         <div className="text-sm text-muted-foreground mt-1">
@@ -616,7 +616,7 @@ function SuccessPanel({
       <div className="space-y-3">
         <div className="text-sm font-semibold">Acciones</div>
         <div className="flex flex-col gap-2">
-          <Button asChild variant="default" style={{ backgroundColor: '#0a3143' }} className="w-full justify-center">
+          <Button asChild variant="default" style={{ backgroundColor: 'var(--primary)' }} className="w-full justify-center">
             <a href={pdfHref} target="_blank" rel="noreferrer">
               <FileText className="h-4 w-4 mr-2 shrink-0" /> Ver / imprimir PDF
             </a>

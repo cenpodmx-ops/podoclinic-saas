@@ -118,7 +118,7 @@ export function TabLeads() {
                   <SelectItem value="PERDIDO">Perdidos</SelectItem>
                 </SelectContent>
               </Select>
-              <Button size="sm" onClick={() => setNuevoOpen(true)} style={{ backgroundColor: '#0a3143' }}>
+              <Button size="sm" onClick={() => setNuevoOpen(true)} style={{ backgroundColor: 'var(--primary)' }}>
                 <Plus className="h-4 w-4 mr-1" /> Nuevo lead
               </Button>
             </div>
@@ -235,7 +235,7 @@ export function TabLeads() {
             <AlertDialogCancel>Cancelar</AlertDialogCancel>
             <AlertDialogAction
               onClick={() => convertLead && convert.mutate(convertLead.id)}
-              style={{ backgroundColor: '#0a3143' }}
+              style={{ backgroundColor: 'var(--primary)' }}
             >
               <UserPlus className="h-4 w-4 mr-1" /> Convertir
             </AlertDialogAction>
@@ -311,7 +311,7 @@ function NuevoLeadDialog({ onClose }: { onClose: () => void }) {
           <Button
             onClick={() => create.mutate()}
             disabled={!name.trim() || create.isPending}
-            style={{ backgroundColor: '#0a3143' }}
+            style={{ backgroundColor: 'var(--primary)' }}
           >
             {create.isPending ? 'Guardando...' : 'Guardar lead'}
           </Button>

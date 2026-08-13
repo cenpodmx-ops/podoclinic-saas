@@ -171,7 +171,7 @@ export function OrdersTab() {
               >
                 <CardContent className="p-4 flex items-start gap-3">
                   <div className="mt-0.5 p-1.5 rounded-md bg-[#0a3143]/10">
-                    <Package className="h-4 w-4 text-[#0a3143]" />
+                    <Package className="h-4 w-4 text-primary" />
                   </div>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 flex-wrap">

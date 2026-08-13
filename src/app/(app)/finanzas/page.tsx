@@ -72,8 +72,8 @@ import { canAccessFinanceClient } from './_components/access'
 import type { FinanzasDashboard, ComisionesResponse, Period, ReporteResponse } from './_components/types'
 import { ReporteView } from './_components/reporte-view'
 
-const BRAND = '#0a3143'
-const COLORS = ['#0a3143', '#0e7490', '#0891b2', '#0d9488', '#15803d', '#65a30d', '#ca8a04', '#dc2626']
+const BRAND = 'var(--primary)'
+const COLORS = ['var(--primary)', '#0e7490', '#0891b2', '#0d9488', '#15803d', '#65a30d', '#ca8a04', '#dc2626']
 
 const PERIOD_OPTIONS: Array<{ value: Period; label: string }> = [
   { value: 'dia', label: 'Día' },
@@ -510,7 +510,7 @@ function FinanzasDashboardView({ data }: { data: FinanzasDashboard }) {
           label="Neto"
           value={fmtMoney(totals.neto)}
           icon={Wallet}
-          color="text-[#0a3143] bg-[#0a3143]/10"
+          color="text-primary bg-[#0a3143]/10"
           badge={pctBadge(comparison.netoPct)}
         />
         <KpiCard

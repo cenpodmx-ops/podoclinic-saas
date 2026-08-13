@@ -65,7 +65,7 @@ export function PosDialog({
           {ticket && <TicketView data={ticket} />}
           <DialogFooter>
             <Button variant="outline" onClick={() => window.print()}>Imprimir</Button>
-            <Button onClick={handleClose} style={{ backgroundColor: '#0a3143' }}>Cerrar</Button>
+            <Button onClick={handleClose} style={{ backgroundColor: 'var(--primary)' }}>Cerrar</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -349,7 +349,7 @@ function PosBody({
         <Button
           disabled={cart.length === 0 || ventaMutation.isPending}
           onClick={() => ventaMutation.mutate()}
-          style={{ backgroundColor: '#0a3143' }}
+          style={{ backgroundColor: 'var(--primary)' }}
         >
           {ventaMutation.isPending ? 'Procesando...' : `Cobrar ${fmtMoney(total)}`}
         </Button>

@@ -179,7 +179,7 @@ export function NewAppointmentDialog({ open, onOpenChange, podologos, initial, r
       <DialogContent className="sm:max-w-lg max-h-[92vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <CalendarPlus className="h-5 w-5" style={{ color: '#0a3143' }} />
+            <CalendarPlus className="h-5 w-5" style={{ color: 'var(--primary)' }} />
             {reschedule ? 'Reagendar cita' : 'Nueva cita'}
           </DialogTitle>
           <DialogDescription>
@@ -249,7 +249,7 @@ export function NewAppointmentDialog({ open, onOpenChange, podologos, initial, r
 
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)}>Cancelar</Button>
-          <Button onClick={save} disabled={saving || (!reschedule && !patient)} style={{ backgroundColor: '#0a3143' }}>
+          <Button onClick={save} disabled={saving || (!reschedule && !patient)} style={{ backgroundColor: 'var(--primary)' }}>
             {saving ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : null}
             {reschedule ? 'Reagendar' : 'Crear cita'}
           </Button>

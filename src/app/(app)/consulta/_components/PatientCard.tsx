@@ -13,7 +13,7 @@ export function PatientCard({ patient }: { patient: PatientSummary }) {
     : null
 
   return (
-    <Card className="shadow-sm border-l-4" style={{ borderLeftColor: '#0a3143' }}>
+    <Card className="shadow-sm border-l-4" style={{ borderLeftcolor: 'var(--primary)' }}>
       <CardContent className="p-4">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div>

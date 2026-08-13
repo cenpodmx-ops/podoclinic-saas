@@ -208,7 +208,7 @@ export default function ConsultaPage() {
         </Button>
         <div>
           <h1 className="text-xl font-bold flex items-center gap-2">
-            <Stethoscope className="h-5 w-5" style={{ color: '#0a3143' }} />
+            <Stethoscope className="h-5 w-5" style={{ color: 'var(--primary)' }} />
             Consulta
           </h1>
           <p className="text-xs text-muted-foreground">Módulo 02 · Registro clínico y cobro</p>
@@ -533,7 +533,7 @@ function ConfirmStart({
               onClick={onConfirm}
               disabled={loading}
               className="sm:flex-1"
-              style={{ backgroundColor: '#0a3143' }}
+              style={{ backgroundColor: 'var(--primary)' }}
             >
               {loading ? 'Iniciando…' : 'Iniciar consulta'}
             </Button>
@@ -791,7 +791,7 @@ function ConsultaForm({
             <div className="rounded-md border border-primary/30 bg-primary/5 p-3 space-y-2">
               <div className="flex items-start justify-between gap-2 flex-wrap">
                 <div className="flex items-center gap-2">
-                  <Pill className="h-4 w-4" style={{ color: '#0a3143' }} />
+                  <Pill className="h-4 w-4" style={{ color: 'var(--primary)' }} />
                   <div>
                     <p className="text-sm font-medium">Receta</p>
                     <p className="text-[11px] text-muted-foreground">
@@ -812,7 +812,7 @@ function ConsultaForm({
                     </Button>
                   </div>
                 ) : (
-                  <Button size="sm" onClick={onOpenReceta} style={{ backgroundColor: '#0a3143' }}>
+                  <Button size="sm" onClick={onOpenReceta} style={{ backgroundColor: 'var(--primary)' }}>
                     <Pill className="h-3.5 w-3.5" /> Generar receta
                   </Button>
                 )}
@@ -846,7 +846,7 @@ function ConsultaForm({
             <Button
               onClick={() => setStep(2)}
               disabled={!canAdvance(1)}
-              style={{ backgroundColor: '#0a3143' }}
+              style={{ backgroundColor: 'var(--primary)' }}
             >
               Continuar <ArrowRight className="h-4 w-4 ml-1" />
             </Button>
@@ -979,7 +979,7 @@ function ConsultaForm({
               <Separator />
               <div className="flex justify-between items-center">
                 <span className="text-base font-semibold">TOTAL</span>
-                <span className="text-2xl font-bold font-mono" style={{ color: '#0a3143' }}>
+                <span className="text-2xl font-bold font-mono" style={{ color: 'var(--primary)' }}>
                   {fmtMoney(total)}
                 </span>
               </div>
@@ -989,7 +989,7 @@ function ConsultaForm({
             <Button variant="ghost" onClick={() => setStep(1)}>
               <ArrowLeft className="h-4 w-4 mr-1" /> Atrás
             </Button>
-            <Button onClick={() => setStep(3)} style={{ backgroundColor: '#0a3143' }}>
+            <Button onClick={() => setStep(3)} style={{ backgroundColor: 'var(--primary)' }}>
               Continuar <ArrowRight className="h-4 w-4 ml-1" />
             </Button>
           </CardFooter>
@@ -1047,7 +1047,7 @@ function ConsultaForm({
               <Separator />
               <div className="flex justify-between items-center">
                 <span className="font-semibold">TOTAL A COBRAR</span>
-                <span className="text-2xl font-bold font-mono" style={{ color: '#0a3143' }}>
+                <span className="text-2xl font-bold font-mono" style={{ color: 'var(--primary)' }}>
                   {fmtMoney(total)}
                 </span>
               </div>
@@ -1081,7 +1081,7 @@ function ConsultaForm({
               onClick={() => saveMut.mutate(true)}
               disabled={saving}
               className="sm:flex-1"
-              style={{ backgroundColor: '#0a3143' }}
+              style={{ backgroundColor: 'var(--primary)' }}
             >
               <CreditCard className="h-4 w-4 mr-1" />
               {saving ? 'Procesando…' : 'Confirmar pago'}
@@ -1126,7 +1126,7 @@ function Stepper({ step }: { step: 1 | 2 | 3 }) {
               className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-md flex-1 ${
                 active ? 'text-white' : done ? 'text-emerald-700 bg-emerald-50' : 'text-muted-foreground bg-muted/50'
               }`}
-              style={active ? { backgroundColor: '#0a3143' } : undefined}
+              style={active ? { backgroundColor: 'var(--primary)' } : undefined}
             >
               <Icon className="h-3.5 w-3.5" />
               <span className="text-xs font-medium hidden sm:inline">{s.label}</span>
@@ -1200,7 +1200,7 @@ function SavedUnpaidView({
             <Button variant="outline" onClick={onTicket} className="sm:flex-1">
               <Printer className="h-4 w-4 mr-1" /> Ver ticket
             </Button>
-            <Button onClick={onContinue} className="sm:flex-1" style={{ backgroundColor: '#0a3143' }}>
+            <Button onClick={onContinue} className="sm:flex-1" style={{ backgroundColor: 'var(--primary)' }}>
               <CreditCard className="h-4 w-4 mr-1" /> Continuar y cobrar
             </Button>
           </div>
@@ -1272,7 +1272,7 @@ function FinalizedView({
               <FileText className="h-4 w-4 mr-1" />
               {prescriptionId ? 'Ver receta' : 'Generar receta'}
             </Button>
-            <Button onClick={onTicket} className="sm:flex-1" style={{ backgroundColor: '#0a3143' }}>
+            <Button onClick={onTicket} className="sm:flex-1" style={{ backgroundColor: 'var(--primary)' }}>
               <Printer className="h-4 w-4 mr-1" /> Ver ticket
             </Button>
           </div>
@@ -1339,7 +1339,7 @@ function SuccessView({
               <FileText className="h-4 w-4 mr-1" />
               {prescriptionId ? 'Ver receta' : 'Generar receta'}
             </Button>
-            <Button onClick={onTicket} className="sm:flex-1" style={{ backgroundColor: '#0a3143' }}>
+            <Button onClick={onTicket} className="sm:flex-1" style={{ backgroundColor: 'var(--primary)' }}>
               <Printer className="h-4 w-4 mr-1" /> Imprimir ticket
             </Button>
           </div>
@@ -1554,7 +1554,7 @@ ${ticketHtml}
               handlePrint()
             }}
             className="flex-1"
-            style={{ backgroundColor: '#0a3143' }}
+            style={{ backgroundColor: 'var(--primary)' }}
           >
             <Printer className="h-4 w-4 mr-1" /> Imprimir
           </Button>

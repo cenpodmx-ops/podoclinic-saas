@@ -37,7 +37,7 @@ export default function MiAgendaPage() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-xl font-bold flex items-center gap-2">
-            <CalendarDays className="h-5 w-5" style={{ color: '#0a3143' }} />
+            <CalendarDays className="h-5 w-5" style={{ color: 'var(--primary)' }} />
             Mi agenda de hoy
           </h1>
           <p className="text-sm text-muted-foreground capitalize">
@@ -54,7 +54,7 @@ export default function MiAgendaPage() {
         <div className="grid grid-cols-3 gap-2">
           <Card className="shadow-none">
             <CardContent className="p-3 text-center">
-              <p className="text-2xl font-bold" style={{ color: '#0a3143' }}>{appointments.length}</p>
+              <p className="text-2xl font-bold" style={{ color: 'var(--primary)' }}>{appointments.length}</p>
               <p className="text-[10px] text-muted-foreground uppercase">Citas hoy</p>
             </CardContent>
           </Card>

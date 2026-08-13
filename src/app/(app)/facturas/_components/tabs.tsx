@@ -156,7 +156,7 @@ export function TabPorFacturar({ facturapiConfigured, onFacturar }: TabPorFactur
         <CardHeader className="pb-3">
           <CardTitle className="text-base flex items-center justify-between">
             <span className="flex items-center gap-2">
-              <Receipt className="h-4 w-4" style={{ color: '#0a3143' }} />
+              <Receipt className="h-4 w-4" style={{ color: 'var(--primary)' }} />
               Consultas por facturar
             </span>
             {citablesQ.data && (
@@ -216,7 +216,7 @@ export function TabPorFacturar({ facturapiConfigured, onFacturar }: TabPorFactur
                         <TableCell className="text-right">
                           <Button
                             size="sm"
-                            style={{ backgroundColor: '#0a3143' }}
+                            style={{ backgroundColor: 'var(--primary)' }}
                             onClick={() => onFacturar(c)}
                           >
                             <FileText className="h-3.5 w-3.5 mr-1" /> Facturar
@@ -374,7 +374,7 @@ export function TabHistorial({ canCancel }: TabHistorialProps) {
         <CardHeader className="pb-3">
           <CardTitle className="text-base flex items-center justify-between">
             <span className="flex items-center gap-2">
-              <FileText className="h-4 w-4" style={{ color: '#0a3143' }} />
+              <FileText className="h-4 w-4" style={{ color: 'var(--primary)' }} />
               Historial de facturas
             </span>
             {listQ.data && (
@@ -574,7 +574,7 @@ export function TabResumen() {
       {resumenQ.data && (
         <>
           <div className="print-only mb-4 hidden">
-            <div className="text-2xl font-bold text-[#0a3143]">PodoClinic</div>
+            <div className="text-2xl font-bold text-primary">PodoClinic</div>
             <div className="text-sm text-muted-foreground">Resumen mensual de facturación</div>
             <div className="text-base mt-2 capitalize">{monthLabel}</div>
           </div>

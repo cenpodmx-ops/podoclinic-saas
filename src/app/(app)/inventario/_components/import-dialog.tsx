@@ -226,7 +226,7 @@ export function ImportDialog({
           <Button
             disabled={!preview || importMutation.isPending}
             onClick={confirmImport}
-            style={{ backgroundColor: '#0a3143' }}
+            style={{ backgroundColor: 'var(--primary)' }}
           >
             {importMutation.isPending ? 'Importando...' : `Confirmar importación`}
           </Button>

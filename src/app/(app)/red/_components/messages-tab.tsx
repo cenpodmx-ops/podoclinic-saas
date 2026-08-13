@@ -111,7 +111,7 @@ export function MessagesTab({ box }: { box: 'inbox' | 'sent' }) {
                 <CardContent className="p-4 flex items-start gap-3">
                   <div className="mt-0.5">
                     {isUnread ? (
-                      <Mail className="h-5 w-5 text-[#0a3143]" />
+                      <Mail className="h-5 w-5 text-primary" />
                     ) : (
                       <MailOpen className="h-5 w-5 text-muted-foreground" />
                     )}

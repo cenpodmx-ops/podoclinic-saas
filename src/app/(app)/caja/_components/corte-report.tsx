@@ -51,10 +51,10 @@ export function CorteReport({ data, responsable, clinicName, clinicAddress, clin
   return (
     <div className="corte-print bg-white text-slate-900 p-8 mx-auto" style={{ maxWidth: 800 }}>
       {/* Encabezado */}
-      <div className="flex items-center justify-between border-b-2 border-[#0a3143] pb-3 mb-4">
+      <div className="flex items-center justify-between border-b-2 border-primary pb-3 mb-4">
         <div className="flex items-center gap-3">
           <div>
-            <h1 className="text-xl font-bold" style={{ color: '#0a3143' }}>
+            <h1 className="text-xl font-bold" style={{ color: 'var(--primary)' }}>
               {clinicName || 'PodoClinic'}
             </h1>
             {clinicAddress && <p className="text-xs text-slate-600">{clinicAddress}</p>}
@@ -62,7 +62,7 @@ export function CorteReport({ data, responsable, clinicName, clinicAddress, clin
           </div>
         </div>
         <div className="text-right">
-          <div className="text-lg font-bold uppercase tracking-wider" style={{ color: '#0a3143' }}>
+          <div className="text-lg font-bold uppercase tracking-wider" style={{ color: 'var(--primary)' }}>
             Corte de Caja
           </div>
           <div className="text-xs text-slate-600">{fmtDate(data.date)}</div>

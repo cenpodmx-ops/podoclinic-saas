@@ -199,7 +199,7 @@ export default function InventarioPage() {
               onClick={() => setPosOpen(true)}
               size="sm"
               variant="outline"
-              style={{ borderColor: '#0a3143', color: '#0a3143' }}
+              style={{ bordercolor: 'var(--primary)', color: 'var(--primary)' }}
             >
               <ShoppingCart className="h-4 w-4 mr-1" /> Venta mostrador
             </Button>
@@ -208,7 +208,7 @@ export default function InventarioPage() {
                 <Button onClick={() => setImportOpen(true)} size="sm" variant="outline">
                   <FileSpreadsheet className="h-4 w-4 mr-1" /> Importar Excel
                 </Button>
-                <Button onClick={onNew} size="sm" style={{ backgroundColor: '#0a3143' }}>
+                <Button onClick={onNew} size="sm" style={{ backgroundColor: 'var(--primary)' }}>
                   <Plus className="h-4 w-4 mr-1" /> Nuevo producto
                 </Button>
               </>

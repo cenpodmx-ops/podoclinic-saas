@@ -205,7 +205,7 @@ export function VademecumTab({ canEdit }: { canEdit: boolean }) {
             <Button onClick={() => setImportOpen(true)} size="sm" variant="outline">
               <FileSpreadsheet className="h-4 w-4 mr-1" /> Importar Excel
             </Button>
-            <Button onClick={openNew} size="sm" style={{ backgroundColor: '#0a3143' }}>
+            <Button onClick={openNew} size="sm" style={{ backgroundColor: 'var(--primary)' }}>
               <Plus className="h-4 w-4 mr-1" /> Nuevo medicamento
             </Button>
           </div>
@@ -265,7 +265,7 @@ export function VademecumTab({ canEdit }: { canEdit: boolean }) {
                 Agrega medicamentos aquí para que aparezcan como sugerencias al hacer recetas.
               </p>
               {canEdit && (
-                <Button onClick={openNew} size="sm" className="mt-4" style={{ backgroundColor: '#0a3143' }}>
+                <Button onClick={openNew} size="sm" className="mt-4" style={{ backgroundColor: 'var(--primary)' }}>
                   <Plus className="h-4 w-4 mr-1" /> Agregar primer medicamento
                 </Button>
               )}
@@ -466,7 +466,7 @@ export function VademecumTab({ canEdit }: { canEdit: boolean }) {
               <Button type="button" variant="outline" onClick={() => setDialogOpen(false)}>
                 Cancelar
               </Button>
-              <Button type="submit" disabled={saveMutation.isPending} style={{ backgroundColor: '#0a3143' }}>
+              <Button type="submit" disabled={saveMutation.isPending} style={{ backgroundColor: 'var(--primary)' }}>
                 {saveMutation.isPending ? 'Guardando...' : editing ? 'Guardar cambios' : 'Agregar al vademécum'}
               </Button>
             </DialogFooter>

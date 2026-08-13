@@ -46,8 +46,8 @@ export default function LoginPage() {
 
   return (
     <div className="min-h-screen relative flex items-center justify-center p-4 overflow-hidden">
-      {/* Fondo con color de marca PodoClinic */}
-      <div className="absolute inset-0" style={{ backgroundColor: 'var(--clinic-primary, #0d9488)' }} />
+      {/* Fondo con color de marca PodoClinic (siempre teal, no dinámico) */}
+      <div className="absolute inset-0" style={{ backgroundColor: '#0d9488' }} />
 
       {/* Textura: patrón de puntos sutiles + rejilla diagonal */}
       <div
@@ -87,7 +87,7 @@ export default function LoginPage() {
               />
               <span
                 className="font-medium tracking-[0.2em] mt-3 text-center"
-                style={{ color: 'var(--clinic-primary, #0d9488)', opacity: 0.6, fontSize: '0.7rem' }}
+                style={{ color: '#0d9488', opacity: 0.6, fontSize: '0.7rem' }}
               >
                 Gestión Clínica Podológica
               </span>
@@ -139,7 +139,7 @@ export default function LoginPage() {
                 type="submit"
                 className="w-full h-11 text-base font-medium"
                 disabled={loading}
-                style={{ backgroundColor: 'var(--clinic-primary, #0d9488)' }}
+                style={{ backgroundColor: '#0d9488' }}
               >
                 {loading ? (
                   <>

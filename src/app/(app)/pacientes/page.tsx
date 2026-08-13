@@ -251,7 +251,7 @@ export default function PacientesPage() {
           </p>
         </div>
         <div className="flex gap-2">
-          <Button onClick={() => setFormOpen(true)} style={{ backgroundColor: '#0a3143' }} size="sm">
+          <Button onClick={() => setFormOpen(true)} style={{ backgroundColor: 'var(--primary)' }} size="sm">
             <UserPlus className="h-4 w-4" /> Nuevo paciente
           </Button>
         </div>
@@ -293,7 +293,7 @@ export default function PacientesPage() {
                 <Filter className="h-4 w-4" />
                 Filtros
                 {activeFiltersCount > 0 && (
-                  <span className="absolute -top-1 -right-1 h-4 w-4 rounded-full text-[10px] flex items-center justify-center text-white" style={{ backgroundColor: '#0a3143' }}>
+                  <span className="absolute -top-1 -right-1 h-4 w-4 rounded-full text-[10px] flex items-center justify-center text-white" style={{ backgroundColor: 'var(--primary)' }}>
                     {activeFiltersCount}
                   </span>
                 )}
@@ -419,7 +419,7 @@ export default function PacientesPage() {
                     <div className="min-w-0">
                       <p className="font-semibold truncate">{name}</p>
                       <p className="text-xs text-muted-foreground">Exp. {p.expNumber}</p>
-                      <Badge variant="secondary" className="text-[9px] mt-0.5" style={{ backgroundColor: '#0a3143', color: 'white' }}>
+                      <Badge variant="secondary" className="text-[9px] mt-0.5" style={{ backgroundColor: 'var(--primary)', color: 'white' }}>
                         {p.clinic?.name || 'Sin clínica'}
                       </Badge>
                     </div>
@@ -455,7 +455,7 @@ export default function PacientesPage() {
                   <div className="flex items-center justify-between pt-2 border-t">
                     <div>
                       <p className="text-[10px] text-muted-foreground">Total gastado</p>
-                      <p className="font-semibold text-sm" style={{ color: '#0a3143' }}>
+                      <p className="font-semibold text-sm" style={{ color: 'var(--primary)' }}>
                         {fmtMoney(p.totalSpent)}
                       </p>
                     </div>
@@ -506,7 +506,7 @@ export default function PacientesPage() {
                       <TableCell className="font-mono text-xs">{p.expNumber}</TableCell>
                       <TableCell className="font-medium">{name}</TableCell>
                       <TableCell className="text-xs">{p.phone || '—'}</TableCell>
-                      <TableCell className="text-xs"><Badge variant="secondary" className="text-[9px]" style={{ backgroundColor: '#0a3143', color: 'white' }}>{p.clinic?.name || '—'}</Badge></TableCell>
+                      <TableCell className="text-xs"><Badge variant="secondary" className="text-[9px]" style={{ backgroundColor: 'var(--primary)', color: 'white' }}>{p.clinic?.name || '—'}</Badge></TableCell>
                       <TableCell>
                         <div className="flex gap-1 flex-wrap">
                           {p.isDiabetic && (
@@ -528,7 +528,7 @@ export default function PacientesPage() {
                           </Badge>
                         )}
                       </TableCell>
-                      <TableCell className="text-right font-medium" style={{ color: '#0a3143' }}>
+                      <TableCell className="text-right font-medium" style={{ color: 'var(--primary)' }}>
                         {fmtMoney(p.totalSpent)}
                       </TableCell>
                       <TableCell className="text-xs">

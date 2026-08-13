@@ -82,7 +82,7 @@ export default function SeguimientoPage() {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
           <h1 className="text-2xl font-bold flex items-center gap-2">
-            <HeartPulse className="h-6 w-6" style={{ color: '#0a3143' }} />
+            <HeartPulse className="h-6 w-6" style={{ color: 'var(--primary)' }} />
             Seguimiento Post-Consulta
           </h1>
           <p className="text-sm text-muted-foreground mt-1">
@@ -217,7 +217,7 @@ function FilterLinks({
               ? 'border-primary text-primary-foreground'
               : 'border-border text-muted-foreground hover:bg-muted'
           }`}
-          style={active === it.key ? { backgroundColor: '#0a3143', borderColor: '#0a3143' } : undefined}
+          style={active === it.key ? { backgroundColor: 'var(--primary)', bordercolor: 'var(--primary)' } : undefined}
         >
           {it.label}
         </Link>
@@ -393,7 +393,7 @@ function FollowUpCard({
             size="sm"
             onClick={() => patchStatus.mutate({ id: f.id, status: 'AGENDADO' })}
             disabled={patchStatus.isPending}
-            style={{ backgroundColor: '#0a3143' }}
+            style={{ backgroundColor: 'var(--primary)' }}
             title="Marcar agendado"
           >
             <CalendarClock className="h-3.5 w-3.5 mr-1" />

@@ -120,10 +120,10 @@ export function TabSegmentacion() {
                       ? 'border-primary bg-primary/5'
                       : 'border-border hover:bg-muted/50'
                   }`}
-                  style={active ? { borderColor: '#0a3143', backgroundColor: 'rgba(10,49,67,0.05)' } : undefined}
+                  style={active ? { bordercolor: 'var(--primary)', backgroundColor: 'rgba(10,49,67,0.05)' } : undefined}
                 >
                   <div className="flex items-center gap-2">
-                    <Icon className="h-4 w-4" style={{ color: '#0a3143' }} />
+                    <Icon className="h-4 w-4" style={{ color: 'var(--primary)' }} />
                     <span className="text-xs font-semibold">{meta.label}</span>
                   </div>
                   <span className="text-[10px] text-muted-foreground line-clamp-2">{meta.desc}</span>
@@ -160,7 +160,7 @@ export function TabSegmentacion() {
                       templateKey: SEGMENT_LABELS[selected].tplKey,
                     })
                   }
-                  style={{ backgroundColor: '#0a3143' }}
+                  style={{ backgroundColor: 'var(--primary)' }}
                 >
                   <Megaphone className="h-4 w-4 mr-1" />
                   {iniciarCampana.isPending ? 'Preparando...' : 'Iniciar campaña'}
@@ -317,7 +317,7 @@ function CampanaModal({
       <DialogContent className="sm:max-w-2xl">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <Megaphone className="h-5 w-5" style={{ color: '#0a3143' }} />
+            <Megaphone className="h-5 w-5" style={{ color: 'var(--primary)' }} />
             Campaña: {segmentLabel}
           </DialogTitle>
           <DialogDescription>
@@ -347,7 +347,7 @@ function CampanaModal({
                   className="h-full transition-all"
                   style={{
                     width: `${((idx) / total) * 100}%`,
-                    backgroundColor: '#0a3143',
+                    backgroundColor: 'var(--primary)',
                   }}
                 />
               </div>
@@ -366,7 +366,7 @@ function CampanaModal({
                     size="sm"
                     variant={contacted.has(current.patientId) ? 'default' : 'outline'}
                     onClick={() => toggleContacted(current.patientId)}
-                    style={contacted.has(current.patientId) ? { backgroundColor: '#0a3143' } : undefined}
+                    style={contacted.has(current.patientId) ? { backgroundColor: 'var(--primary)' } : undefined}
                   >
                     <CheckCircle2 className="h-4 w-4 mr-1" />
                     {contacted.has(current.patientId) ? 'Contactado' : 'Marcar contactado'}
@@ -407,7 +407,7 @@ function CampanaModal({
               <X className="h-4 w-4 mr-1" /> Cerrar
             </Button>
             {!done && (
-              <Button onClick={next} style={{ backgroundColor: '#0a3143' }}>
+              <Button onClick={next} style={{ backgroundColor: 'var(--primary)' }}>
                 Siguiente <ChevronRight className="h-4 w-4 ml-1" />
               </Button>
             )}

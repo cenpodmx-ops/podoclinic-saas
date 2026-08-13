@@ -212,7 +212,7 @@ function FormBody({
           Cerrar
         </Button>
         {canEdit && (
-          <Button type="submit" disabled={saving} style={{ backgroundColor: '#0a3143' }}>
+          <Button type="submit" disabled={saving} style={{ backgroundColor: 'var(--primary)' }}>
             {saving ? 'Guardando...' : 'Guardar'}
           </Button>
         )}

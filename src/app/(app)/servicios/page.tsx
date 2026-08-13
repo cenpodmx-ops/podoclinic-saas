@@ -114,7 +114,7 @@ export default function ServiciosPage() {
             <Switch checked={showInactive} onCheckedChange={setShowInactive} />
             Ver inactivos
           </label>
-          <Button onClick={onNew} size="sm" style={{ backgroundColor: '#0a3143' }}>
+          <Button onClick={onNew} size="sm" style={{ backgroundColor: 'var(--primary)' }}>
             <Plus className="h-4 w-4 mr-1" /> Nuevo servicio
           </Button>
         </div>
@@ -340,7 +340,7 @@ function ServiceDialog({
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
               Cancelar
             </Button>
-            <Button type="submit" disabled={saving} style={{ backgroundColor: '#0a3143' }}>
+            <Button type="submit" disabled={saving} style={{ backgroundColor: 'var(--primary)' }}>
               {saving ? 'Guardando...' : 'Guardar'}
             </Button>
           </DialogFooter>

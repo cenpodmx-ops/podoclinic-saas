@@ -224,7 +224,7 @@ export default function CajaPage() {
       <div className="p-4 md:p-6 max-w-[1400px] mx-auto">
         <header className="mb-6">
           <h1 className="text-2xl font-bold flex items-center gap-2">
-            <Wallet className="h-6 w-6" style={{ color: '#0a3143' }} /> Caja
+            <Wallet className="h-6 w-6" style={{ color: 'var(--primary)' }} /> Caja
           </h1>
           <p className="text-sm text-muted-foreground">
             {new Date().toLocaleDateString('es-MX', { timeZone: 'America/Hermosillo', weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
@@ -237,7 +237,7 @@ export default function CajaPage() {
               className="mx-auto h-14 w-14 rounded-full flex items-center justify-center mb-2"
               style={{ backgroundColor: 'rgba(10, 49, 67, 0.08)' }}
             >
-              <Lock className="h-7 w-7" style={{ color: '#0a3143' }} />
+              <Lock className="h-7 w-7" style={{ color: 'var(--primary)' }} />
             </div>
             <CardTitle>Caja cerrada</CardTitle>
           </CardHeader>
@@ -260,7 +260,7 @@ export default function CajaPage() {
             </div>
             <Button
               className="w-full"
-              style={{ backgroundColor: '#0a3143' }}
+              style={{ backgroundColor: 'var(--primary)' }}
               disabled={openMutation.isPending || !openingFund}
               onClick={() => openMutation.mutate(Number(openingFund))}
             >
@@ -280,7 +280,7 @@ export default function CajaPage() {
       <header className="flex flex-col md:flex-row md:items-center justify-between gap-3">
         <div>
           <h1 className="text-2xl font-bold flex items-center gap-2">
-            <Wallet className="h-6 w-6" style={{ color: '#0a3143' }} /> Caja
+            <Wallet className="h-6 w-6" style={{ color: 'var(--primary)' }} /> Caja
           </h1>
           <p className="text-sm text-muted-foreground">
             {new Date(cajaQ.data.date + 'T00:00:00').toLocaleDateString('es-MX', {
@@ -342,7 +342,7 @@ export default function CajaPage() {
             label="Movimientos"
             value={String(movements.length)}
             icon={Receipt}
-            color="text-[#0a3143] bg-[#0a3143]/10"
+            color="text-primary bg-[#0a3143]/10"
           />
         )}
       </div>
@@ -369,7 +369,7 @@ export default function CajaPage() {
             <Button
               onClick={() => setCloseOpen(true)}
               size="sm"
-              style={{ backgroundColor: '#0a3143' }}
+              style={{ backgroundColor: 'var(--primary)' }}
             >
               <Lock className="h-4 w-4 mr-1" /> Cerrar caja
             </Button>
@@ -669,7 +669,7 @@ function EgresoDialog({
           <Button variant="outline" onClick={() => onOpenChange(false)}>
             Cancelar
           </Button>
-          <Button onClick={handle} disabled={isPending} style={{ backgroundColor: '#0a3143' }}>
+          <Button onClick={handle} disabled={isPending} style={{ backgroundColor: 'var(--primary)' }}>
             {isPending ? 'Guardando...' : 'Registrar egreso'}
           </Button>
         </DialogFooter>
@@ -734,7 +734,7 @@ function CloseDialog({
             <Separator className="my-1" />
             <div className="flex justify-between">
               <span className="font-medium">Efectivo esperado:</span>
-              <span className="font-bold" style={{ color: '#0a3143' }}>
+              <span className="font-bold" style={{ color: 'var(--primary)' }}>
                 {fmtMoney(expected)}
               </span>
             </div>
@@ -784,7 +784,7 @@ function CloseDialog({
           <Button variant="outline" onClick={() => onOpenChange(false)}>
             Cancelar
           </Button>
-          <Button onClick={handle} disabled={isPending} style={{ backgroundColor: '#0a3143' }}>
+          <Button onClick={handle} disabled={isPending} style={{ backgroundColor: 'var(--primary)' }}>
             <Lock className="h-4 w-4 mr-1" />
             {isPending ? 'Cerrando...' : 'Cerrar caja'}
           </Button>
@@ -845,7 +845,7 @@ function WhatsAppDialog({
           <Button variant="outline" onClick={() => onOpenChange(false)}>
             Cancelar
           </Button>
-          <Button onClick={handle} disabled={isPending} style={{ backgroundColor: '#0a3143' }}>
+          <Button onClick={handle} disabled={isPending} style={{ backgroundColor: 'var(--primary)' }}>
             <Send className="h-4 w-4 mr-1" />
             {isPending ? 'Generando...' : 'Abrir WhatsApp'}
           </Button>

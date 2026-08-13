@@ -258,7 +258,7 @@ export default function AgendaPage() {
 
             return grupos.map((grupo, gi) => (
               <div key={gi} style={{ marginBottom: '20px' }}>
-                <div style={{ fontWeight: 'bold', fontSize: '14px', color: '#0a3143', padding: '8px 0 4px', borderBottom: '2px solid #0a3143', marginBottom: '0' }}>
+                <div style={{ fontWeight: 'bold', fontSize: '14px', color: 'var(--primary)', padding: '8px 0 4px', borderBottom: '2px solid #0a3143', marginBottom: '0' }}>
                   {grupo.name}
                 </div>
                 <table>
@@ -282,7 +282,7 @@ export default function AgendaPage() {
                       if (apptAtSlot) {
                         return (
                           <tr key={slot}>
-                            <td style={{ fontWeight: 'bold', textAlign: 'center', color: '#0a3143' }}>{slot}</td>
+                            <td style={{ fontWeight: 'bold', textAlign: 'center', color: 'var(--primary)' }}>{slot}</td>
                             <td style={{ fontWeight: '600' }}>{apptAtSlot.patient.firstName} {apptAtSlot.patient.lastName}</td>
                             <td>{apptAtSlot.patient.phone || '—'}</td>
                             <td>{apptAtSlot.reason || apptAtSlot.serviceName || '—'}</td>
@@ -342,7 +342,7 @@ export default function AgendaPage() {
               size="sm" variant={view === 'day' ? 'default' : 'ghost'}
               onClick={() => setView('day')}
               className="h-7"
-              style={view === 'day' ? { backgroundColor: '#0a3143' } : {}}
+              style={view === 'day' ? { backgroundColor: 'var(--primary)' } : {}}
             >
               <CalendarDays className="h-3.5 w-3.5 mr-1" /> Día
             </Button>
@@ -350,7 +350,7 @@ export default function AgendaPage() {
               size="sm" variant={view === 'week' ? 'default' : 'ghost'}
               onClick={() => setView('week')}
               className="h-7"
-              style={view === 'week' ? { backgroundColor: '#0a3143' } : {}}
+              style={view === 'week' ? { backgroundColor: 'var(--primary)' } : {}}
             >
               <CalendarRange className="h-3.5 w-3.5 mr-1" /> Semana
             </Button>
@@ -366,7 +366,7 @@ export default function AgendaPage() {
               <Printer className="h-4 w-4 mr-1" /> Imprimir
             </Button>
             {canManage && (
-              <Button size="sm" onClick={openNewButton} style={{ backgroundColor: '#0a3143' }}>
+              <Button size="sm" onClick={openNewButton} style={{ backgroundColor: 'var(--primary)' }}>
                 <Plus className="h-4 w-4 mr-1" /> Nueva cita
               </Button>
             )}

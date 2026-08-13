@@ -172,7 +172,7 @@ export default function OperacionesPage() {
     <div className="p-4 md:p-6 space-y-6 max-w-[1300px] mx-auto">
       <div>
         <h1 className="text-2xl font-bold flex items-center gap-2">
-          <DoorOpen className="h-6 w-6" style={{ color: '#0a3143' }} />
+          <DoorOpen className="h-6 w-6" style={{ color: 'var(--primary)' }} />
           Cierre y Apertura de Sucursal
         </h1>
         <p className="text-sm text-muted-foreground">
@@ -356,7 +356,7 @@ function StatusCard({
               size="lg"
               disabled={saving}
               onClick={() => onAbrir(Number(openingFund) || 0, notes || undefined)}
-              style={{ backgroundColor: '#0a3143' }}
+              style={{ backgroundColor: 'var(--primary)' }}
             >
               <Unlock className="h-4 w-4 mr-2" /> Abrir sucursal
             </Button>
@@ -499,7 +499,7 @@ function LiveSummary({ op, onCerrar }: { op: OperacionesResponse; onCerrar: () =
               </div>
               <div className="border-t pt-2 mt-2 flex justify-between items-center">
                 <span className="font-semibold">Efectivo esperado</span>
-                <span className="text-xl font-bold" style={{ color: '#0a3143' }}>{fmtMoney(s.expectedCash)}</span>
+                <span className="text-xl font-bold" style={{ color: 'var(--primary)' }}>{fmtMoney(s.expectedCash)}</span>
               </div>
               <p className="text-[10px] text-muted-foreground mt-1">
                 Esta es la cantidad que debes contar al cerrar.
@@ -528,7 +528,7 @@ function LiveSummary({ op, onCerrar }: { op: OperacionesResponse; onCerrar: () =
               </div>
               <div className="border-t pt-2 mt-2 flex justify-between font-bold">
                 <span>Total del día</span>
-                <span style={{ color: '#0a3143' }}>{fmtMoney(s.ingresos.total)}</span>
+                <span style={{ color: 'var(--primary)' }}>{fmtMoney(s.ingresos.total)}</span>
               </div>
             </div>
           </CardContent>
@@ -548,7 +548,7 @@ function LiveSummary({ op, onCerrar }: { op: OperacionesResponse; onCerrar: () =
                   <div key={i} className="flex justify-between text-sm">
                     <span className="font-medium">{p.name}</span>
                     <div className="text-right">
-                      <div className="font-semibold" style={{ color: '#0a3143' }}>{fmtMoney(p.total)}</div>
+                      <div className="font-semibold" style={{ color: 'var(--primary)' }}>{fmtMoney(p.total)}</div>
                       <div className="text-[10px] text-muted-foreground">{p.consultas} consulta(s)</div>
                     </div>
                   </div>
@@ -680,7 +680,7 @@ ${cierre.notes ? `*Incidencias:* ${cierre.notes}` : 'Sin incidencias.'}`
                 <div key={i} className="flex justify-between text-sm">
                   <span className="font-medium">{p.name}</span>
                   <div className="text-right">
-                    <span className="font-semibold" style={{ color: '#0a3143' }}>{fmtMoney(p.total)}</span>
+                    <span className="font-semibold" style={{ color: 'var(--primary)' }}>{fmtMoney(p.total)}</span>
                     <span className="text-[10px] text-muted-foreground ml-2">{p.consultas} consulta(s)</span>
                   </div>
                 </div>
@@ -970,7 +970,7 @@ function CierreDialog({
           <div className="grid grid-cols-2 gap-3">
             <div>
               <Label className="text-xs">Efectivo esperado</Label>
-              <div className="px-3 py-2 border rounded-md bg-muted/40 font-semibold" style={{ color: '#0a3143' }}>
+              <div className="px-3 py-2 border rounded-md bg-muted/40 font-semibold" style={{ color: 'var(--primary)' }}>
                 {fmtMoney(expectedCash)}
               </div>
             </div>

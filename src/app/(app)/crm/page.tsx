@@ -11,7 +11,7 @@ export default function CRMPage() {
     <div className="p-4 md:p-6 space-y-4 max-w-[1600px] mx-auto">
       <div>
         <h1 className="text-2xl font-bold flex items-center gap-2">
-          <Megaphone className="h-6 w-6" style={{ color: '#0a3143' }} />
+          <Megaphone className="h-6 w-6" style={{ color: 'var(--primary)' }} />
           CRM
         </h1>
         <p className="text-sm text-muted-foreground mt-1">

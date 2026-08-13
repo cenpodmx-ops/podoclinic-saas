@@ -275,7 +275,7 @@ export function TicketConfigTab() {
           <Button
             onClick={() => saveMutation.mutate(form)}
             disabled={saveMutation.isPending}
-            style={{ backgroundColor: '#0a3143' }}
+            style={{ backgroundColor: 'var(--primary)' }}
           >
             <Save className="h-4 w-4 mr-1" />
             {saveMutation.isPending ? 'Guardando...' : 'Guardar configuración'}
